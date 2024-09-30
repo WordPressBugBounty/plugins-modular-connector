@@ -55,12 +55,7 @@ class BackupWorker
     protected string $identifier;
 
     /**
-     * @var \Modular\ConnectorDependencies\Ares\Framework\Foundation\Application
-     */
-    protected EventsDispatcher $events;
-
-    /**
-     * @var \Modular\ConnectorDependencies\Ares\Framework\Foundation\Application
+     * @var ExceptionHandler
      */
     protected ExceptionHandler $exceptions;
 

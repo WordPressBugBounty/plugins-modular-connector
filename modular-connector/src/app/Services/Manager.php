@@ -116,7 +116,7 @@ class Manager
      * @return void
      * @throws \Exception
      */
-    public function login()
+    public function login($payload)
     {
         $databaseUtils = new Database();
         $user = $databaseUtils->getFirstAdministratorUser();

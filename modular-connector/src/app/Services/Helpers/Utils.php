@@ -50,6 +50,10 @@ class Utils
      */
     public static function forceResponse($response = '')
     {
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(true);
+        }
+
         $response = wp_json_encode($response);
 
         $response = new Response($response, 200, [

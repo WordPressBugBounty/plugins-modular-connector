@@ -1,5 +1,9 @@
 <?php
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Register The Composer Auto Loader
@@ -22,7 +26,7 @@ function modular_connector_autoload_classes()
 {
     $autoloads = [
         __DIR__ . '/../../vendor/composer/autoload_classmap.php',
-        __DIR__ . '/../../vendor_prefixed/composer/autoload_classmap.php'
+        __DIR__ . '/../../vendor_prefixed/composer/autoload_classmap.php',
     ];
 
     $classMap = [];
@@ -58,7 +62,7 @@ function modular_connector_autoload_vendor_files()
 {
     $autoloads = [
         __DIR__ . '/../../vendor/composer/autoload_files.php',
-        __DIR__ . '/../../vendor_prefixed/composer/autoload_files.php'
+        __DIR__ . '/../../vendor_prefixed/composer/autoload_files.php',
     ];
 
     $files = [];

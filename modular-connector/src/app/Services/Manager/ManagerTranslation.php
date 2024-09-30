@@ -59,6 +59,6 @@ class ManagerTranslation extends AbstractManager
 
         $result = @$upgrader->bulk_upgrade();
 
-        return $this->parseUpgradeResponse('translations', $result);
+        return $this->parseActionResponse('translations', $result, 'upgrade', 'translations');
     }
 }

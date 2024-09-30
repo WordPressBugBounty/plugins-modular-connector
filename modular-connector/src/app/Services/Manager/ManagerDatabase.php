@@ -7,6 +7,7 @@ use Modular\Connector\Services\Backup\BackupOptions;
 use Modular\Connector\Services\Backup\Dumper\PHPDumper;
 use Modular\Connector\Services\Backup\Dumper\ShellDumper;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
 /**
  * Handles all functionality related to WordPress database.
@@ -102,25 +103,61 @@ class ManagerDatabase
     }
 
     /**
+     * @param array $excludedTables
+     * @return array
+     */
+    public function getExcludedTables(array $excludedTables): array
+    {
+        $excludedTables = array_merge($excludedTables, $this->views());
+
+        return $this->tree()
+            ->filter(
+                fn($table) => in_array($table->path, $excludedTables) || in_array($table->name, $excludedTables)
+            )
+            ->values()
+            ->toArray();
+    }
+
+    /**
      * Get database tree
      *
      * @return Collection
      */
-    public function tree()
+    public function tree(): Collection
     {
         global $wpdb;
 
         $tables = $wpdb->get_results(
-            $wpdb->prepare('SELECT table_name AS name, data_length + index_length as size FROM information_schema.TABLES WHERE table_schema = %s', DB_NAME)
+            $wpdb->prepare("SELECT table_name AS name, data_length + index_length as size FROM information_schema.TABLES WHERE table_schema = %s", DB_NAME)
         );
 
         return Collection::make($tables)
             ->map(function ($table) use ($wpdb) {
-                $table->prefix = $wpdb->prefix;
-                $table->path = str_ireplace($wpdb->prefix, '', $table->name);
+                $hasPrefix = Str::startsWith($table->name, $wpdb->prefix);
+
+                $table->prefix = $hasPrefix ? $wpdb->prefix : '';
+                $table->path = $hasPrefix ? Str::replace($wpdb->prefix, '', $table->name) : $table->name;
 
                 return $table;
             });
+    }
+
+    /**
+     * Get database tree
+     *
+     * @return array
+     */
+    public function views(): array
+    {
+        global $wpdb;
+
+        $tables = $wpdb->get_results(
+            $wpdb->prepare("SELECT table_name AS name FROM information_schema.TABLES WHERE table_schema = %s and Table_Type = 'VIEW'", DB_NAME)
+        );
+
+        return Collection::make($tables)
+            ->map(fn($table) => $table->name)
+            ->toArray();
     }
 
     /**
@@ -151,20 +188,14 @@ class ManagerDatabase
      */
     public function dump(string $path, BackupOptions $options)
     {
-        global $wpdb;
-
-        $excluded = Collection::make($options->excludedTables)
-            ->map(function ($item) use ($wpdb) {
-                return $wpdb->prefix . $item;
-            })
-            ->toArray();
+        $excluded = $options->excludedTables;
 
         // TODO implement multi driver support
         if (Server::shellIsAvailable()) {
             try {
                 ShellDumper::dump($path, $options->connection, $excluded);
                 return;
-            } catch (\Exception|\Error $e) {
+            } catch (\Throwable $e) {
                 // silence is golden
             }
         }

@@ -275,6 +275,10 @@ class ModularClient implements ModularClientInterface
         ];
     }
 
+    /**
+     * @return true|void
+     * @throws \ErrorException
+     */
     public function validateOrRenewAccessToken()
     {
         if (!$this->isExpired()) {

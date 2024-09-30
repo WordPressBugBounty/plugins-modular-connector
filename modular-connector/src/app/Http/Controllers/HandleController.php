@@ -8,8 +8,9 @@ use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Helper\OauthClient;
+use Modular\Connector\Jobs\ManagerInstallJob;
+use Modular\Connector\Jobs\ManagerManageItemJob;
 use Modular\Connector\Jobs\ManagerUpdateJob;
-use Modular\Connector\Jobs\ManagerUpgradeJob;
 use Modular\Connector\Services\Backup\BackupOptions;
 use Modular\Connector\Services\Helpers\Utils;
 use Modular\ConnectorDependencies\Carbon\Carbon;
@@ -87,6 +88,10 @@ class HandleController
         if (method_exists($this, $method)) {
             /**
              * @see HandleController::handleLogin()
+             * @see HandleController::handleManagerActivate()
+             * @see HandleController::handleManagerDeactivate()
+             * @see HandleController::handleManagerDelete()
+             * @see HandleController::handleManagerInstall()
              * @see HandleController::handleManagerUpdate()
              * @see HandleController::handleManagerUpgrade()
              * @see HandleController::handleManagerServerInformation()
@@ -113,7 +118,7 @@ class HandleController
      */
     protected function handleLogin($payload)
     {
-        Manager::login();
+        Manager::login($payload);
     }
 
     /**
@@ -131,11 +136,55 @@ class HandleController
      * @param $payload
      * @return void
      */
+    protected function handleManagerInstall($payload)
+    {
+        Utils::forceResponse(null);
+
+        ManagerInstallJob::dispatch($this->mrid, $payload);
+    }
+
+    /**
+     * @param $payload
+     * @return void
+     */
+    protected function handleManagerActivate($payload)
+    {
+        Utils::forceResponse(null);
+
+        ManagerManageItemJob::dispatch($this->mrid, $payload, 'activate');
+    }
+
+    /**
+     * @param $payload
+     * @return void
+     */
+    protected function handleManagerDeactivate($payload)
+    {
+        Utils::forceResponse(null);
+
+        ManagerManageItemJob::dispatch($this->mrid, $payload, 'deactivate');
+    }
+
+    /**
+     * @param $payload
+     * @return void
+     */
     protected function handleManagerUpgrade($payload)
     {
         Utils::forceResponse(null);
 
-        ManagerUpgradeJob::dispatch($this->mrid, $payload);
+        ManagerManageItemJob::dispatch($this->mrid, $payload, 'upgrade');
+    }
+
+    /**
+     * @param $payload
+     * @return void
+     */
+    protected function handleManagerDelete($payload)
+    {
+        Utils::forceResponse(null);
+
+        ManagerManageItemJob::dispatch($this->mrid, $payload, 'delete');
     }
 
     /**

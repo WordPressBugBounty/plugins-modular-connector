@@ -3,6 +3,7 @@
 namespace Modular\Connector\Services\Manager;
 
 use Modular\Connector\Helper\OauthClient;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\base_path;
 
 /**
@@ -21,8 +22,10 @@ class ManagerWhiteLabel
     public function init()
     {
         add_filter('all_plugins', [$this, 'setPluginName'], 10, 2);
+        add_filter('debug_information', [$this, 'setPluginHealth']);
         add_filter('plugin_row_meta', [$this, 'setPluginMeta'], 10, 2);
         add_action('admin_enqueue_scripts', [$this, 'setPluginScripts']);
+        add_filter('show_advanced_plugins', [$this, 'setAdvancedPlugins'], 10, 2);
     }
 
     /**
@@ -30,18 +33,25 @@ class ManagerWhiteLabel
      */
     public function getWhiteLabeledData()
     {
-        $whiteLabeled = get_transient($this->key);
+        $client = OauthClient::getClient();
 
-        if (empty($whiteLabeled) && !is_null($whiteLabeled)) {
-            try {
-                $client = OauthClient::getClient();
-                $client->validateOrRenewAccessToken();
+        if (empty($client->getUsedAt())) {
+            return [
+                'status' => 'disabled',
+            ];
+        } else {
+            $whiteLabeled = get_transient($this->key);
 
-                $response = $client->wordpress->getWhiteLabel();
+            if (empty($whiteLabeled) && !is_null($whiteLabeled)) {
+                try {
+                    $client->validateOrRenewAccessToken();
 
-                $this->update($response);
-            } catch (\Exception $e) {
-                $this->update(null);
+                    $response = $client->wordpress->getWhiteLabel();
+
+                    $this->update($response);
+                } catch (\Throwable $e) {
+                    $this->update(null);
+                }
             }
         }
 
@@ -80,7 +90,7 @@ class ManagerWhiteLabel
             'AuthorName' => $payload->author_name ?? '',
             'PluginURI' => '',
             'hide' => !empty($payload->hide ?? ''),
-            'status' => $payload->status ?? ''
+            'status' => $payload->status ?? '',
         ];
     }
 
@@ -100,6 +110,46 @@ class ManagerWhiteLabel
         }
 
         return $meta;
+    }
+
+    /**
+     * @param $info
+     * @return mixed
+     */
+    public function setPluginHealth($info)
+    {
+        $whiteLabel = $this->getWhiteLabeledData();
+
+        if (empty($whiteLabel) || $whiteLabel['status'] === 'disabled') {
+            return $info;
+        }
+
+        if (
+            !isset($info['wp-plugins-active']['fields']['Modular Connector']) &&
+            !isset($info['wp-mu-plugins']['fields']['Modular Connector'])) {
+            return $info;
+        }
+
+        $setWhiteLabel = function (&$info) use ($whiteLabel) {
+            if (!empty($whiteLabel['Name'])) {
+                $info['label'] = $whiteLabel['Name'];
+            }
+
+            if (!empty($whiteLabel['Author'])) {
+                $info["value"] = Str::replace('Modular DS', $whiteLabel['Author'], $info['value']);
+                $info["debug"] = Str::replace('Modular DS', $whiteLabel['Author'], $info['debug']);
+            }
+        };
+
+        $setWhiteLabel($info["wp-plugins-active"]["fields"]['Modular Connector']);
+        $setWhiteLabel($info["wp-mu-plugins"]["fields"]['Modular Connector']);
+
+        return $info;
+    }
+
+    public function setAdvancedPlugins($previousValue, $type)
+    {
+        // TODO Implement must-use plugins
     }
 
     /**
@@ -151,6 +201,8 @@ class ManagerWhiteLabel
     }
 
     /**
+     * FIXME Replace by site_transient_update_plugins
+     *
      * @param $page
      * @return void
      */

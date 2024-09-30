@@ -188,17 +188,6 @@ class ManagerBackup
     }
 
     /**
-     * @param array $excludedFiles
-     * @return Collection
-     */
-    public function getExcludedFiles(array $excludedFiles): Collection
-    {
-        $excluded = Collection::make($excludedFiles);
-
-        return $excluded->merge($this->getCoreExcluded());
-    }
-
-    /**
      * @param string $name
      * @return mixed
      */

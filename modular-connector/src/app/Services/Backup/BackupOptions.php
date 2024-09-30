@@ -3,6 +3,7 @@
 namespace Modular\Connector\Services\Backup;
 
 use Modular\Connector\Facades\Backup;
+use Modular\Connector\Facades\Database;
 use Modular\ConnectorDependencies\Illuminate\Support\Arr;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
@@ -76,7 +77,9 @@ class BackupOptions implements \JsonSerializable
         }
 
         if (isset($payload->excluded->tables)) {
-            $this->excludedTables = $payload->excluded->tables;
+            $this->excludedTables = $this->getExcludedTables($payload->excluded->tables);
+        } else {
+            $this->excludedTables = $this->getExcludedTables();
         }
 
         if (isset($payload->batch->size)) {
@@ -162,7 +165,17 @@ class BackupOptions implements \JsonSerializable
     {
         $excluded = Collection::make([
             Backup::path(),
+
+            // Error logs
+            untrailingslashit(ABSPATH) . DIRECTORY_SEPARATOR . '.wp-cli',
+            untrailingslashit(ABSPATH) . DIRECTORY_SEPARATOR . 'error_log',
+            untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'error_log',
+
+            // Default caches
             untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'cache',
+            untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'lscache',
+            untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'et-cache',
+
             untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'updraft',
             untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'aiowps_backups',
             untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'ai1wm-backups',
@@ -179,6 +192,23 @@ class BackupOptions implements \JsonSerializable
 
             return $item;
         })->toArray();
+    }
+
+    /**
+     * @param array $excludedTables
+     * @return void
+     */
+    private function getExcludedTables(array $excludedTables = [])
+    {
+        $excludedTables = array_merge($excludedTables, Database::views());
+
+        return Database::tree()
+            ->filter(
+                fn($table) => in_array($table->path, $excludedTables) || in_array($table->name, $excludedTables)
+            )
+            ->values()
+            ->map(fn($table) => $table->name)
+            ->toArray();
     }
 
     /**

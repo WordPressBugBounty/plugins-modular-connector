@@ -30,12 +30,7 @@ class Worker
     const EXIT_MEMORY_LIMIT = 12;
 
     /**
-     * @var \Modular\ConnectorDependencies\Ares\Framework\Foundation\Application
-     */
-    protected EventsDispatcher $events;
-
-    /**
-     * @var \Modular\ConnectorDependencies\Ares\Framework\Foundation\Application
+     * @var ExceptionHandler
      */
     protected ExceptionHandler $exceptions;
 
@@ -124,7 +119,6 @@ class Worker
         $this->maxJobs = $options['max_jobs'] ?? $this->maxJobs;
         $this->stopWhenEmpty = $options['stop_when_empty'] ?? $this->stopWhenEmpty;
 
-        $this->events = app()->make('events');
         $this->exceptions = app()->make(ExceptionHandler::class);
 
         add_action('wp_ajax_' . $this->identifier, [$this, 'handle']);
@@ -501,8 +495,6 @@ class Worker
      */
     public function kill(int $status = 0): void
     {
-        $this->events->dispatch(new WorkerStopping($status));
-
         if (extension_loaded('posix')) {
             posix_kill(getmypid(), SIGKILL);
         }
@@ -519,8 +511,6 @@ class Worker
     public function stop(int $status = 0)
     {
         $this->unlock();
-
-        $this->events->dispatch(new WorkerStopping($status));
 
         if (!$this->isQueueEmpty()) {
             // No data to process.

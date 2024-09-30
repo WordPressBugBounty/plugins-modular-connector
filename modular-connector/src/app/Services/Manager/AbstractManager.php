@@ -40,11 +40,25 @@ abstract class AbstractManager implements ManagerContract
             @include_once ABSPATH . WPINC . '/plugin.php';
         }
 
+        if (!function_exists('deactivate_plugins') ||
+            !function_exists('activate_plugins')) {
+            @include_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        if (!function_exists('delete_plugins') ||
+            !function_exists('request_filesystem_credentials')) {
+            @include_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
         if (
             !function_exists('wp_get_themes') ||
             !function_exists('register_theme_directory')
         ) {
             @include_once ABSPATH . WPINC . '/theme.php';
+        }
+
+        if (!function_exists('delete_theme')) {
+            @include_once ABSPATH . 'wp-admin/includes/theme.php';
         }
     }
 
@@ -89,21 +103,29 @@ abstract class AbstractManager implements ManagerContract
         if (!function_exists('wp_category_checklist')) {
             @include_once ABSPATH . 'wp-admin/includes/template.php';
         }
+
+        if (empty($GLOBALS['wp_filesystem'])) {
+            WP_Filesystem();
+        }
     }
 
     /**
      * Parses the bulk upgrade response to determine
      * if the items have been updated or not.
      *
+     * @param array $items
      * @param $response
+     * @param string $action
+     * @param $type
      * @return mixed
+     * @throws \Exception
      */
-    final protected function parseBulkUpgradeResponse(array $items, $response)
+    final protected function parseBulkActionResponse(array $items, $response, $action, $type)
     {
-        return array_map(function ($item) use ($response) {
+        return array_map(function ($item) use ($response, $action, $type) {
             $result = $response[$item] ?? null;
 
-            return $this->parseUpgradeResponse($item, $result);
+            return $this->parseActionResponse($item, $result, $action, $type);
         }, $items);
     }
 
@@ -112,22 +134,39 @@ abstract class AbstractManager implements ManagerContract
      *
      * @param string $item
      * @param $result
+     * @param string $action
+     * @param $type
      * @return mixed
+     * @throws \Exception
      */
-    final protected function parseUpgradeResponse(string $item, $result)
+    final protected function parseActionResponse(string $item, $result, $action, $type)
     {
         if (!in_array($item, ['core', 'translations'])) {
-            $isSuccess = !is_wp_error($result) && !empty($result['source']) || $result === true;
+            $isSuccess = !is_wp_error($result) && !($result instanceof \Throwable);
+
+            if ($action === 'upgrade') {
+                $isSuccess = $isSuccess && !empty($result['source']) || $result === true;
+            } else if ($action === 'install') {
+                $isSuccess = $isSuccess && !empty($result) && isset($result['basename']);
+
+                if ($isSuccess) {
+                    $item = $result;
+                    $result = null;
+                }
+            } else if (in_array($action, ['activate', 'deactivate'])) {
+                $isSuccess = $isSuccess && !empty($result) && isset($result['status']) && $result['status'] === 'success';
+            }
 
             if ($isSuccess && isset($result['source_files'])) {
                 unset($result['source_files']);
             }
         } else {
-            $isSuccess = !is_wp_error($result) || $result === true;
+            $isSuccess = !is_wp_error($result) || $result instanceof \Throwable || $result === true;
         }
 
         return [
             'item' => $item,
+            'type' => Str::singular($type),
             'success' => $isSuccess,
             'response' => $this->formatWordPressError($result),
         ];
@@ -143,16 +182,25 @@ abstract class AbstractManager implements ManagerContract
      */
     final protected function formatWordPressError($error)
     {
-        if (!is_wp_error($error)) {
-            return $error;
+        if (is_wp_error($error)) {
+            return [
+                'error' => [
+                    'code' => $error->get_error_code(),
+                    'message' => $error->get_error_message(),
+                ],
+            ];
+        } elseif ($error instanceof \Throwable) {
+            return [
+                'error' => [
+                    'code' => $error->getCode(),
+                    'message' => sprintf('%s in %s on line %s',
+                        $error->getMessage(), $error->getFile(), $error->getLine()
+                    ),
+                ],
+            ];
         }
 
-        return [
-            'error' => [
-                'code' => $error->get_error_code(),
-                'message' => $error->get_error_message()
-            ]
-        ];
+        return $error;
     }
 
     /**
@@ -162,7 +210,7 @@ abstract class AbstractManager implements ManagerContract
      * @param string $type
      * @param \Modular\ConnectorDependencies\Illuminate\Support\Collection $items
      * @param $updatableItems
-     * @return mixed
+     * @return array
      */
     final protected function map($type, $items, $updatableItems)
     {

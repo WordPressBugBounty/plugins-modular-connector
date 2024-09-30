@@ -54,7 +54,7 @@ class FileProfilerStorage implements ProfilerStorageInterface
         \fseek($file, 0, \SEEK_END);
         $result = [];
         while (\count($result) < $limit && ($line = $this->readLineFromFile($file))) {
-            $values = \str_getcsv($line);
+            $values = \str_getcsv($line, ',', '"', '\\');
             if (7 !== \count($values)) {
                 // skip invalid lines
                 continue;
@@ -135,7 +135,7 @@ class FileProfilerStorage implements ProfilerStorageInterface
             if (\false === ($file = \fopen($this->getIndexFilename(), 'a'))) {
                 return \false;
             }
-            \fputcsv($file, [$profile->getToken(), $profile->getIp(), $profile->getMethod(), $profile->getUrl(), $profile->getTime(), $profile->getParentToken(), $profile->getStatusCode()]);
+            \fputcsv($file, [$profile->getToken(), $profile->getIp(), $profile->getMethod(), $profile->getUrl(), $profile->getTime(), $profile->getParentToken(), $profile->getStatusCode()], ',', '"', '\\');
             \fclose($file);
         }
         return \true;

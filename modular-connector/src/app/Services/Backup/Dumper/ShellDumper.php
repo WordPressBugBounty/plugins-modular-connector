@@ -19,22 +19,24 @@ class ShellDumper
 
         $connection = MySql::create()
             ->setHost($host)
-            ->setPort($port)
             ->setDbName($database)
             ->setUserName($username)
             ->excludeTables($excluded)
             ->setPassword($password);
 
+        if (!empty($port) && is_int($port)) {
+            $connection = $connection->setPort($port);
+        }
+
         if (!empty($socket)) {
             $connection = $connection->setSocket($socket);
         }
 
+        // MariaDB don't use variable 'column-statistics=0' in the mysqldump,
         if (Database::engine() !== 'MariaDB') {
             $connection = $connection->doNotUseColumnStatistics();
         }
 
-        // MariaDB don't use variable 'column-statistics=0' in the mysqldump,
-        // so we need re-try without this variable
         $connection->dumpToFile($path);
     }
 }

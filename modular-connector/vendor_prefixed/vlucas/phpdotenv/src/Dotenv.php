@@ -70,7 +70,7 @@ class Dotenv
      *
      * @return \Dotenv\Dotenv
      */
-    public static function create(RepositoryInterface $repository, $paths, $names = null, bool $shortCircuit = \true, string $fileEncoding = null)
+    public static function create(RepositoryInterface $repository, $paths, $names = null, bool $shortCircuit = \true, ?string $fileEncoding = null)
     {
         $builder = $names === null ? StoreBuilder::createWithDefaultName() : StoreBuilder::createWithNoNames();
         foreach ((array) $paths as $path) {
@@ -94,7 +94,7 @@ class Dotenv
      *
      * @return \Dotenv\Dotenv
      */
-    public static function createMutable($paths, $names = null, bool $shortCircuit = \true, string $fileEncoding = null)
+    public static function createMutable($paths, $names = null, bool $shortCircuit = \true, ?string $fileEncoding = null)
     {
         $repository = RepositoryBuilder::createWithDefaultAdapters()->make();
         return self::create($repository, $paths, $names, $shortCircuit, $fileEncoding);
@@ -109,7 +109,7 @@ class Dotenv
      *
      * @return \Dotenv\Dotenv
      */
-    public static function createUnsafeMutable($paths, $names = null, bool $shortCircuit = \true, string $fileEncoding = null)
+    public static function createUnsafeMutable($paths, $names = null, bool $shortCircuit = \true, ?string $fileEncoding = null)
     {
         $repository = RepositoryBuilder::createWithDefaultAdapters()->addAdapter(PutenvAdapter::class)->make();
         return self::create($repository, $paths, $names, $shortCircuit, $fileEncoding);
@@ -124,7 +124,7 @@ class Dotenv
      *
      * @return \Dotenv\Dotenv
      */
-    public static function createImmutable($paths, $names = null, bool $shortCircuit = \true, string $fileEncoding = null)
+    public static function createImmutable($paths, $names = null, bool $shortCircuit = \true, ?string $fileEncoding = null)
     {
         $repository = RepositoryBuilder::createWithDefaultAdapters()->immutable()->make();
         return self::create($repository, $paths, $names, $shortCircuit, $fileEncoding);
@@ -139,7 +139,7 @@ class Dotenv
      *
      * @return \Dotenv\Dotenv
      */
-    public static function createUnsafeImmutable($paths, $names = null, bool $shortCircuit = \true, string $fileEncoding = null)
+    public static function createUnsafeImmutable($paths, $names = null, bool $shortCircuit = \true, ?string $fileEncoding = null)
     {
         $repository = RepositoryBuilder::createWithDefaultAdapters()->addAdapter(PutenvAdapter::class)->immutable()->make();
         return self::create($repository, $paths, $names, $shortCircuit, $fileEncoding);
@@ -154,7 +154,7 @@ class Dotenv
      *
      * @return \Dotenv\Dotenv
      */
-    public static function createArrayBacked($paths, $names = null, bool $shortCircuit = \true, string $fileEncoding = null)
+    public static function createArrayBacked($paths, $names = null, bool $shortCircuit = \true, ?string $fileEncoding = null)
     {
         $repository = RepositoryBuilder::createWithNoAdapters()->addAdapter(ArrayAdapter::class)->make();
         return self::create($repository, $paths, $names, $shortCircuit, $fileEncoding);

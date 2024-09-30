@@ -6,10 +6,15 @@ use Modular\Connector\Events\Backup\ManagerBackupFailedCreation;
 use Modular\Connector\Events\Backup\ManagerBackupPartsCalculated;
 use Modular\Connector\Events\Backup\ManagerBackupPartUpdated;
 use Modular\Connector\Events\ManagerHealthUpdated;
+use Modular\Connector\Events\ManagerItemsActivated;
+use Modular\Connector\Events\ManagerItemsDeactivated;
+use Modular\Connector\Events\ManagerItemsDeleted;
+use Modular\Connector\Events\ManagerItemsInstalled;
 use Modular\Connector\Events\ManagerItemsUpdated;
 use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Listeners\BackupRemoveEventListener;
 use Modular\Connector\Listeners\HookEventListener;
+use Modular\Connector\Listeners\UpgradeTranslationsEventListener;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 
@@ -25,6 +30,19 @@ class EventServiceProvider extends ServiceProvider
             HookEventListener::class
         ],
         ManagerItemsUpgraded::class => [
+            HookEventListener::class,
+            UpgradeTranslationsEventListener::class
+        ],
+        ManagerItemsActivated::class => [
+            HookEventListener::class
+        ],
+        ManagerItemsDeactivated::class => [
+            HookEventListener::class
+        ],
+        ManagerItemsInstalled::class => [
+            HookEventListener::class
+        ],
+        ManagerItemsDeleted::class => [
             HookEventListener::class
         ],
         ManagerHealthUpdated::class => [

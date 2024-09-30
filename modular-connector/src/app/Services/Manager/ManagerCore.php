@@ -118,6 +118,6 @@ class ManagerCore extends AbstractManager
 
         $this->checkForUpdates();
 
-        return $this->parseUpgradeResponse('core', $result);
+        return $this->parseActionResponse('core', $result, 'upgrade', 'core');
     }
 }

@@ -249,6 +249,7 @@ class Router implements RouterInterface, RequestMatcherInterface
                 }
             }
             $cache->write($dumper->dump(), $this->getRouteCollection()->getResources());
+            unset(self::$cache[$cache->getPath()]);
         });
         return $this->matcher = new $this->options['matcher_class'](self::getCompiledRoutes($cache->getPath()), $this->context);
     }
@@ -274,6 +275,7 @@ class Router implements RouterInterface, RequestMatcherInterface
             $cache = $this->getConfigCacheFactory()->cache($this->options['cache_dir'] . '/url_generating_routes.php', function (ConfigCacheInterface $cache) {
                 $dumper = $this->getGeneratorDumperInstance();
                 $cache->write($dumper->dump(), $this->getRouteCollection()->getResources());
+                unset(self::$cache[$cache->getPath()]);
             });
             $this->generator = new $this->options['generator_class'](self::getCompiledRoutes($cache->getPath()), $this->context, $this->logger, $this->defaultLocale);
         }

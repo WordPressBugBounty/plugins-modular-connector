@@ -38,7 +38,7 @@ class Settings extends Menu
      * @var array
      */
     protected array $methods = [
-        'post' => 'postConnection'
+        'post' => 'postConnection',
     ];
 
     /**
@@ -50,7 +50,7 @@ class Settings extends Menu
     {
         $data = WhiteLabel::getWhiteLabeledData();
 
-        return sprintf(esc_attr__('%s - Connection manager', 'modular-connector'), $data['Name'] ?? 'Modular');
+        return sprintf(esc_attr__('%s - Connection manager', 'modular-connector'), !empty($data['Name']) ? $data['Name'] : 'Modular');
     }
 
     /**
@@ -82,22 +82,22 @@ class Settings extends Menu
             'strong' => [],
             'p' => [
                 'id' => [],
-                'class' => []
+                'class' => [],
             ],
             'a' => [],
             'li' => [],
             'ol' => [],
             'th' => [
-                'scope' => []
+                'scope' => [],
             ],
             'tr' => [],
             'table' => [
                 'class' => [],
-                'role' => []
+                'role' => [],
             ],
             'h3' => [],
             'label' => [
-                'for' => []
+                'for' => [],
             ],
             'td' => [],
             'tbody' => [],
@@ -109,7 +109,7 @@ class Settings extends Menu
             'form' => [
                 'method' => [],
                 'class' => [],
-                'role' => []
+                'role' => [],
             ],
             'input' => [
                 'type' => [],
@@ -117,12 +117,12 @@ class Settings extends Menu
                 'name' => [],
                 'value' => [],
                 'required' => [],
-                'placeholder' => []
+                'placeholder' => [],
             ],
             'div' => [
                 'style' => [],
-                'class' => []
-            ]
+                'class' => [],
+            ],
         ];
 
         $view = $this->view('settings', compact('title', 'connections', 'connection'))
@@ -141,7 +141,7 @@ class Settings extends Menu
         $request = request();
 
         $nonce = sanitize_key(wp_unslash($request->get('_wpnonce')));
-        
+
         if (!wp_verify_nonce($nonce, '_modular_connector_connection')) {
             wp_nonce_ays('_modular_connector_connection');
         }

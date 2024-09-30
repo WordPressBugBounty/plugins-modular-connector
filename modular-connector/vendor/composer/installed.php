@@ -3,7 +3,7 @@
         'name' => 'modular/connector',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '84d40012ed34e0eab1c79dc5c1ee53e595769ba8',
+        'reference' => '57dcf954d49c69f68a178821c6e86fafdee5b3c9',
         'type' => 'wordpres-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'modular/connector' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '84d40012ed34e0eab1c79dc5c1ee53e595769ba8',
+            'reference' => '57dcf954d49c69f68a178821c6e86fafdee5b3c9',
             'type' => 'wordpres-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -49,8 +49,8 @@ use Modular\ConnectorDependencies\Symfony\Component\ErrorHandler\Exception\Silen
  */
 class ErrorHandler
 {
-    private $levels = [\E_DEPRECATED => 'Deprecated', \E_USER_DEPRECATED => 'User Deprecated', \E_NOTICE => 'Notice', \E_USER_NOTICE => 'User Notice', \E_STRICT => 'Runtime Notice', \E_WARNING => 'Warning', \E_USER_WARNING => 'User Warning', \E_COMPILE_WARNING => 'Compile Warning', \E_CORE_WARNING => 'Core Warning', \E_USER_ERROR => 'User Error', \E_RECOVERABLE_ERROR => 'Catchable Fatal Error', \E_COMPILE_ERROR => 'Compile Error', \E_PARSE => 'Parse Error', \E_ERROR => 'Error', \E_CORE_ERROR => 'Core Error'];
-    private $loggers = [\E_DEPRECATED => [null, LogLevel::INFO], \E_USER_DEPRECATED => [null, LogLevel::INFO], \E_NOTICE => [null, LogLevel::WARNING], \E_USER_NOTICE => [null, LogLevel::WARNING], \E_STRICT => [null, LogLevel::WARNING], \E_WARNING => [null, LogLevel::WARNING], \E_USER_WARNING => [null, LogLevel::WARNING], \E_COMPILE_WARNING => [null, LogLevel::WARNING], \E_CORE_WARNING => [null, LogLevel::WARNING], \E_USER_ERROR => [null, LogLevel::CRITICAL], \E_RECOVERABLE_ERROR => [null, LogLevel::CRITICAL], \E_COMPILE_ERROR => [null, LogLevel::CRITICAL], \E_PARSE => [null, LogLevel::CRITICAL], \E_ERROR => [null, LogLevel::CRITICAL], \E_CORE_ERROR => [null, LogLevel::CRITICAL]];
+    private $levels = [\E_DEPRECATED => 'Deprecated', \E_USER_DEPRECATED => 'User Deprecated', \E_NOTICE => 'Notice', \E_USER_NOTICE => 'User Notice', \E_WARNING => 'Warning', \E_USER_WARNING => 'User Warning', \E_COMPILE_WARNING => 'Compile Warning', \E_CORE_WARNING => 'Core Warning', \E_USER_ERROR => 'User Error', \E_RECOVERABLE_ERROR => 'Catchable Fatal Error', \E_COMPILE_ERROR => 'Compile Error', \E_PARSE => 'Parse Error', \E_ERROR => 'Error', \E_CORE_ERROR => 'Core Error'];
+    private $loggers = [\E_DEPRECATED => [null, LogLevel::INFO], \E_USER_DEPRECATED => [null, LogLevel::INFO], \E_NOTICE => [null, LogLevel::WARNING], \E_USER_NOTICE => [null, LogLevel::WARNING], \E_WARNING => [null, LogLevel::WARNING], \E_USER_WARNING => [null, LogLevel::WARNING], \E_COMPILE_WARNING => [null, LogLevel::WARNING], \E_CORE_WARNING => [null, LogLevel::WARNING], \E_USER_ERROR => [null, LogLevel::CRITICAL], \E_RECOVERABLE_ERROR => [null, LogLevel::CRITICAL], \E_COMPILE_ERROR => [null, LogLevel::CRITICAL], \E_PARSE => [null, LogLevel::CRITICAL], \E_ERROR => [null, LogLevel::CRITICAL], \E_CORE_ERROR => [null, LogLevel::CRITICAL]];
     private $thrownErrors = 0x1fff;
     // E_ALL - E_DEPRECATED - E_USER_DEPRECATED
     private $scopedErrors = 0x1fff;
@@ -140,6 +140,10 @@ class ErrorHandler
     }
     public function __construct(?BufferingLogger $bootstrappingLogger = null, bool $debug = \false)
     {
+        if (\PHP_VERSION_ID < 80400) {
+            $this->levels[\E_STRICT] = 'Runtime Notice';
+            $this->loggers[\E_STRICT] = [null, LogLevel::WARNING];
+        }
         if ($bootstrappingLogger) {
             $this->bootstrappingLogger = $bootstrappingLogger;
             $this->setDefaultLogger($bootstrappingLogger);
