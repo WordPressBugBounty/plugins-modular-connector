@@ -19,7 +19,7 @@ class BackupService extends AbstractService
 
         return $this->raw(
             'post',
-            $this->buildPath('/site/manager/backup/%s/upload', $backupId),
+            $this->buildPath('/site/manager/backup/%s/upload/', $backupId),
             $data,
             $opts
         );

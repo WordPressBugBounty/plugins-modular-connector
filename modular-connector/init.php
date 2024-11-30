@@ -3,7 +3,7 @@
  * Plugin Name: Modular Connector
  * Plugin URI: https://modulards.com/herramienta-gestion-webs/
  * Description: Connect and manage all your WordPress websites in an easier and more efficient way. Backups, bulk updates, Uptime Monitor, statistics, security, performance, client reports and much more.
- * Version: 1.2.1
+ * Version: 1.3.1
  * License: GPL v3.0
  * License URI: https://www.gnu.org/licenses/gpl.html
  * Requires PHP: 7.4

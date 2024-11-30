@@ -56,7 +56,7 @@ class ManagerBackupUploadJob extends AbstractJob
             $guzzle->request('PUT', $uploadUri, ['body' => $stream]);
 
             $this->part->markAsDone();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->part->markAsFailed(BackupPart::STATUS_FAILED_UPLOADED, $e);
 
             throw $e;

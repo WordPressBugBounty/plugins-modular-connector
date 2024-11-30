@@ -73,10 +73,10 @@ abstract class AbstractService extends BaseObjectFactory
      * @param array $data the data of the request
      * @param array $opts the special modifiers of the request
      *
-     * @return BaseObject
+     * @return mixed
      * @throws \Exception
      */
-    public function request(string $method, string $path, array $data = [], array $opts = []): BaseObject
+    public function request(string $method, string $path, array $data = [], array $opts = [])
     {
         return $this->getClient()->request($method, $path, $data, $opts);
     }

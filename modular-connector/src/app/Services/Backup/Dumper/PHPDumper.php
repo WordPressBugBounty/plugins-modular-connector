@@ -331,12 +331,13 @@ class PHPDumper
 
     /**
      * @return void
+     * @throws \Exception
      */
     protected function guardAgainstIncompleteCredentials()
     {
         foreach (['username', 'host', 'database'] as $requiredProperty) {
             if (\strlen($this->{$requiredProperty}) === 0) {
-                throw \Exception("Parameter `{$requiredProperty}` cannot be empty.");
+                throw new \Exception("Parameter `{$requiredProperty}` cannot be empty.");
             }
         }
     }

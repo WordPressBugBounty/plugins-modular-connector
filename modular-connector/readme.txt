@@ -2,8 +2,8 @@
 Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, maintenance, Manage Multiple Sites, monitoring, update, security
 Requires at least: 5.6
-Tested up to: 6.6
-Stable tag: 1.2.1
+Tested up to: 6.7
+Stable tag: 1.3.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -105,6 +105,11 @@ Modular Connector bridges the gap between your WordPress and Modular. Something 
 9. Client report overview page
 
 == Changelog ==
+= v1.3.0 =
+Release date: 2024-11-30
+
+* WooCommerce integration
+
 = v1.2.0 =
 Release date: 2024-09-26
 

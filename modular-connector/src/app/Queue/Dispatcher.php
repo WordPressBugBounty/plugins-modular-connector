@@ -180,7 +180,7 @@ class Dispatcher
     {
         foreach ($this->jobs as $queue => $jobs) {
             foreach ($jobs as $payload) {
-                update_site_option($this->getKey($queue), $payload);
+                update_option($this->getKey($queue), $payload);
             }
         }
 

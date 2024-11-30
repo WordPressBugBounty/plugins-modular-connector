@@ -11,6 +11,7 @@ use Modular\Connector\Services\Manager\ManagerServer;
 use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\Connector\Services\Manager\ManagerTranslation;
 use Modular\Connector\Services\Manager\ManagerWhiteLabel;
+use Modular\Connector\Services\Manager\ManagerWooCommerce;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 
 class ManagerServiceProvider extends ServiceProvider
@@ -57,6 +58,10 @@ class ManagerServiceProvider extends ServiceProvider
         $this->app->singleton('manager-white-label', function() {
             return new ManagerWhiteLabel();
         });
+
+        $this->app->singleton( 'manager-connector-woocommerce', function() {
+            return new ManagerWooCommerce();
+        } );
 
         $this->app->terminating(function () {
             \Modular\Connector\Queue\Dispatcher::forceDestroy();

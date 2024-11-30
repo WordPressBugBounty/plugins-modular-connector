@@ -4,8 +4,6 @@ namespace Modular\Connector\Queue;
 
 use Modular\Connector\Services\Helpers\Utils;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Debug\ExceptionHandler;
-use Modular\ConnectorDependencies\Illuminate\Contracts\Events\Dispatcher as EventsDispatcher;
-use Modular\ConnectorDependencies\Illuminate\Queue\Events\WorkerStopping;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use function Modular\ConnectorDependencies\app;
 
@@ -143,6 +141,7 @@ class Worker
      *
      * @param int $limit Number of batches to return, defaults to all.
      * @return Collection
+     * @throws \Throwable
      */
     public function getJobs($limit = 0)
     {
@@ -310,7 +309,7 @@ class Worker
         // Adds an "Every NNN Minute(s)" schedule to the existing cron schedules.
         $schedules[$this->identifierCronInterval] = [
             'interval' => $interval,
-            'display' => $display
+            'display' => $display,
         ];
 
         return $schedules;
@@ -346,6 +345,7 @@ class Worker
      * Delete entire job queue.
      *
      * @return void
+     * @throws \Throwable
      */
     protected function deleteAll()
     {

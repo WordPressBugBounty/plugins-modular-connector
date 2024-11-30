@@ -7,6 +7,7 @@ use Modular\Connector\Facades\Database;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Facades\WhiteLabel;
+use Modular\Connector\Facades\WooCommerce;
 use Modular\Connector\Helper\OauthClient;
 use Modular\Connector\Jobs\ManagerInstallJob;
 use Modular\Connector\Jobs\ManagerManageItemJob;
@@ -43,13 +44,25 @@ class HandleController
     {
         $client = OauthClient::getClient();
 
-        $token = $client->oauth->confirmAuthorizationCode(request('code'));
+        try {
+            $token = $client->oauth->confirmAuthorizationCode(request('code'));
 
-        $client->setAccessToken($token->access_token)
-            ->setRefreshToken($token->refresh_token)
-            ->setExpiresIn($token->expires_in)
-            ->setConnectedAt(Carbon::now())
-            ->save();
+            $client->setAccessToken($token->access_token)
+                ->setRefreshToken($token->refresh_token)
+                ->setExpiresIn($token->expires_in)
+                ->setConnectedAt(Carbon::now())
+                ->save();
+        } catch (\Throwable $e) {
+            $client->setAccessToken('')
+                ->setRefreshToken('')
+                ->setExpiresIn(0)
+                ->setConnectedAt(null)
+                ->save();
+
+            return [
+                'success' => 'KO',
+            ];
+        }
 
         return [
             'success' => 'OK',
@@ -95,6 +108,7 @@ class HandleController
              * @see HandleController::handleManagerUpdate()
              * @see HandleController::handleManagerUpgrade()
              * @see HandleController::handleManagerServerInformation()
+             * @see HandleController::handleManagerWoocommerceStats()
              * @see HandleController::handleManagerServerHealth()
              * @see HandleController::handleManagerHealth()
              * @see HandleController::handleManagerQueueHealth()
@@ -185,6 +199,23 @@ class HandleController
         Utils::forceResponse(null);
 
         ManagerManageItemJob::dispatch($this->mrid, $payload, 'delete');
+    }
+
+    /**
+     * Returns requested WooCommerce Analytics
+     *
+     * Tested from WooCommerce 7.0.0 and above.
+     * Lower WC versions with WP 6.6.2 cause errors mainly due to $wpdb changes
+     * @param $payload
+     * @return void
+     */
+    protected function handleManagerWoocommerceStats($payload)
+    {
+        if (!WooCommerce::isActive() || !WooCommerce::hasMinimumVersion('7.0.0')) {
+            return [];
+        }
+
+        return WooCommerce::getAnalytics($payload);
     }
 
     /**

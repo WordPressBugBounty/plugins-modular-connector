@@ -10,7 +10,6 @@ use Modular\Connector\Jobs\Backup\ManagerBackupCompressFilesJob;
 use Modular\Connector\Queue\Dispatcher;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Debug\ExceptionHandler;
-use Modular\ConnectorDependencies\Illuminate\Contracts\Events\Dispatcher as EventsDispatcher;
 use Modular\ConnectorDependencies\Illuminate\Queue\InvalidPayloadException;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
@@ -130,7 +129,7 @@ class BackupWorker
      * Create a payload string from the given job
      *
      * @param BackupPart $part
-     * @return array
+     * @return string
      */
     protected function createPayload(BackupPart $part): string
     {
@@ -192,20 +191,20 @@ class BackupWorker
                     Backup::getPluginsDir(),
                     Backup::getThemesDir(),
                     Backup::getUploadsDir(),
-                ]
+                ],
             ],
             BackupPart::PART_TYPE_THEMES => [
                 'root' => Backup::getThemesDir(),
-                'excluded' => []
+                'excluded' => [],
             ],
             BackupPart::PART_TYPE_PLUGINS => [
                 'root' => Backup::getPluginsDir(),
-                'excluded' => []
+                'excluded' => [],
             ],
             BackupPart::PART_TYPE_UPLOADS => [
                 'root' => Backup::getUploadsDir(),
-                'excluded' => []
-            ]
+                'excluded' => [],
+            ],
         ];
 
         $excludedFiles = $options->excludedFiles;
@@ -340,10 +339,10 @@ class BackupWorker
 
         if (!$parts->isEmpty()) {
             $parts->each(function (BackupPart $part) {
-                update_site_option($part->dbKey, $this->createPayload($part));
+                update_option($part->dbKey, $this->createPayload($part));
             });
 
-            update_site_option($this->getUpdatedAtKey(), Carbon::now()->timestamp);
+            update_option($this->getUpdatedAtKey(), Carbon::now()->timestamp);
         }
 
         return $this;
@@ -385,8 +384,8 @@ class BackupWorker
             return $item;
         });
 
-        update_site_option($part->dbKey, $this->createPayload($part));
-        update_site_option($this->getUpdatedAtKey(), Carbon::now()->timestamp);
+        update_option($part->dbKey, $this->createPayload($part));
+        update_option($this->getUpdatedAtKey(), Carbon::now()->timestamp);
 
         return $this;
     }

@@ -27,7 +27,7 @@ interface ArgumentValueResolverInterface
      */
     public function supports(Request $request, ArgumentMetadata $argument);
     /**
-     * Returns the possible \Modular\ConnectorDependencies\value(s).
+     * Returns the possible value(s).
      *
      * @return iterable
      */

@@ -166,8 +166,9 @@ class BackupOptions implements \JsonSerializable
         $excluded = Collection::make([
             Backup::path(),
 
-            // Error logs
             untrailingslashit(ABSPATH) . DIRECTORY_SEPARATOR . '.wp-cli',
+
+            // Error logs
             untrailingslashit(ABSPATH) . DIRECTORY_SEPARATOR . 'error_log',
             untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'error_log',
 

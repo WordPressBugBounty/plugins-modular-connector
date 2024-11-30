@@ -2,6 +2,7 @@
 
 namespace Modular\SDK\Services;
 
+use Modular\ConnectorDependencies\GuzzleHttp\Exception\ClientException;
 use Modular\SDK\Objects\OauthToken;
 
 class OauthService extends AbstractService
@@ -14,13 +15,18 @@ class OauthService extends AbstractService
      */
     public function confirmAuthorizationCode(string $code, array $opts = []): OauthToken
     {
-        return $this->request('post', $this->buildPath('oauth/token'), [
-            'grant_type' => 'authorization_code',
-            'client_id' => $this->getClient()->getClientId(),
-            'client_secret' => $this->getClient()->getClientSecret(),
-            'code' => $code,
-            'redirect_uri' => $this->getClient()->getClientRedirectUri()
-        ], $opts);
+        return $this->request(
+            'post',
+            $this->buildPath('oauth/token'),
+            [
+                'grant_type' => 'authorization_code',
+                'client_id' => $this->getClient()->getClientId(),
+                'client_secret' => $this->getClient()->getClientSecret(),
+                'code' => $code,
+                'redirect_uri' => $this->getClient()->getClientRedirectUri(),
+            ],
+            $opts
+        );
     }
 
     /**
@@ -30,13 +36,18 @@ class OauthService extends AbstractService
      */
     public function refreshToken(array $opts = []): OauthToken
     {
-        return $this->request('post', $this->buildPath('oauth/token'), [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $this->getClient()->getRefreshToken(),
-            'client_id' => $this->getClient()->getClientId(),
-            'client_secret' => $this->getClient()->getClientSecret(),
-            'scope' => '',
-        ], $opts);
+        return $this->request(
+            'post',
+            $this->buildPath('oauth/token'),
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $this->getClient()->getRefreshToken(),
+                'client_id' => $this->getClient()->getClientId(),
+                'client_secret' => $this->getClient()->getClientSecret(),
+                'scope' => '',
+            ],
+            $opts
+        );
     }
 
 
@@ -46,12 +57,25 @@ class OauthService extends AbstractService
      */
     public function renewAccessToken()
     {
-        $token = $this->refreshToken();
+        try {
+            $token = $this->refreshToken();
 
-        $this->getClient()
-            ->setAccessToken($token->access_token)
-            ->setRefreshToken($token->refresh_token)
-            ->setExpiresIn($token->expires_in)
-            ->save();
+            $this->getClient()
+                ->setAccessToken($token->access_token)
+                ->setRefreshToken($token->refresh_token)
+                ->setExpiresIn($token->expires_in)
+                ->save();
+        } catch (ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 401) {
+                $this->getClient()
+                    ->setAccessToken('')
+                    ->setRefreshToken('')
+                    ->setExpiresIn(0)
+                    ->setConnectedAt(null)
+                    ->save();
+            }
+
+            throw $e;
+        }
     }
 }

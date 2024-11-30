@@ -70,7 +70,14 @@ class ModularClient implements ModularClientInterface
             'base_uri' => rtrim($config['base_uri'], '/'),
             'headers' => [
                 'Accept' => 'application/json',
-                'User-Agent' => 'ModularConnectorPluginWP'
+                'User-Agent' => 'ModularConnectorPluginWP',
+            ],
+            'allow_redirects' => [
+                'max' => 5,
+                'strict' => true,
+                'referer' => false,
+                'protocols' => ['http', 'https'],
+                'track_redirects' => false,
             ],
         ]);
     }
@@ -214,9 +221,9 @@ class ModularClient implements ModularClientInterface
     /**
      * @return $this
      */
-    public function setExpiresIn(int $value)
+    public function setExpiresIn(?int $value)
     {
-        $this->oauthToken['expires_in'] = Carbon::now()->utc()->addSeconds($value)->timestamp;
+        $this->oauthToken['expires_in'] = $value ? Carbon::now()->utc()->addSeconds($value)->timestamp : $value;
 
         return $this;
     }
@@ -224,9 +231,9 @@ class ModularClient implements ModularClientInterface
     /**
      * @return $this
      */
-    public function setConnectedAt(Carbon $value)
+    public function setConnectedAt(?Carbon $value)
     {
-        $this->oauthClient['connected_at'] = $value->utc()->timestamp;
+        $this->oauthClient['connected_at'] = $value instanceof Carbon ? $value->utc()->timestamp : null;
 
         return $this;
     }
@@ -271,7 +278,7 @@ class ModularClient implements ModularClientInterface
                 'refresh_token' => '',
             ],
             'base_uri' => self::DEFAULT_API_BASE,
-            'env' => 'production'
+            'env' => 'production',
         ];
     }
 
@@ -347,14 +354,14 @@ class ModularClient implements ModularClientInterface
 
         if (!empty($opts['auth'])) {
             $opts['headers'] += [
-                'Authorization' => 'Bearer ' . $this->getAccessToken()
+                'Authorization' => 'Bearer ' . $this->getAccessToken(),
             ];
 
             unset($opts['auth']);
         }
 
         return array_merge($opts, [
-            'form_params' => $params
+            'form_params' => $params,
         ]);
     }
 }

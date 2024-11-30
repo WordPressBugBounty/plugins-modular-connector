@@ -616,7 +616,7 @@ class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayA
         return $this->appends;
     }
 
-    public function offsetExists($offset)
+    public function offsetExists($offset): bool
     {
         return isset($this->attributes[$offset]);
     }
@@ -626,12 +626,12 @@ class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayA
         return $this->{$offset};
     }
 
-    public function offsetSet($offset, $value)
+    public function offsetSet($offset, $value): void
     {
         $this->{$offset} = $value;
     }
 
-    public function offsetUnset($offset)
+    public function offsetUnset($offset): void
     {
         unset($this->attributes[$offset]);
     }

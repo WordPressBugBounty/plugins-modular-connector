@@ -100,6 +100,7 @@ class BackupPart implements \JsonSerializable
     /**
      * @param array $extraArgs
      * @return void
+     * @throws \Throwable
      */
     protected function update(array $extraArgs = [])
     {
@@ -176,7 +177,9 @@ class BackupPart implements \JsonSerializable
 
     /**
      * @param string $status
+     * @param \Throwable|null $e
      * @return void
+     * @throws \Throwable
      */
     public function markAsFailed(string $status, ?\Throwable $e = null)
     {
@@ -191,7 +194,7 @@ class BackupPart implements \JsonSerializable
         }
 
         $this->markAs($status, [
-            'error' => $error
+            'error' => $error,
         ]);
 
         BackupWorker::getInstance()->dispatch();
@@ -360,7 +363,7 @@ class BackupPart implements \JsonSerializable
             'batch_size' => $this->batchSize,
             'status' => $this->status,
             'site_backup' => $this->options->siteBackup,
-            'options' => $this->options->toArray()
+            'options' => $this->options->toArray(),
         ];
     }
 }
