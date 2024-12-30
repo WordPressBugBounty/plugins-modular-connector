@@ -621,7 +621,10 @@ class ManagerServer
         }
 
         try {
-            wp_logout();
+            // Emulate the logout process without do_action( 'wp_logout', $user_id );
+            wp_set_current_user(0);
+            wp_destroy_current_session();
+            wp_clear_auth_cookie();
         } catch (\Throwable $e) {
             // Silence is golden
         }
