@@ -3,6 +3,7 @@
 namespace Modular\Connector\Listeners;
 
 use Modular\Connector\Jobs\ManagerManageItemJob;
+use function Modular\ConnectorDependencies\dispatch;
 
 class UpgradeTranslationsEventListener
 {
@@ -17,7 +18,7 @@ class UpgradeTranslationsEventListener
                 'translations' => '',
             ];
 
-            ManagerManageItemJob::dispatch($event->mrid, $payload, 'upgrade');
+            dispatch(new ManagerManageItemJob($event->mrid, $payload, 'upgrade'));
         }
     }
 }

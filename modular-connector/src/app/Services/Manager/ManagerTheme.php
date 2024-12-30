@@ -2,6 +2,8 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\Connector\Facades\Manager;
+use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
 /**
@@ -9,17 +11,7 @@ use Modular\ConnectorDependencies\Illuminate\Support\Collection;
  */
 class ManagerTheme extends AbstractManager
 {
-    const THEMES = 'themes';
-
-    /**
-     * Checks for available updates to themes based on the latest versions hosted on WordPress Repository.
-     *
-     * @return void
-     */
-    protected function checkForUpdates()
-    {
-        @wp_update_themes();
-    }
+    public const THEMES = 'themes';
 
     /**
      * @return string
@@ -36,13 +28,6 @@ class ManagerTheme extends AbstractManager
      */
     public function all()
     {
-        $this->include();
-        $this->checkForUpdates();
-
-        if (empty($GLOBALS['wp_theme_directories'])) {
-            register_theme_directory(get_theme_root());
-        }
-
         $updatableThemes = $this->getItemsToUpdate(ManagerTheme::THEMES);
         $installedThemes = Collection::make(wp_get_themes());
 
@@ -51,12 +36,8 @@ class ManagerTheme extends AbstractManager
 
     public function install(string $downloadLink, bool $overwrite = true)
     {
-        $this->includeUpgrader();
-
-        $skin = new \WP_Ajax_Upgrader_Skin();
-        $skin->api = null;
-
-        $upgrader = new \Theme_Upgrader($skin);
+        Manager::includeUpgrader();
+        Manager::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
             $options['clear_destination'] = $overwrite;
@@ -65,6 +46,11 @@ class ManagerTheme extends AbstractManager
         });
 
         try {
+            $skin = new \WP_Ajax_Upgrader_Skin();
+            $skin->api = null;
+
+            $upgrader = new \Theme_Upgrader($skin);
+
             $result = $upgrader->install($downloadLink, [
                 'overwrite_package' => $overwrite,
             ]);
@@ -96,6 +82,8 @@ class ManagerTheme extends AbstractManager
             return $this->parseActionResponse(is_array($data) && isset($data['basename']) ? $data['basename'] : $downloadLink, $data, 'install', ManagerTheme::THEMES);
         } catch (\Throwable $e) {
             return $this->parseActionResponse($downloadLink, $e, 'install', ManagerTheme::THEMES);
+        } finally {
+            Server::logout();
         }
     }
 
@@ -106,8 +94,6 @@ class ManagerTheme extends AbstractManager
      */
     public function activate(\stdClass $theme)
     {
-        $this->include();
-
         $items = array_keys(get_object_vars($theme));
 
         $basename = $items[0];
@@ -139,18 +125,20 @@ class ManagerTheme extends AbstractManager
      */
     public function upgrade(array $themes = [])
     {
-        $this->includeUpgrader();
+        add_filter('auto_update_theme', '__return_false', PHP_INT_MAX);
 
-        if (empty($GLOBALS['wp_filesystem'])) {
-            WP_Filesystem();
+        Manager::clean();
+        Manager::includeUpgrader();
+
+        try {
+            $skin = new \WP_Ajax_Upgrader_Skin();
+            $upgrader = new \Theme_Upgrader($skin);
+
+            $response = @$upgrader->bulk_upgrade($themes);
+        } finally {
+            Manager::clean();
+            Server::logout();
         }
-
-        $skin = new \WP_Ajax_Upgrader_Skin();
-        $upgrader = new \Theme_Upgrader($skin);
-
-        $response = @$upgrader->bulk_upgrade($themes);
-
-        $this->checkForUpdates();
 
         return $this->parseBulkActionResponse($themes, $response, 'upgrade', ManagerTheme::THEMES);
     }
@@ -162,8 +150,6 @@ class ManagerTheme extends AbstractManager
      */
     public function delete(array $items)
     {
-        $this->include();
-
         $response = [];
         $basenamesToDelete = [];
 

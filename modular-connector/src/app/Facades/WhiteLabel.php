@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Facades;
 
+use Modular\Connector\Services\ManagerWhiteLabel;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Facade;
 
 class WhiteLabel extends Facade
@@ -15,6 +16,6 @@ class WhiteLabel extends Facade
      */
     protected static function getFacadeAccessor()
     {
-        return 'manager-white-label';
+        return ManagerWhiteLabel::class;
     }
 }

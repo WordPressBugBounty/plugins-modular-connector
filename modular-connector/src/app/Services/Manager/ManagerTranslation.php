@@ -2,16 +2,14 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\Connector\Facades\Manager;
+use Modular\Connector\Facades\Server;
+
 /**
  * Handles all functionality related to WordPress translations.
  */
 class ManagerTranslation extends AbstractManager
 {
-    protected function checkForUpdates()
-    {
-        // For translations isn't necessary to check for updates.
-    }
-
     /**
      * Returns a list with the installed plugins in the webpage, including the new version if available.
      *
@@ -19,8 +17,6 @@ class ManagerTranslation extends AbstractManager
      */
     public function get()
     {
-        $this->include();
-
         $transients = ['update_core', 'update_plugins', 'update_themes'];
 
         $translations = false;
@@ -52,12 +48,18 @@ class ManagerTranslation extends AbstractManager
      */
     public function upgrade(array $items = [])
     {
-        $this->includeUpgrader();
+        Manager::includeUpgrader();
+        Manager::clean();
 
-        $skin = new \WP_Ajax_Upgrader_Skin([]);
-        $upgrader = new \Language_Pack_Upgrader($skin);
+        try {
+            $skin = new \WP_Ajax_Upgrader_Skin([]);
+            $upgrader = new \Language_Pack_Upgrader($skin);
 
-        $result = @$upgrader->bulk_upgrade();
+            $result = @$upgrader->bulk_upgrade();
+        } finally {
+            Manager::clean();
+            Server::logout();
+        }
 
         return $this->parseActionResponse('translations', $result, 'upgrade', 'translations');
     }

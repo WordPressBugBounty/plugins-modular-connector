@@ -1,0 +1,65 @@
+<?php
+
+namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers;
+
+use Modular\ConnectorDependencies\Illuminate\Console\Scheduling\Schedule;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel;
+use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
+class FoundationServiceProvider extends ServiceProvider
+{
+    /**
+     * Register the service provider.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        parent::register();
+        $this->registerConsoleSchedule();
+        $this->registerForceCallSchedule();
+    }
+    /**
+     * Register the console schedule implementation.
+     *
+     * @return void
+     */
+    public function registerConsoleSchedule()
+    {
+        $this->app->singleton(Schedule::class, function ($app) {
+            return $app->make(Kernel::class)->resolveConsoleSchedule();
+        });
+    }
+    /**
+     * Many sites have problems with the WP Cron system, so we need to force the schedule run.
+     * This method will be called when the application is terminating and will force
+     * the schedule run by calling an AJAX action.
+     *
+     * @return void
+     */
+    public function registerForceCallSchedule()
+    {
+        $this->app->terminating(function () {
+            if (!$this->app->forceDispatchScheduleRun) {
+                return;
+            }
+            $debugSchedule = $this->app->make('config')->get('app.debug_schedule', \false);
+            $hook = $this->app->getScheduleHook();
+            $url = apply_filters(sprintf('%s_query_url', $hook), admin_url('admin-ajax.php'));
+            $query = apply_filters(sprintf('%s_query_args', $hook), ['action' => $hook, 'nonce' => wp_create_nonce($hook)]);
+            $url = add_query_arg($query, $url);
+            $args = apply_filters(sprintf('%s_post_args', $hook), [
+                'timeout' => 10,
+                // In some websites, the default value of 5 seconds is too short.
+                'sslverify' => \false,
+                'blocking' => $debugSchedule,
+            ]);
+            $response = wp_remote_get(esc_url_raw($url), $args);
+            if ($debugSchedule) {
+                $context = ['url' => $url, 'args' => $args, 'response' => $response, 'request' => $this->app->make('request')->all()];
+                $this->app->make('log')->debug('Force dispatch queue', $context);
+            } else {
+                unset($response);
+            }
+        });
+    }
+}

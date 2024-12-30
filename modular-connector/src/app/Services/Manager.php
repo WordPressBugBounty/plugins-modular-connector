@@ -2,153 +2,72 @@
 
 namespace Modular\Connector\Services;
 
-use Modular\Connector\Facades\Core;
-use Modular\Connector\Facades\Plugin;
-use Modular\Connector\Facades\Theme;
-use Modular\Connector\Facades\Translation;
-use Modular\Connector\Facades\WhiteLabel;
-use Modular\Connector\Queue\Worker;
-use Modular\Connector\Services\Helpers\Database;
-use Modular\Connector\Services\Helpers\Utils;
-use Modular\Connector\Services\Manager\ManagerBackup;
+use Modular\Connector\Facades\Backup;
+use Modular\Connector\Facades\Server;
+use Modular\Connector\Helper\OauthClient;
 use Modular\Connector\Services\Manager\ManagerCore;
 use Modular\Connector\Services\Manager\ManagerDatabase;
 use Modular\Connector\Services\Manager\ManagerPlugin;
-use Modular\Connector\Services\Manager\ManagerServer;
 use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\Connector\Services\Manager\ManagerTranslation;
-use Modular\Connector\Services\Manager\ManagerWhiteLabel;
-use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\File as FileFacade;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use Modular\ConnectorDependencies\Illuminate\Support\Manager as IlluminateManager;
+use Modular\ConnectorDependencies\Psr\Container\ContainerExceptionInterface;
+use Modular\ConnectorDependencies\Psr\Container\NotFoundExceptionInterface;
 use function Modular\ConnectorDependencies\app;
-use function Modular\ConnectorDependencies\base_path;
-use function Modular\ConnectorDependencies\request;
 
 /**
  * This class receives the requests processed by the HandleController.php and delegates in to the specialized managers.
  */
-class Manager
+class Manager extends IlluminateManager
 {
     /**
-     * @return void
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException
-     */
-    public function init()
-    {
-        if (function_exists('add_action')) {
-            add_action('modular_queue_start', function () {
-                new Worker();
-                new Worker('backups');
-            });
-
-            add_action('modular_shutdown', function () {
-                // Force destroy the queue dispatcher to force execute __destruct() method.
-                if (!Utils::isModularRequest()) {
-                    return;
-                }
-
-                $app = app()->make(Kernel::class);
-                $app->terminate(request(), null);
-            });
-        }
-
-        if (function_exists('add_filter')) {
-            add_filter('plugin_action_links', [$this, 'setActionLinks'], 10, 2);
-
-            WhiteLabel::init();
-        }
-    }
-
-    /**
-     * @param $links
-     * @param $plugin
-     * @return array|mixed|null
-     */
-    public function setActionLinks($links = null, $plugin = null)
-    {
-        // if you use this action hook inside main plugin file, use basename(__FILE__) to check
-        $path = str_replace('\\', '/', realpath(base_path('../init.php')));
-        $path = preg_replace('|(?<=.)/+|', '/', $path);
-
-        $plugin = str_replace('\\', '/', $plugin);
-        $plugin = preg_replace('|(?<=.)/+|', '/', $plugin);
-
-        if (strpos($path, $plugin)) {
-            $links[] = sprintf('<a href="%s">%s</a>', menu_page_url('modular-connector', false), __('Connection manager', 'modular-connector'));
-        }
-
-        return $links;
-    }
-
-    /**
-     * Returns an instance of the provided driver $name if existing, or throws an Exception if not.
+     * Get the default driver name.
      *
-     * @param $name
-     * @return
-     * @throws \Exception
+     * @return string
      */
-    public function resolve(string $name)
+    public function getDefaultDriver()
     {
-        switch ($name) {
-            case 'plugin':
-                return new ManagerPlugin();
-            case 'theme':
-                return new ManagerTheme();
-            case 'core':
-                return new ManagerCore();
-            case 'backup':
-                return new ManagerBackup();
-            case 'translation':
-                return new ManagerTranslation();
-            case 'database':
-                return new ManagerDatabase();
-            case 'server':
-                return new ManagerServer();
-            case 'white-label':
-                return new ManagerWhiteLabel();
-            default:
-                throw new \Exception("{$name} driver is not registered.");
-        }
+        return 'plugin';
     }
 
     /**
-     * Logs into WordPress as the first available administrador user.
-     *
      * @return void
-     * @throws \Exception
      */
-    public function login($payload)
+    public function clean()
     {
-        $databaseUtils = new Database();
-        $user = $databaseUtils->getFirstAdministratorUser();
+        // We need to simulate the WordPress environment to make the update process work.
+        Server::login();
 
-        if (!$user) {
-            // TODO Make a custom exception
-            throw new \Exception('No admin user detected.');
+        global $wp_current_filter;
+
+        $wp_current_filter[] = 'load-update-core.php';
+
+        // Force clean cache.
+        if (function_exists('wp_clean_update_cache')) {
+            wp_clean_update_cache();
         }
 
-        if (
-            !function_exists('wp_set_current_user') ||
-            !function_exists('wp_set_auth_cookie')
-        ) {
-            include_once ABSPATH . WPINC . '/pluggable.php';
-        }
+        wp_update_plugins();
+        wp_update_themes();
 
-        if (
-            !function_exists('wp_cookie_constants')
-        ) {
-            include_once ABSPATH . WPINC . '/default-constants.php';
-        }
+        array_pop($wp_current_filter);
 
-        // Authenticated user
-        wp_cookie_constants();
+        /**
+         * This hook call to wp_update_plugins() and wp_update_themes() is necessary to avoid issues with the updater.
+         *
+         * @see wp_update_plugins
+         * @see wp_update_themes
+         */
 
-        // Log in with the new user
-        wp_set_current_user($user->ID, $user->user_login);
-        wp_set_auth_cookie($user->ID);
+        set_current_screen();
+        do_action('load-update-core.php');
 
-        // Redirect to WordPress admin panel
-        wp_redirect(admin_url('index.php'));
-        exit;
+        wp_version_check();
+        wp_version_check([], true);
     }
 
     /**
@@ -158,11 +77,147 @@ class Manager
      */
     public function update()
     {
-        return [
-            'core' => Core::get(),
-            'plugins' => Plugin::all(),
-            'themes' => Theme::all(),
-            'translations' => Translation::get(),
+        $this->clean();
+
+        $response = [
+            'core' => $this->driver('core')->get(),
+            'plugins' => $this->driver('plugin')->all(),
+            'themes' => $this->driver('theme')->all(),
+            'translations' => $this->driver('translation')->get(),
         ];
+
+        Server::logout();
+
+        return $response;
+    }
+
+    /**
+     * Makes the necessary WordPress upgrader includes
+     * to handle plugin and themes functionality.
+     *
+     * @return void
+     */
+    public function includeUpgrader(): void
+    {
+        if (!function_exists('wp_update_plugins') || !function_exists('wp_update_themes')) {
+            ob_start();
+
+            require_once ABSPATH . 'wp-admin/includes/update.php';
+
+            ob_end_flush();
+            ob_end_clean();
+        }
+
+        if (!class_exists('WP_Upgrader')) {
+            require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+        }
+
+        if (!function_exists('wp_install')) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        }
+
+        if (!function_exists('plugins_api')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+        }
+
+        if (empty($GLOBALS['wp_filesystem'])) {
+            WP_Filesystem();
+        }
+
+        if (empty($GLOBALS['wp_theme_directories'])) {
+            register_theme_directory(get_theme_root());
+        }
+    }
+
+    /**
+     * Deletes all pending jobs from the queue.
+     *
+     * @param string $queueName
+     * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
+    public function clearQueue(string $queueName = 'default')
+    {
+        $connection = app('config')->get('queue.default');
+
+        $queue = app('queue')->connection($connection);
+
+        if ($queue instanceof ClearableQueue) {
+            $queue->clear($queueName);
+        }
+    }
+
+    /**
+     * Deletes all pending jobs and cleans all schedules, when plugin is deactivated.
+     *
+     * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
+    public function deactivate()
+    {
+        // 1. Clean schedules
+        wp_unschedule_hook(app()->getScheduleHook());
+
+        // 2. Clean all cache
+        Cache::flush();
+
+        // 3. Clean all pending jobs
+        $this->clearQueue();
+        $this->clearQueue('backups');
+    }
+
+    /**
+     * Deletes the stored clients from DB and removes the `modular_backups` folder, when plugin is uninstalled.
+     *
+     * @return void
+     */
+    public static function uninstall()
+    {
+        OauthClient::deleteClients();
+
+        $path = Storage::disk('backup')->path('');
+        FileFacade::deleteDirectory($path);
+    }
+
+    /**
+     * @return ManagerPlugin
+     */
+    protected function createPluginDriver(): ManagerPlugin
+    {
+        return new ManagerPlugin();
+    }
+
+    /**
+     * @return ManagerTheme
+     */
+    protected function createThemeDriver(): ManagerTheme
+    {
+        return new ManagerTheme();
+    }
+
+    /**
+     * @return ManagerCore
+     */
+    protected function createCoreDriver(): ManagerCore
+    {
+        return new ManagerCore();
+    }
+
+    /**
+     * @return ManagerTranslation
+     */
+    protected function createTranslationDriver(): ManagerTranslation
+    {
+        return new ManagerTranslation();
+    }
+
+    /**
+     * @return ManagerDatabase
+     */
+    protected function createDatabaseDriver(): ManagerDatabase
+    {
+        return new ManagerDatabase();
     }
 }

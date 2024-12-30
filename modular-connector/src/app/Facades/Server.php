@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Facades;
 
+use Modular\Connector\Services\ManagerServer;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Facade;
 
 class Server extends Facade
@@ -15,6 +16,6 @@ class Server extends Facade
      */
     protected static function getFacadeAccessor()
     {
-        return 'manager-connector-server';
+        return ManagerServer::class;
     }
 }

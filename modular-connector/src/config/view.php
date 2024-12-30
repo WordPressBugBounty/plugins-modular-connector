@@ -3,23 +3,6 @@
 return [
 
     /*
-     |--------------------------------------------------------------------------
-     | Register css stylesheets files
-     |--------------------------------------------------------------------------
-     */
-    'styles' => [
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Register JavaScript files
-    |--------------------------------------------------------------------------
-    */
-    'scripts' => [
-    ],
-
-
-    /*
     |--------------------------------------------------------------------------
     | View Storage Paths
     |--------------------------------------------------------------------------
@@ -45,10 +28,7 @@ return [
     |
     */
 
-    'compiled' => \Modular\ConnectorDependencies\env(
-        'VIEW_COMPILED_PATH',
-        realpath(\Modular\ConnectorDependencies\storage_path('framework/views'))
-    ),
+    'compiled' => realpath(\Modular\ConnectorDependencies\storage_path('framework/views')),
 
     /*
     |--------------------------------------------------------------------------
@@ -63,11 +43,6 @@ return [
     */
 
     'namespaces' => [
-        /*
-         | Given the below example, in your views use something like:
-         |     @include('MyPlugin::some.view.or.partial.here')
-         */
-        // 'example' => WP_PLUGIN_DIR . '/example/resources/views',
     ],
 
 ];

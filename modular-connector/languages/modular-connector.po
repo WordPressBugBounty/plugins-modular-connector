@@ -1,0 +1,110 @@
+#: src/app/WordPress/Settings.php:37
+msgid "%s - Connection manager"
+msgstr ""
+
+#: resources/views/parts/connection_info.blade.php:7
+msgid "Connected on"
+msgstr ""
+
+#: resources/views/parts/connection_info.blade.php:13
+#: resources/views/parts/connection_info.blade.php:25
+msgid "N/A"
+msgstr ""
+
+#: resources/views/parts/connection_info.blade.php:19
+msgid "Last used"
+msgstr ""
+
+#: resources/views/parts/form.blade.php:5
+msgid "Connect your website"
+msgstr ""
+
+#: resources/views/parts/form.blade.php:8
+msgid "These keys will allow us to authenticate API requests securely, without storing your password. The keys can be easily overridden."
+msgstr ""
+
+#: resources/views/parts/form.blade.php:22
+msgid "It seems that the values are not correct. Please try again."
+msgstr ""
+
+#: resources/views/parts/form.blade.php:27
+msgid "Public key"
+msgstr ""
+
+#: resources/views/parts/form.blade.php:41
+msgid "Secret key"
+msgstr ""
+
+#: resources/views/parts/form.blade.php:53
+msgid "Treat your secret key as if it were a password. Make sure it is kept out of any version control system you may be using."
+msgstr ""
+
+#: resources/views/parts/form.blade.php:60
+msgid "Data updated!"
+msgstr ""
+
+#: resources/views/parts/form.blade.php:64
+msgid "Update"
+msgstr ""
+
+#: resources/views/parts/form.blade.php:64
+msgid "Save"
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:2
+msgid "Manual Mode"
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:5
+#: resources/views/settings/disconnected.blade.php:15
+msgid "Log in to your %s account."
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:6
+#: resources/views/settings/disconnected.blade.php:16
+msgid "Click on the \"New Website\" button."
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:7
+msgid "Enter the name and URL of this website."
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:8
+msgid "Copy the public key and secret key and return to this page."
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:9
+msgid "Paste the connection keys in the form below and save."
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:10
+msgid "Go back to Modular DS and click \"Connect\"."
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:13
+msgid "Automatic Mode"
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:17
+msgid "Enter the URL, administrator's username and password of this website."
+msgstr ""
+
+#: resources/views/settings/disconnected.blade.php:18
+msgid "The system will take care of everything."
+msgstr ""
+
+#: resources/views/settings/pending.blade.php:2
+msgid "Just one more thing! We are almost done..."
+msgstr ""
+
+#: resources/views/settings/pending.blade.php:5
+msgid "Return to your %s account."
+msgstr ""
+
+#: resources/views/settings/pending.blade.php:6
+msgid "Open the website you are connecting."
+msgstr ""
+
+#: resources/views/settings/pending.blade.php:7
+msgid "Click on \"Connect\"."
+msgstr ""

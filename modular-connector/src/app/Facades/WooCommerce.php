@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Facades;
 
+use Modular\Connector\Services\Manager\ManagerWooCommerce;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Facade;
 
 class WooCommerce extends Facade
@@ -15,6 +16,6 @@ class WooCommerce extends Facade
      */
     protected static function getFacadeAccessor()
     {
-        return 'manager-connector-woocommerce';
+        return ManagerWooCommerce::class;
     }
 }

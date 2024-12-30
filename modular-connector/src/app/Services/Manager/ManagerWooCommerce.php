@@ -7,7 +7,6 @@ use Automattic\WooCommerce\Admin\API\Reports\Coupons\DataStore as CouponsDataSto
 use Automattic\WooCommerce\Admin\API\Reports\Orders\Stats\DataStore as OrdersDataStore;
 use Automattic\WooCommerce\Admin\API\Reports\Products\DataStore as ProductsDataStore;
 use Automattic\WooCommerce\Admin\API\Reports\Variations\Stats\DataStore as VariationsDataStore;
-
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use function Modular\ConnectorDependencies\data_get;
 
@@ -35,10 +34,6 @@ class ManagerWooCommerce
      */
     public function isActive(): bool
     {
-        if (!function_exists('is_plugin_active')) {
-            require_once ABSPATH . '/wp-admin/includes/plugin.php';
-        }
-
         return \is_plugin_active('woocommerce/woocommerce.php');
     }
 
@@ -348,7 +343,7 @@ class ManagerWooCommerce
                 // Level 2 Metrics
                 'categories_leaderboard' => $this->getCategoriesLeaderboard($after, $before),
                 'products_leaderboard' => $this->getProductsLeaderboard($after, $before),
-                'coupons_leaderboard' => $this->getCouponsLeaderboard($after, $before)
+                'coupons_leaderboard' => $this->getCouponsLeaderboard($after, $before),
             ];
         }
 

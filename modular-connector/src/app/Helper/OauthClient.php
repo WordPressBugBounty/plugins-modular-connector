@@ -66,7 +66,7 @@ class OauthClient
             'refresh_token' => $client['refresh_token'] ?? null,
             'connected_at' => $client['connected_at'] ?? null,
             'used_at' => $client['used_at'] ?? null,
-            'expires_in' => $client['expires_in'] ?? null
+            'expires_in' => $client['expires_in'] ?? null,
         ];
 
         return new ModularClient([
@@ -84,5 +84,13 @@ class OauthClient
                 'refresh_token' => @$client['refresh_token'],
             ],
         ]);
+    }
+
+    /**
+     * Deletes all stored clients
+     */
+    public static function deleteClients()
+    {
+        delete_option('_modular_connection_clients');
     }
 }

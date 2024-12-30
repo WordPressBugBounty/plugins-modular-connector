@@ -3,11 +3,19 @@
 namespace Modular\Connector\Jobs;
 
 use Modular\Connector\Events\ManagerItemsInstalled;
-use Modular\Connector\Facades\Plugin;
-use Modular\Connector\Facades\Theme;
+use Modular\Connector\Facades\Manager;
+use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
+use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
+use function Modular\ConnectorDependencies\dispatch;
+use function Modular\ConnectorDependencies\event;
 
-class ManagerInstallJob extends AbstractJob
+class ManagerInstallJob implements ShouldQueue, ShouldBeUnique
 {
+    use Dispatchable;
+    use Queueable;
+
     /**
      * @var string
      */
@@ -19,6 +27,13 @@ class ManagerInstallJob extends AbstractJob
     protected $payload;
 
     /**
+     * The number of seconds after which the job's unique lock will be released.
+     *
+     * @var int
+     */
+    public $uniqueFor = 2 * 3600; // 2 hour
+
+    /**
      * @param string $mrid
      * @param $payload
      */
@@ -28,33 +43,39 @@ class ManagerInstallJob extends AbstractJob
         $this->payload = $payload;
     }
 
-    public function handle()
+    public function handle(): void
     {
         $payload = $this->payload;
 
         if ($payload->type === 'theme') {
-            $result = Theme::install($payload->downloadLink, $payload->overwrite);
+            $result = Manager::driver('theme')->install($payload->downloadLink, $payload->overwrite);
         } else {
-            $result = Plugin::install($payload->downloadLink, $payload->overwrite);
+            $result = Manager::driver('plugin')->install($payload->downloadLink, $payload->overwrite);
         }
 
         $result['name'] = $payload->name ?? 'unknown';
 
-        ManagerItemsInstalled::dispatch($this->mrid, $result);
+        event(new ManagerItemsInstalled($this->mrid, $result));
 
         if ($payload->activate && $result['success'] === true) {
             $key = $payload->type . 's';
 
             $payload = (object)[
-                $key => (object) [$result['item']['basename'] => (object)[
+                $key => (object)[$result['item']['basename'] => (object)[
                     'network_wide' => false,
-                    'silent' => true
+                    'silent' => true,
                 ]],
             ];
 
-            ManagerManageItemJob::dispatch($this->mrid, $payload, 'activate');
+            dispatch(new ManagerManageItemJob($this->mrid, $payload, 'activate'));
         }
+    }
 
-        return $result;
+    /**
+     * Get the unique ID for the job.
+     */
+    public function uniqueId(): string
+    {
+        return $this->mrid;
     }
 }

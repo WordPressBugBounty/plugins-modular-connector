@@ -312,7 +312,8 @@ class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayA
         // when checking the field. We will just return the DateTime right away.
         if ($value instanceof \DateTimeInterface) {
             return Date::parse(
-                $value->format('Y-m-d H:i:s.u'), $value->getTimezone()
+                $value->format('Y-m-d H:i:s.u'),
+                $value->getTimezone()
             );
         }
 
@@ -458,7 +459,8 @@ class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayA
         $attributes = $this->attributes;
 
         $attributes = $this->addMutatedAttributesToArray(
-            $attributes, $this->getMutatedAttributes()
+            $attributes,
+            $this->getMutatedAttributes()
         );
 
         // Here we will grab all of the appended, calculated attributes to this model
@@ -492,7 +494,8 @@ class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayA
             // mutated attribute's actual values. After we finish mutating each of the
             // attributes we will return this final array of the mutated attributes.
             $attributes[$key] = $this->mutateAttributeForArray(
-                $key, $attributes[$key]
+                $key,
+                $attributes[$key]
             );
         }
 
@@ -570,7 +573,7 @@ class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayA
      */
     protected static function getAttributeMarkedMutatorMethods($class)
     {
-        $instance = is_object($class) ? $class : new $class;
+        $instance = is_object($class) ? $class : new $class();
 
         return collect((new \ReflectionClass($instance))->getMethods())->filter(function ($method) use ($instance) {
             $returnType = $method->getReturnType();

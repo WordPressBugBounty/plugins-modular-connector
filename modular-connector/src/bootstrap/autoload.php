@@ -16,74 +16,23 @@ if (!defined('ABSPATH')) {
 |
 */
 
-/**
- * Loads generated class maps for autoloading.
- *
- * @since 1.0.0
- * @access private
- */
-function modular_connector_autoload_classes()
-{
-    $autoloads = [
-        __DIR__ . '/../../vendor/composer/autoload_classmap.php',
-        __DIR__ . '/../../vendor_prefixed/composer/autoload_classmap.php',
-    ];
+use Modular\Connector\Exceptions\Handler as ExceptionHandler;
+use Modular\Connector\Http\Kernel as HttpKernel;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Bootloader;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Debug\ExceptionHandler as IlluminateExceptionHandler;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel as IlluminateHttpKernel;
 
-    $classMap = [];
-
-    foreach ($autoloads as $autoload) {
-        if (file_exists($autoload)) {
-            $classMap = array_merge($classMap, include $autoload);
-        }
-    }
-
-    spl_autoload_register(
-        function ($class) use ($classMap) {
-            if (isset($classMap[$class])) {
-
-
-                require_once $classMap[$class];
-            }
-        },
-        true,
-        true
-    );
-}
-
-modular_connector_autoload_classes();
+require __DIR__ . '/../../vendor/scoper-autoload.php';
 
 /**
- * Loads files containing functions from generated file map.
- *
- * @since 1.0.0
- * @access private
+ * @var \Ares\Framework\Foundation\Application $app
  */
-function modular_connector_autoload_vendor_files()
-{
-    $autoloads = [
-        __DIR__ . '/../../vendor/composer/autoload_files.php',
-        __DIR__ . '/../../vendor_prefixed/composer/autoload_files.php',
-    ];
+$bootloader = Bootloader::getInstance();
 
-    $files = [];
-
-    foreach ($autoloads as $autoload) {
-        if (file_exists($autoload)) {
-            $files = array_merge($files, include $autoload);
-        }
+$bootloader->boot(
+    dirname(__DIR__),
+    function ($app) {
+        $app->singleton(IlluminateHttpKernel::class, HttpKernel::class);
+        $app->singleton(IlluminateExceptionHandler::class, ExceptionHandler::class);
     }
-
-    foreach ($files as $fileIdentifier => $file) {
-        require_once $file;
-    }
-}
-
-modular_connector_autoload_vendor_files();
-
-$app = require __DIR__ . '/app.php';
-
-$kernel = $app->make(Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel::class);
-
-$kernel->handle(
-    $request = Modular\ConnectorDependencies\Illuminate\Http\Request::capture()
 );

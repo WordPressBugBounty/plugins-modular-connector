@@ -4,6 +4,7 @@ namespace Modular\SDK;
 
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\GuzzleHttp\Client;
+use Modular\Connector\Facades\Server;
 use Modular\SDK\Services\CoreServiceFactory;
 use Modular\SDK\Support\ApiHelper;
 
@@ -17,17 +18,17 @@ class ModularClient implements ModularClientInterface
     /**
      * @var string default base URL for Modular's API
      */
-    const DEFAULT_API_BASE = 'https://api.modulards.com';
+    public const DEFAULT_API_BASE = 'https://api.modulards.com';
 
     /**
      * @var string default base URL for Modular's API
      */
-    const LOCAL_API_BASE = 'https://api.modulards.dev';
+    public const LOCAL_API_BASE = 'https://api.modulards.dev';
 
     /**
      * @var string default base URL for Modular's API
      */
-    const STG_API_BASE = 'https://api.staging.modulards.com';
+    public const STG_API_BASE = 'https://api.staging.modulards.com';
 
     /**
      * @var Client
@@ -70,14 +71,16 @@ class ModularClient implements ModularClientInterface
             'base_uri' => rtrim($config['base_uri'], '/'),
             'headers' => [
                 'Accept' => 'application/json',
-                'User-Agent' => 'ModularConnectorPluginWP',
+                'User-Agent' => sprintf('ModularConnectorPluginWP/%s', Server::connectorVersion()),
+                'X-Client-Id' => $this->getClientId(),
+                'X-Redirect-Uri' => $this->getClientRedirectUri(),
             ],
             'allow_redirects' => [
-                'max' => 5,
-                'strict' => true,
-                'referer' => false,
-                'protocols' => ['http', 'https'],
-                'track_redirects' => false,
+                'max'             => 5,
+                'strict'          => true,
+                'referer'         => false,
+                'protocols'       => ['http', 'https'],
+                'track_redirects' => false
             ],
         ]);
     }
@@ -101,7 +104,7 @@ class ModularClient implements ModularClientInterface
      */
     public function getClientId()
     {
-        return $this->oauthClient['client_id'];
+        return $this->oauthClient['client_id'] ?? '';
     }
 
     /**
@@ -117,7 +120,7 @@ class ModularClient implements ModularClientInterface
      */
     public function getClientRedirectUri()
     {
-        return $this->oauthClient['redirect_uri'];
+        return $this->oauthClient['redirect_uri'] ?? '';
     }
 
     /**

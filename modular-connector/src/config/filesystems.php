@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => 'local',
+    'default' => 'root',
 
     /*
     |--------------------------------------------------------------------------
@@ -29,9 +29,39 @@ return [
     */
 
     'disks' => [
-        'local' => [
+        'root' => [
             'driver' => 'local',
-            'root' => ABSPATH,
+            'root' => untrailingslashit(ABSPATH),
+            'visibility' => 'public',
+        ],
+        'backup' => [
+            'driver' => 'local',
+            'root' => untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'modular_backups',
+            'visibility' => 'public',
+        ],
+        'upload' => [
+            'driver' => 'local',
+            'root' => _wp_upload_dir()['basedir'],
+            'visibility' => 'public',
+        ],
+        'plugin' => [
+            'driver' => 'local',
+            'root' => untrailingslashit(WP_PLUGIN_DIR),
+            'visibility' => 'public',
+        ],
+        'mu-plugin' => [
+            'driver' => 'local',
+            'root' => untrailingslashit(WPMU_PLUGIN_DIR),
+            'visibility' => 'public',
+        ],
+        'theme' => [
+            'driver' => 'local',
+            'root' => untrailingslashit(get_theme_root()),
+            'visibility' => 'public',
+        ],
+        'content' => [
+            'driver' => 'local',
+            'root' => untrailingslashit(WP_CONTENT_DIR),
             'visibility' => 'public',
         ],
     ],

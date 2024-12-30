@@ -1,0 +1,33 @@
+<?php
+
+return [
+    'messages' => [
+        '%s - Connection manager' => '%s - Gestor de conexión',
+        'Connected on' => 'Conectado el',
+        'N/A' => 'N/A',
+        'Last used' => 'Último uso',
+        'Connect your website' => 'Conecta tu web',
+        'These keys will allow us to authenticate API requests securely, without storing your password. The keys can be easily overridden.' => 'Estas claves nos permitirán autenticar solicitudes API de manera segura, sin almacenar tu contraseña. Las claves pueden ser fácilmente reemplazadas.',
+        'It seems that the values are not correct. Please try again.' => 'Parece que los valores no son correctos. Por favor, inténtalo de nuevo.',
+        'Public key' => 'Clave pública',
+        'Secret key' => 'Clave secreta',
+        'Treat your secret key as if it were a password. Make sure it is kept out of any version control system you may be using.' => 'Trata tu clave secreta como si fuera una contraseña. Asegúrate de que no se almacene en ningún sistema de control de versiones que estés utilizando.',
+        'Data updated!' => '¡Datos actualizados!',
+        'Update' => 'Actualizar',
+        'Save' => 'Guardar',
+        'Manual mode' => 'Modo manual',
+        'Log in to your %s account.' => 'Inicia sesión en tu cuenta de %s.',
+        'Click on the "New Website" button.' => 'Haz clic en el botón "Nueva web".',
+        'Enter the name and URL of this website.' => 'Introduce el nombre y la URL de esta web.',
+        'Copy the public key and secret key and return to this page.' => 'Copia la clave pública y la clave secreta y regresa a esta página.',
+        'Paste the connection keys in the form below and save.' => 'Pega las claves de conexión en el formulario a continuación y guarda.',
+        'Go back to Modular DS and click "Connect".' => 'Regresa a Modular DS y haz clic en "Conectar".',
+        'Automatic mode' => 'Modo automático',
+        'Enter the URL, administrator\'s username and password of this website.' => 'Introduce la URL, el nombre de usuario del administrador y la contraseña de esta web.',
+        'The system will take care of everything.' => 'El sistema se encargará de todo.',
+        'Just one more thing! We are almost done...' => '¡Solo falta una cosa más! Ya casi terminamos...',
+        'Return to your %s account.' => 'Regresa a tu cuenta de %s.',
+        'Open the website you are connecting.' => 'Abre la web que estás conectando.',
+        'Click on "Connect".' => 'Haz clic en "Conectar".',
+    ],
+];

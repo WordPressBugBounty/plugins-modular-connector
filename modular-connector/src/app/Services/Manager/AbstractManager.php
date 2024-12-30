@@ -6,109 +6,6 @@ use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
 abstract class AbstractManager implements ManagerContract
 {
-    abstract protected function checkForUpdates();
-
-    /**
-     * Makes the necessary WordPress admin includes
-     * to handle plugin and themes functionality.
-     *
-     * @return void
-     */
-    protected function include(): void
-    {
-        if (!isset($GLOBALS['wp_version'])) {
-            @include_once ABSPATH . WPINC . '/version.php';
-        }
-
-        if (!function_exists('get_site_transient') || !function_exists('get_option')) {
-            @include_once ABSPATH . WPINC . '/option.php';
-        }
-
-        if (!function_exists('get_locale')) {
-            @include_once ABSPATH . WPINC . '/update-core.php';
-        }
-
-        if (
-            !function_exists('wp_version_check') ||
-            !function_exists('wp_update_themes') ||
-            !function_exists('wp_update_plugins')
-        ) {
-            @include_once ABSPATH . WPINC . '/update.php';
-        }
-
-        if (!function_exists('get_plugins')) {
-            @include_once ABSPATH . WPINC . '/plugin.php';
-        }
-
-        if (!function_exists('deactivate_plugins') ||
-            !function_exists('activate_plugins')) {
-            @include_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
-
-        if (!function_exists('delete_plugins') ||
-            !function_exists('request_filesystem_credentials')) {
-            @include_once ABSPATH . 'wp-admin/includes/file.php';
-        }
-
-        if (
-            !function_exists('wp_get_themes') ||
-            !function_exists('register_theme_directory')
-        ) {
-            @include_once ABSPATH . WPINC . '/theme.php';
-        }
-
-        if (!function_exists('delete_theme')) {
-            @include_once ABSPATH . 'wp-admin/includes/theme.php';
-        }
-    }
-
-    /**
-     * Makes the necessary WordPress upgrader includes
-     * to handle plugin and themes functionality.
-     *
-     * @return void
-     */
-    protected function includeUpgrader(): void
-    {
-        $this->include();
-
-        if (!function_exists('WP_Filesystem')) {
-            @include_once ABSPATH . 'wp-admin/includes/file.php';
-        }
-
-        if (
-            !class_exists('Plugin_Upgrader') ||
-            !class_exists('WP_Ajax_Upgrader_Skin')
-        ) {
-            @include_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-        }
-
-        if (!function_exists('got_mod_rewrite')) {
-            @include_once ABSPATH . 'wp-admin/includes/misc.php';
-        }
-
-        if (!function_exists('wp_install')) {
-            @include_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        }
-
-        // FOR PLUGINS
-        if (!function_exists('plugins_api')) {
-            @include_once ABSPATH . 'wp-admin/includes/plugin-install.php';
-        }
-
-        if (!function_exists('delete_theme')) {
-            @include_once ABSPATH . 'wp-admin/includes/theme.php';
-        }
-
-        if (!function_exists('wp_category_checklist')) {
-            @include_once ABSPATH . 'wp-admin/includes/template.php';
-        }
-
-        if (empty($GLOBALS['wp_filesystem'])) {
-            WP_Filesystem();
-        }
-    }
-
     /**
      * Parses the bulk upgrade response to determine
      * if the items have been updated or not.
@@ -146,14 +43,14 @@ abstract class AbstractManager implements ManagerContract
 
             if ($action === 'upgrade') {
                 $isSuccess = $isSuccess && !empty($result['source']) || $result === true;
-            } else if ($action === 'install') {
+            } elseif ($action === 'install') {
                 $isSuccess = $isSuccess && !empty($result) && isset($result['basename']);
 
                 if ($isSuccess) {
                     $item = $result;
                     $result = null;
                 }
-            } else if (in_array($action, ['activate', 'deactivate'])) {
+            } elseif (in_array($action, ['activate', 'deactivate'])) {
                 $isSuccess = $isSuccess && !empty($result) && isset($result['status']) && $result['status'] === 'success';
             }
 
@@ -193,8 +90,11 @@ abstract class AbstractManager implements ManagerContract
             return [
                 'error' => [
                     'code' => $error->getCode(),
-                    'message' => sprintf('%s in %s on line %s',
-                        $error->getMessage(), $error->getFile(), $error->getLine()
+                    'message' => sprintf(
+                        '%s in %s on line %s',
+                        $error->getMessage(),
+                        $error->getFile(),
+                        $error->getLine()
                     ),
                 ],
             ];
@@ -208,7 +108,7 @@ abstract class AbstractManager implements ManagerContract
      * including the 'new_version' if available.
      *
      * @param string $type
-     * @param \Modular\ConnectorDependencies\Illuminate\Support\Collection $items
+     * @param \Illuminate\Support\Collection $items
      * @param $updatableItems
      * @return array
      */
@@ -220,7 +120,7 @@ abstract class AbstractManager implements ManagerContract
             if (isset($updatableItems[$basename])) {
                 if (is_array($updatableItems[$basename]) && isset($updatableItems[$basename]['new_version'])) {
                     $newVersion = $updatableItems[$basename]['new_version'];
-                } else if (isset($updatableItems[$basename]->new_version)) {
+                } elseif (isset($updatableItems[$basename]->new_version)) {
                     $newVersion = $updatableItems[$basename]->new_version;
                 }
             }
@@ -231,7 +131,7 @@ abstract class AbstractManager implements ManagerContract
             if ($type === 'plugin') {
                 $homepage = $item['PluginURI'];
                 $status = is_plugin_active($basename);
-            } else if ($type === 'theme') {
+            } elseif ($type === 'theme') {
                 /**
                  * @var \WP_Theme $item
                  */

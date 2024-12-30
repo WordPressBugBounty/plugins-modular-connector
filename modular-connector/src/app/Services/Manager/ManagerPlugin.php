@@ -2,6 +2,8 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\Connector\Facades\Manager;
+use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
 /**
@@ -9,17 +11,7 @@ use Modular\ConnectorDependencies\Illuminate\Support\Collection;
  */
 class ManagerPlugin extends AbstractManager
 {
-    const PLUGINS = 'plugins';
-
-    /**
-     * Checks for available updates to plugins based on the latest versions hosted on WordPress Repository
-     *
-     * @return void
-     */
-    protected function checkForUpdates()
-    {
-        @wp_update_plugins();
-    }
+    public const PLUGINS = 'plugins';
 
     /**
      * Returns a list with the installed plugins in the webpage, including the new version if available.
@@ -28,9 +20,6 @@ class ManagerPlugin extends AbstractManager
      */
     public function all()
     {
-        $this->include();
-        $this->checkForUpdates();
-
         $updatablePlugins = $this->getItemsToUpdate(ManagerPlugin::PLUGINS);
         $plugins = Collection::make(get_plugins());
 
@@ -46,10 +35,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function install(string $downloadLink, bool $overwrite = true)
     {
-        $this->includeUpgrader();
-
-        $skin = new \WP_Ajax_Upgrader_Skin();
-        $upgrader = new \Plugin_Upgrader($skin);
+        Manager::clean();
+        Manager::includeUpgrader();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
             $options['clear_destination'] = $overwrite;
@@ -58,6 +45,9 @@ class ManagerPlugin extends AbstractManager
         });
 
         try {
+            $skin = new \WP_Ajax_Upgrader_Skin();
+            $upgrader = new \Plugin_Upgrader($skin);
+
             // $result is null when the plugin is already installed.
             $result = $upgrader->install($downloadLink, [
                 'overwrite_package' => $overwrite,
@@ -67,7 +57,7 @@ class ManagerPlugin extends AbstractManager
 
             if (is_null($result) && !$overwrite) {
                 $result = new \WP_Error('plugin_already_installed', 'The plugin is already installed.');
-            } else if (empty($data)) {
+            } elseif (empty($data)) {
                 $result = new \WP_Error('no_plugin_installed', 'No plugin installed.');
             }
 
@@ -103,7 +93,7 @@ class ManagerPlugin extends AbstractManager
 
             $basename = $results[0] ?? '';
 
-            $this->checkForUpdates();
+            Manager::clean();
 
             $updatablePlugins = $this->getItemsToUpdate(static::PLUGINS);
             $data = $this->map('plugin', Collection::make([$basename => $data]), $updatablePlugins);
@@ -111,6 +101,8 @@ class ManagerPlugin extends AbstractManager
             return $this->parseActionResponse($basename, $data[array_key_first($data)], 'install', ManagerPlugin::PLUGINS);
         } catch (\Throwable $e) {
             return $this->parseActionResponse($downloadLink, $e, 'install', ManagerPlugin::PLUGINS);
+        } finally {
+            Server::logout();
         }
     }
 
@@ -121,8 +113,6 @@ class ManagerPlugin extends AbstractManager
      */
     public function activate(\stdClass $items)
     {
-        $this->include();
-
         $response = [];
 
         foreach ($items as $plugin => $args) {
@@ -155,8 +145,6 @@ class ManagerPlugin extends AbstractManager
      */
     public function deactivate(\stdClass $items)
     {
-        $this->include();
-
         $response = [];
 
         foreach ($items as $plugin => $args) {
@@ -187,14 +175,20 @@ class ManagerPlugin extends AbstractManager
      */
     public function upgrade(array $items = [])
     {
-        $this->includeUpgrader();
+        add_filter('auto_update_plugin', '__return_false', PHP_INT_MAX);
 
-        $skin = new \WP_Ajax_Upgrader_Skin();
-        $upgrader = new \Plugin_Upgrader($skin);
+        Manager::clean();
+        Manager::includeUpgrader();
 
-        $response = @$upgrader->bulk_upgrade($items);
+        try {
+            $skin = new \WP_Ajax_Upgrader_Skin();
+            $upgrader = new \Plugin_Upgrader($skin);
 
-        $this->checkForUpdates();
+            $response = $upgrader->bulk_upgrade($items);
+        } finally {
+            Manager::clean();
+            Server::logout();
+        }
 
         return $this->parseBulkActionResponse($items, $response, 'upgrade', ManagerPlugin::PLUGINS);
     }
@@ -206,8 +200,6 @@ class ManagerPlugin extends AbstractManager
      */
     public function delete(array $items)
     {
-        $this->include();
-
         $response = [];
         $basenamesToDelete = [];
 

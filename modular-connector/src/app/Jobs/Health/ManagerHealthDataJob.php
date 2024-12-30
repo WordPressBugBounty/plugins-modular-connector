@@ -3,10 +3,16 @@
 namespace Modular\Connector\Jobs\Health;
 
 use Modular\Connector\Events\ManagerHealthUpdated;
-use Modular\Connector\Jobs\AbstractJob;
+use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
+use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
+use function Modular\ConnectorDependencies\event;
 
-class ManagerHealthDataJob extends AbstractJob
+class ManagerHealthDataJob implements ShouldQueue
 {
+    use Dispatchable;
+    use Queueable;
+
     /**
      * @var string
      */
@@ -26,7 +32,7 @@ class ManagerHealthDataJob extends AbstractJob
      * @var array|string[]
      */
     protected array $excluded = [
-        'wordpress_version'
+        'wordpress_version',
     ];
 
     /**
@@ -46,22 +52,6 @@ class ManagerHealthDataJob extends AbstractJob
      */
     public function handle()
     {
-        if (!class_exists('WP_Site_Health')) {
-            require_once ABSPATH . 'wp-admin/includes/class-wp-site-health.php';
-        }
-
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
-
-        if (!function_exists('get_plugin_updates')) {
-            require_once ABSPATH . 'wp-admin/includes/update.php';
-        }
-
-        if (!function_exists('wp_check_php_version')) {
-            require_once ABSPATH . 'wp-admin/includes/misc.php';
-        }
-
         $adminLocale = get_locale();
         load_textdomain('default', WP_LANG_DIR . '/admin-' . $adminLocale . '.mo', $adminLocale);
         unset($adminLocale);
@@ -76,7 +66,7 @@ class ManagerHealthDataJob extends AbstractJob
         }
 
         if (!empty($data)) {
-            ManagerHealthUpdated::dispatch($this->mrid, $data);
+            event(new ManagerHealthUpdated($this->mrid, $data));
         }
     }
 
@@ -90,12 +80,29 @@ class ManagerHealthDataJob extends AbstractJob
 
         $health = \WP_Site_Health::get_instance();
 
+        // These tests are not being processed by API
+        $availableTests = [
+            'wordpress_version',
+            'plugin_version',
+            'theme_version',
+            'php_version',
+            'php_extensions',
+            'php_default_timezone',
+            'sql_server',
+            'ssl_support',
+            'is_in_debug_mode',
+            'file_uploads',
+            'available_updates_disk_space',
+            'autoloaded_options',
+        ];
+
         foreach ($this->tests as $test) {
-            if (!is_string($test)) {
+            $testName = $allTests[$test]['test'];
+
+            if (!is_string($test) || in_array($testName, $availableTests)) {
                 continue;
             }
 
-            $testName = $allTests[$test]['test'];
             $testMethod = 'get_test_' . $testName;
 
             if (!method_exists($health, $testMethod)) {
@@ -131,7 +138,7 @@ class ManagerHealthDataJob extends AbstractJob
                         $test['test'],
                         [
                             'body' => [
-                            '_wpnonce' => wp_create_nonce('wp_rest'),
+                                '_wpnonce' => wp_create_nonce('wp_rest'),
                             ],
                         ]
                     );

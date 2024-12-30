@@ -115,7 +115,7 @@ class ApiHelper
         /**
          * @var BaseObject $class
          */
-        $class = new $class;
+        $class = new $class();
         $class->setSdk(self::$sdk);
         $class->setAttributes($attrs);
         $class->setRelations($relations);
@@ -131,7 +131,7 @@ class ApiHelper
     {
         if (isset($object->type)) {
             return $object->type;
-        } else if (isset($object->expires_in)) {
+        } elseif (isset($object->expires_in)) {
             return 'oauth_token';
         }
 

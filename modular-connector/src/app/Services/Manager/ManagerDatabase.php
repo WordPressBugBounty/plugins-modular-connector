@@ -2,10 +2,10 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\Connector\Backups\BackupOptions;
+use Modular\Connector\Backups\Dumper\PHPDumper;
+use Modular\Connector\Backups\Dumper\ShellDumper;
 use Modular\Connector\Facades\Server;
-use Modular\Connector\Services\Backup\BackupOptions;
-use Modular\Connector\Services\Backup\Dumper\PHPDumper;
-use Modular\Connector\Services\Backup\Dumper\ShellDumper;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
@@ -14,7 +14,7 @@ use Modular\ConnectorDependencies\Illuminate\Support\Str;
  */
 class ManagerDatabase
 {
-    const NAME = 'database';
+    public const NAME = 'database';
 
     /**
      * Get what is the current database extension used by WP
@@ -77,7 +77,7 @@ class ManagerDatabase
 
         if (isset($wpdb->use_mysqli) && $wpdb->use_mysqli) {
             $version = $wpdb->dbh->client_info;
-        } else if (
+        } elseif (
             function_exists('mysql_get_client_info') &&
             preg_match('|[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}|', mysql_get_client_info(), $matches)
         ) {
@@ -85,6 +85,53 @@ class ManagerDatabase
         }
 
         return $version;
+    }
+
+    /**
+     * @return string
+     */
+    public function prefix()
+    {
+        global $wpdb;
+
+        return $wpdb->prefix;
+    }
+
+    /**
+     * @return string
+     */
+    public function charset()
+    {
+        global $wpdb;
+
+        return $wpdb->charset;
+    }
+
+    /**
+     * @return string
+     */
+    public function collate()
+    {
+        global $wpdb;
+
+        return $wpdb->collate;
+    }
+
+    /**
+     * @param $var
+     * @return mixed|null
+     */
+    public function getMySQLVar($var)
+    {
+        global $wpdb;
+
+        $result = $wpdb->get_row($wpdb->prepare('SHOW VARIABLES LIKE %s', $var), ARRAY_A);
+
+        if (!empty($result) && array_key_exists('Value', $result)) {
+            return $result['Value'];
+        }
+
+        return null;
     }
 
     /**
@@ -99,6 +146,11 @@ class ManagerDatabase
             'server' => $this->server(),
             'engine' => $this->engine(),
             'client_version' => $this->clientVersion(),
+            'prefix' => $this->prefix(),
+            'charset' => $this->charset(),
+            'collate' => $this->collate(),
+            'max_allowed_packet_size' => $this->getMySQLVar('max_allowed_packet'),
+            'max_connections' => $this->getMySQLVar('max_connections'),
         ];
     }
 
@@ -175,7 +227,7 @@ class ManagerDatabase
             'item' => 'database',
             'success' => true,
             'response' => true,
-        ];;
+        ];
     }
 
     /**

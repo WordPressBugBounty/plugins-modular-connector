@@ -2,6 +2,8 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\Connector\Facades\Manager;
+use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
 /**
@@ -9,16 +11,6 @@ use Modular\ConnectorDependencies\Illuminate\Support\Collection;
  */
 class ManagerCore extends AbstractManager
 {
-    /**
-     * Checks WordPress version against the newest version.
-     *
-     * @return void
-     */
-    protected function checkForUpdates()
-    {
-        @wp_version_check();
-    }
-
     /**
      * @return string
      */
@@ -44,8 +36,6 @@ class ManagerCore extends AbstractManager
      */
     public function get()
     {
-        $this->include();
-
         $coreUpdate = $this->getLatestUpdate();
         $newVersion = $coreUpdate->version ?? null;
         $newVersionLocale = $coreUpdate->locale ?? null;
@@ -70,12 +60,6 @@ class ManagerCore extends AbstractManager
      */
     private function getLatestUpdate()
     {
-        if (!function_exists('find_core_update')) {
-            include_once ABSPATH . '/wp-admin/includes/update.php';
-        }
-
-        $this->checkForUpdates();
-
         $checker = get_site_transient('update_core');
 
         if (!isset($checker->updates) || !is_array($checker->updates)) {
@@ -97,27 +81,25 @@ class ManagerCore extends AbstractManager
     public function upgrade($items = [])
     {
         // Allow core updates
-        add_filter('auto_update_core', function () {
-            return true;
-        }, PHP_INT_MAX);
+        add_filter('auto_update_core', '__return_true', PHP_INT_MAX);
+        add_filter('allow_major_auto_core_updates', '__return_true', PHP_INT_MAX);
+        add_filter('allow_minor_auto_core_updates', '__return_true', PHP_INT_MAX);
+        add_filter('auto_core_update_send_email', '__return_false', PHP_INT_MAX);
 
-        add_filter('allow_major_auto_core_updates', function () {
-            return true;
-        }, PHP_INT_MAX);
+        Manager::clean();
+        Manager::includeUpgrader();
 
-        add_filter('allow_minor_auto_core_updates', function () {
-            return true;
-        }, PHP_INT_MAX);
+        try {
+            $skin = new \WP_Ajax_Upgrader_Skin();
+            $core = new \Core_Upgrader($skin);
 
-        $this->includeUpgrader();
-
-        $skin = new \WP_Ajax_Upgrader_Skin();
-        $core = new \Core_Upgrader($skin);
-
-        $result = @$core->upgrade($this->getLatestUpdate());
-
-        $this->checkForUpdates();
+            $result = @$core->upgrade($this->getLatestUpdate());
+        } finally {
+            Manager::clean();
+            Server::logout();
+        }
 
         return $this->parseActionResponse('core', $result, 'upgrade', 'core');
+
     }
 }

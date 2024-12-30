@@ -2,13 +2,18 @@
 
 namespace Modular\Connector\Services\Helpers;
 
-use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Modular\ConnectorDependencies\Symfony\Component\Finder\Finder;
 use Modular\ConnectorDependencies\Symfony\Component\Finder\SplFileInfo;
+use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
 class File
 {
+    public static $delimiter = ';';
+    public static $enclosure = '"';
+    public static $escape = '\\';
+
     /**
      * @param string $path
      * @param array $excluded
@@ -18,17 +23,24 @@ class File
     {
         $finder = new Finder();
 
+        $relativePath = Str::replaceFirst(ABSPATH, '', $path);
+
+        $excluded = Collection::make($excluded)
+            ->map(fn($item) => ltrim(Str::replaceFirst($relativePath, '', $item), '/'))
+            ->toArray();
+
         return $finder
             ->followLinks()
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs()
             ->ignoreVCS(true)
             ->in($path)
-            ->filter(function (\SplFileInfo $file) use ($excluded) {
-                return file_exists($file->getRealPath()) &&
+            ->exclude($excluded)
+            ->filter(
+                fn(\SplFileInfo $file) => file_exists($file->getRealPath()) &&
                     $file->isReadable() &&
-                    !static::checkIsExcluded($file, $excluded);
-            });
+                    !static::checkIsExcluded($file, $excluded)
+            );
     }
 
     /**
@@ -42,9 +54,18 @@ class File
     {
         $excluded = Collection::make($excluded);
 
-        return $excluded->some(function ($excludeItem) use ($item) {
-            return Str::startsWith($item->getPathname(), $excludeItem);
-        });
+        return $excluded->some(fn($excludeItem) => Str::startsWith($item->getPathname(), Storage::disk('root')->path($excludeItem)));
+    }
+
+    /**
+     * @param string $path
+     * @return string
+     */
+    public static function calculatePathHash(string $path)
+    {
+        $path = rtrim($path, '/');
+
+        return hash('sha1', $path);
     }
 
     /**
@@ -62,13 +83,101 @@ class File
             $type = is_dir($item->getRealPath()) ? 'dir' : $type;
         }
 
+        $name = $item->getBasename();
+        $parentPath = str_ireplace([untrailingslashit(ABSPATH), $name], '', $item->getPathname());
+        $relativePath = str_ireplace(untrailingslashit(ABSPATH), '', $item->getPathname());
+
         return [
-            'name' => $item->getBasename(),
-            'path' => str_ireplace(ABSPATH, '', $item->getPathname()),
+            'parent_path_hash' => self::calculatePathHash($parentPath),
+            'parent_path' => $parentPath,
+            'path' => $relativePath,
             'realpath' => $item->getRealPath() ?? $item->getPathname(),
-            'type' => $type,
-            'size' => !$item->isDir() ? $item->getSize() : 0
+            'type' => Str::substr($type, 0, 1),
+            'checksum' => $type !== 'dir' ? hash_file('sha256', $item->getRealPath()) : null,
+            'symlink_target' => $item->isLink() ? $item->getLinkTarget() : null,
+            'timestamp' => $item->getMTime(),
+            'size' => $item->getSize(),
         ];
+    }
+
+    /**
+     * @param string $filePath
+     * @return int
+     */
+    public static function totalLines(string $filePath)
+    {
+        if (!file_exists($filePath)) {
+            return 0;
+        }
+
+        $file = new \SplFileObject($filePath, 'r');
+        $file->seek(PHP_INT_MAX);
+
+        return $file->key() + 1;
+    }
+
+    /**
+     * @param string $filePath
+     * @param array $headers
+     * @param $search
+     * @return array
+     */
+    public static function searchIn(string $filePath, array $headers, $search)
+    {
+        $file = new \SplFileObject(Storage::path($filePath));
+        $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
+        $file->setCsvControl(self::$delimiter, self::$enclosure, self::$escape);
+
+        while (!$file->eof()) {
+            $row = $file->fgetcsv();
+
+            if ($row && isset($row[0]) && $row[0] === $search) {
+                return array_combine($headers, $row);
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @param string $filePath
+     * @param array $headers
+     * @param int $start
+     * @param int|null $end
+     * @return array
+     */
+    public static function readRange(string $filePath, array $headers, int $start, int $end = null)
+    {
+        $data = [];
+        $file = new \SplFileObject($filePath);
+        $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
+        $file->setCsvControl(self::$delimiter, self::$enclosure, self::$escape);
+
+        // Got to the start of the range
+        $file->seek($start);
+
+        // If no end is provided, return the first row
+        if ($end === null) {
+            $row = $file->current();
+
+            if ($row && count($row) > 1) {
+                return array_combine($headers, $row);
+            }
+
+            return $data;
+        }
+
+        for ($currentLine = $start; $currentLine <= $end && !$file->eof(); $currentLine++) {
+            $row = $file->current();
+
+            if ($row && count($row) > 1) {
+                $data[] = array_combine($headers, $row);
+            }
+
+            $file->next();
+        }
+
+        return $data;
     }
 
     /**
@@ -86,9 +195,7 @@ class File
             ->depth('== 0');
 
         return Collection::make($files)
-            ->map(function ($item) use ($excluded) {
-                return static::mapItem($item);
-            })
+            ->map(fn($item) => static::mapItem($item))
             ->values();
     }
 
@@ -125,7 +232,7 @@ class File
      */
     public static function addToZip(\ZipArchive $zip, array $item): void
     {
-        if ($item['type'] === 'dir') {
+        if ($item['type'] === 'd') {
             $zip->addEmptyDir(ltrim($item['path'], DIRECTORY_SEPARATOR));
         } else {
             $zip->addFile($item['realpath'], ltrim($item['path'], DIRECTORY_SEPARATOR));
@@ -141,7 +248,11 @@ class File
      */
     public static function closeZip(\ZipArchive $zip): bool
     {
-        $closed = $zip->close();
+        try {
+            $closed = $zip->close();
+        } catch (\Throwable $e) {
+            $closed = false;
+        }
 
         if (!$closed) {
             throw new \ErrorException($zip->getStatusString());

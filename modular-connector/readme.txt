@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, maintenance, Manage Multiple Sites, monitoring, update, security
 Requires at least: 5.6
 Tested up to: 6.7
-Stable tag: 1.3.1
+Stable tag: 1.5.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -105,6 +105,11 @@ Modular Connector bridges the gap between your WordPress and Modular. Something 
 9. Client report overview page
 
 == Changelog ==
+= v1.5.0 =
+Release date: 2024-12-30
+
+* New version of WordPress manager and backup system
+
 = v1.3.0 =
 Release date: 2024-11-30
 

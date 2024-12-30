@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => \Modular\ConnectorDependencies\env('LOG_CHANNEL', 'daily'),
+    'default' => defined('MODULAR_LOG_CHANNEL') ? MODULAR_LOG_CHANNEL : 'daily',
 
     /*
     |--------------------------------------------------------------------------
@@ -32,22 +32,16 @@ return [
     */
 
     'channels' => [
-        'stack' => [
-            'driver' => 'stack',
-            'channels' => ['single'],
-            'ignore_exceptions' => false,
-        ],
-
         'single' => [
             'driver' => 'single',
             'path' => \Modular\ConnectorDependencies\storage_path('logs/modular-connector.log'),
-            'level' => \Modular\ConnectorDependencies\env('LOG_LEVEL', 'debug'),
+            'level' => defined('MODULAR_CONNECTOR_LOG_LEVEL') ? MODULAR_CONNECTOR_LOG_LEVEL : 'error',
         ],
 
         'daily' => [
             'driver' => 'daily',
             'path' => \Modular\ConnectorDependencies\storage_path('logs/modular-connector.log'),
-            'level' => \Modular\ConnectorDependencies\env('LOG_LEVEL', 'debug'),
+            'level' => defined('MODULAR_CONNECTOR_LOG_LEVEL') ? MODULAR_CONNECTOR_LOG_LEVEL : 'error',
             'days' => 3,
         ],
     ],

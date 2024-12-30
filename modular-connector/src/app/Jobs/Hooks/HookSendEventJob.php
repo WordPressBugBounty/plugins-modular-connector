@@ -5,13 +5,18 @@ namespace Modular\Connector\Jobs\Hooks;
 use Modular\Connector\Events\AbstractEvent;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Helper\OauthClient;
-use Modular\Connector\Jobs\AbstractJob;
 use Modular\ConnectorDependencies\Carbon\Carbon;
+use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
+use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\class_basename;
 
-class HookSendEventJob extends AbstractJob
+class HookSendEventJob implements ShouldQueue
 {
+    use Dispatchable;
+    use Queueable;
+
     /**
      * @var array
      */
