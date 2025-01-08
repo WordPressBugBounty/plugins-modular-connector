@@ -123,6 +123,7 @@ class BackupOptions implements \JsonSerializable
             '.wp-cli',
             'error_log',
             Storage::disk('backup')->path(''),
+            Storage::disk('content')->path('modular_storage'),
             Storage::disk('content')->path('error_log'),
             Storage::disk('content')->path('cache'),
             Storage::disk('content')->path('lscache'),

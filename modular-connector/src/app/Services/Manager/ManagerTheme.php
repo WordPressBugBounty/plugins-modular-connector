@@ -28,6 +28,10 @@ class ManagerTheme extends AbstractManager
      */
     public function all()
     {
+        if (!function_exists('wp_get_themes')) {
+            require_once ABSPATH . 'wp-admin/includes/theme.php';
+        }
+
         $updatableThemes = $this->getItemsToUpdate(ManagerTheme::THEMES);
         $installedThemes = Collection::make(wp_get_themes());
 

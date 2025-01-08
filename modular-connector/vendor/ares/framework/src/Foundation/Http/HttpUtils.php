@@ -3,11 +3,23 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Http;
 
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use Modular\ConnectorDependencies\Symfony\Component\HttpFoundation\Response;
 use Modular\ConnectorDependencies\Symfony\Component\HttpFoundation\InputBag;
-use function Modular\ConnectorDependencies\request;
+use Modular\ConnectorDependencies\Symfony\Component\HttpFoundation\Response;
 class HttpUtils
 {
+    /**
+     * @param bool $changeTimeLimit
+     * @return void
+     */
+    public static function configMaxLimit(bool $changeTimeLimit = \true): void
+    {
+        if ($changeTimeLimit && function_exists('set_time_limit')) {
+            @set_time_limit(900);
+        }
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(\true);
+        }
+    }
     /**
      * Get memory limit in MB.
      *

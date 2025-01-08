@@ -138,7 +138,7 @@ abstract class AbstractManager implements ManagerContract
                 $homepage = $item->get('ThemeURI');
 
                 $theme = wp_get_theme();
-                $status = $basename === $theme->get_template();
+                $status = $basename === $theme->get_stylesheet();
             }
 
             return [

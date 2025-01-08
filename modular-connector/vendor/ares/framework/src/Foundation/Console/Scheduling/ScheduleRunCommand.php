@@ -105,7 +105,9 @@ class ScheduleRunCommand extends Command
             $this->log->debug(sprintf('Finished running command #%s in %ss', $this->uuid, round(microtime(\true) - $start, 2)));
             $this->eventsRan = \true;
         } catch (\Throwable $e) {
-            $this->dispatcher->dispatch(new ScheduledTaskFailed($event, $e));
+            if (class_exists(ScheduledTaskFailed::class)) {
+                $this->dispatcher->dispatch(new ScheduledTaskFailed($event, $e));
+            }
             $this->handler->report($e);
         }
     }

@@ -28,7 +28,7 @@ return [
     |
     */
 
-    'compiled' => realpath(\Modular\ConnectorDependencies\storage_path('framework/views')),
+    'compiled' => realpath(\Modular\ConnectorDependencies\storage_path('views')),
 
     /*
     |--------------------------------------------------------------------------

@@ -108,7 +108,7 @@ class Bootloader
         }
         if (HttpUtils::isDirectRequest() || HttpUtils::isAjax()) {
             // Ensure the script continues to run even if the user aborts the connection.
-            ignore_user_abort(\true);
+            HttpUtils::configMaxLimit(\false);
             if (HttpUtils::isDirectRequest() && !defined('DOING_AJAX')) {
                 define('DOING_AJAX', \true);
             }
@@ -199,6 +199,7 @@ class Bootloader
         if (!HttpUtils::isAjax() && !HttpUtils::isCron()) {
             return \false;
         }
+        HttpUtils::configMaxLimit();
         // If the request is an AJAX request, we need to check the nonce.
         if (HttpUtils::isAjax()) {
             // Don't lock up other requests while processing.

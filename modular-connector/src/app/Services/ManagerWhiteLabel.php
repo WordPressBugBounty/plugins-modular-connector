@@ -42,9 +42,7 @@ class ManagerWhiteLabel
                 'status' => 'disabled',
             ];
         } else {
-            $whiteLabeled = Cache::get($this->key);
-
-            if (empty($whiteLabeled) && !is_null($whiteLabeled)) {
+            if (!Cache::has($this->key)) {
                 try {
                     $client->validateOrRenewAccessToken();
 

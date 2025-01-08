@@ -92,11 +92,12 @@ class Application extends FoundationApplication
      */
     public static function formatCommandString($string)
     {
-        try {
-            $binary = ConsoleApplication::phpBinary();
-        } catch (\Throwable $e) {
-            $binary = 'php';
-        }
-        return sprintf('%s %s %s', $binary, ConsoleApplication::artisanBinary(), $string);
+        // FIXME: This is a temporary solution to avoid the error when the PHP binary is not found or not available.
+        /*try {
+              $binary = ConsoleApplication::phpBinary();
+          } catch (\Throwable $e) {
+              $binary = 'php';
+          }*/
+        return sprintf('%s %s %s', 'php', ConsoleApplication::artisanBinary(), $string);
     }
 }
