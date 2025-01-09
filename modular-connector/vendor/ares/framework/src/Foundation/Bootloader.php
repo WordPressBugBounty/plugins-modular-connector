@@ -76,7 +76,7 @@ class Bootloader
     {
         $except = Collection::make([admin_url(), wp_login_url(), wp_registration_url()])->map(fn($url) => parse_url($url, \PHP_URL_PATH))->unique()->filter();
         $path = $this->getPath($request);
-        if (!HttpUtils::isAjax() && (Str::startsWith($path, $except->all()) || Str::endsWith($path, '.php') && !$this->isWpLoad($path))) {
+        if (!HttpUtils::isAjax() && !$this->isWpLoad($path) && (Str::startsWith($path, $except->all()) || Str::endsWith($path, '.php'))) {
             return \true;
         }
         $api = parse_url(rest_url(), \PHP_URL_PATH);

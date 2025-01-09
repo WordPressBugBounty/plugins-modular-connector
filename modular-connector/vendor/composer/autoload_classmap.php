@@ -8,7 +8,7 @@ $baseDir = dirname($vendorDir);
 return array(
     'Attribute' => $vendorDir . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
     'CURLStringFile' => $vendorDir . '/symfony/polyfill-php81/Resources/stubs/CURLStringFile.php',
-    'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
+    'Modular\\ConnectorDependencies\\Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
     'JsonException' => $vendorDir . '/symfony/polyfill-php73/Resources/stubs/JsonException.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Application' => $vendorDir . '/ares/framework/src/Foundation/Application.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Auth\\AuthManager' => $vendorDir . '/ares/framework/src/Foundation/Auth/AuthManager.php',

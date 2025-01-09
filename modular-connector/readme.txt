@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, maintenance, Manage Multiple Sites, monitoring, update, security
 Requires at least: 5.6
 Tested up to: 6.7
-Stable tag: 1.5.3
+Stable tag: 1.5.4
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html

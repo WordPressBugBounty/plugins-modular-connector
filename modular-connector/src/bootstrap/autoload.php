@@ -69,9 +69,17 @@ $bootloader->boot(
                 $indexHtml = $subPath . DIRECTORY_SEPARATOR . 'index.html';
                 $htaccess = $subPath . DIRECTORY_SEPARATOR . '.htaccess';
 
-                @file_put_contents($indexPhp, '<?php // Silence is golden.');
-                @file_put_contents($indexHtml, '');
-                @file_put_contents($htaccess, 'deny from all');
+                if (!file_exists($indexPhp)) {
+                    @file_put_contents($indexPhp, '<?php // Silence is golden.');
+                }
+
+                if (!file_exists($indexHtml)) {
+                    @file_put_contents($indexHtml, '');
+                }
+
+                if (!file_exists($htaccess)) {
+                    @file_put_contents($htaccess, 'deny from all');
+                }
             }
 
             // If the storage path was created, we can set it as the storage path for the application
