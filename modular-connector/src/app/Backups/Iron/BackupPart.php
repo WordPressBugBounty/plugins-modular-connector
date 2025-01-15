@@ -280,11 +280,12 @@ class BackupPart
     }
 
     /**
+     * @param bool $manifest
      * @return void
      */
-    public function cleanFiles()
+    public function cleanFiles(bool $manifest = false): void
     {
-        if ($this->type !== self::INCLUDE_DATABASE && Storage::disk('backups')->exists($this->manifestPath)) {
+        if ($manifest && $this->type !== self::INCLUDE_DATABASE && Storage::disk('backups')->exists($this->manifestPath)) {
             Storage::disk('backups')->delete($this->manifestPath);
         } elseif (Storage::disk('backups')->exists($this->getFileNameWithExtension('sql'))) {
             Storage::disk('backups')->delete($this->getFileNameWithExtension('sql'));
@@ -324,7 +325,7 @@ class BackupPart
 
             dispatch(new ProcessFilesJob($this));
         } elseif ($status === ManagerBackupPartUpdated::STATUS_DONE) {
-            $this->cleanFiles();
+            $this->cleanFiles($this->offset >= $this->totalItems);
         }
 
         return $this;
@@ -336,7 +337,7 @@ class BackupPart
      */
     public function markAsFailed($status, ?\Throwable $e = null)
     {
-        $this->cleanFiles();
+        $this->cleanFiles(true);
 
         $this->markAs(
             $status,
