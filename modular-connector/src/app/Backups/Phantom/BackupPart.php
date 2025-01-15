@@ -2,12 +2,11 @@
 
 namespace Modular\Connector\Backups\Phantom;
 
-use Modular\Connector\Backups\BackupOptions;
 use Modular\Connector\Backups\Phantom\Events\ManagerBackupPartUpdated;
+use Modular\Connector\Backups\Phantom\Helpers\File;
 use Modular\Connector\Backups\Phantom\Jobs\ManagerBackupCompressFilesJob;
 use Modular\Connector\Backups\Phantom\Jobs\ManagerBackupUploadJob;
 use Modular\Connector\Helper\OauthClient;
-use Modular\Connector\Services\Helpers\File;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
@@ -119,6 +118,7 @@ class BackupPart implements \JsonSerializable
      * @param string $status
      * @param array $extraArgs
      * @return void
+     * @throws \Throwable
      */
     protected function markAs(string $status, array $extraArgs = [])
     {
@@ -147,6 +147,7 @@ class BackupPart implements \JsonSerializable
 
     /**
      * @return void
+     * @throws \Throwable
      */
     public function markAsInProgress()
     {
@@ -155,6 +156,7 @@ class BackupPart implements \JsonSerializable
 
     /**
      * @return void
+     * @throws \Throwable
      */
     public function markAsUploadPending()
     {
@@ -165,6 +167,7 @@ class BackupPart implements \JsonSerializable
 
     /**
      * @return void
+     * @throws \Throwable
      */
     public function markAsUploading()
     {
@@ -250,7 +253,7 @@ class BackupPart implements \JsonSerializable
     {
         $name = $this->getZipName();
 
-        return Storage::disk('backup')->path($name . '.zip');
+        return Storage::disk('backups')->path($name . '.zip');
     }
 
     /**
@@ -299,7 +302,7 @@ class BackupPart implements \JsonSerializable
     {
         $name = $this->getZipName();
 
-        return Storage::disk('backup')->size($name . '.zip');
+        return Storage::disk('backups')->size($name . '.zip');
     }
 
     /**

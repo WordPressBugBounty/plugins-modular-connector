@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Backups\BackupOptions;
 use Modular\Connector\Backups\Dumper\PHPDumper;
 use Modular\Connector\Backups\Dumper\ShellDumper;
 use Modular\Connector\Facades\Server;
@@ -234,11 +233,11 @@ class ManagerDatabase
      * Create database dump
      *
      * @param string $path
-     * @param BackupOptions $options
+     * @param \Modular\Connector\Backups\Iron\BackupPart|\Modular\Connector\Backups\Phantom\BackupOptions $options
      * @return void
      * @throws \Exception
      */
-    public function dump(string $path, BackupOptions $options)
+    public function dump(string $path, $options)
     {
         $excluded = $options->excludedTables;
 

@@ -21,7 +21,7 @@ Route::middleware('auth')
         Route::get('/server-health/{modular_request}', [ServerController::class, 'getHealth'])
             ->name('manager.server.health');
 
-        Route::get('/white-label/{modular_request}', [ServerController::class, 'getWhiteLabel'])
+        Route::get('/white-label', [ServerController::class, 'getWhiteLabel'])
             ->name('manager.whiteLabel.update');
 
         #region Manager

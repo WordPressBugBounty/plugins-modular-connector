@@ -2,9 +2,10 @@
 
 namespace Modular\Connector\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Modular\Connector\Facades\Server;
+use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Jobs\Health\ManagerHealthDataJob;
-use Modular\Connector\Jobs\ManagerWhiteLabelUpdateJob;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\SDK\Objects\SiteRequest;
@@ -48,12 +49,11 @@ class ServerController extends Controller
     }
 
     /**
-     * @param SiteRequest $modularRequest
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function getWhiteLabel(SiteRequest $modularRequest)
+    public function getWhiteLabel()
     {
-        dispatch(new ManagerWhiteLabelUpdateJob($modularRequest->request_id, $modularRequest->body));
+        dispatch(fn() => WhiteLabel::forget());
 
         return Response::json([
             'message' => 'White label data is being processed',

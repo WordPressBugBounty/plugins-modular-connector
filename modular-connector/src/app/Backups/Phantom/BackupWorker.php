@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Backups\Phantom;
 
-use Modular\Connector\Backups\BackupOptions;
 use Modular\Connector\Backups\Facades\Backup;
 use Modular\Connector\Backups\Phantom\Events\ManagerBackupPartsCalculated;
 use Modular\Connector\Backups\Phantom\Events\ManagerBackupPartUpdated;
@@ -188,26 +187,27 @@ class BackupWorker
 
         $partTypes = [
             BackupPart::PART_TYPE_CORE => [
-                'root' => Storage::disk('root')->path(''),
+                'root' => Storage::disk('core')->path(''),
                 'excluded' => [
-                    Storage::disk('plugin')->path(''),
-                    Storage::disk('theme')->path(''),
-                    Storage::disk('upload')->path(''),
-                    Storage::disk('root')->path('wp-content/plugins'),
-                    Storage::disk('root')->path('wp-content/themes'),
-                    Storage::disk('root')->path('wp-content/uploads'),
+                    // Custom folders
+                    Storage::disk('plugins')->path(''),
+                    Storage::disk('themes')->path(''),
+                    Storage::disk('uploads')->path(''),
+                    Storage::disk('core')->path('wp-content/plugins'),
+                    Storage::disk('core')->path('wp-content/themes'),
+                    Storage::disk('core')->path('wp-content/uploads'),
                 ],
             ],
             BackupPart::PART_TYPE_THEMES => [
-                'root' => Storage::disk('theme')->path(''),
+                'root' => Storage::disk('themes')->path(''),
                 'excluded' => [],
             ],
             BackupPart::PART_TYPE_PLUGINS => [
-                'root' => Storage::disk('plugin')->path(''),
+                'root' => Storage::disk('plugins')->path(''),
                 'excluded' => [],
             ],
             BackupPart::PART_TYPE_UPLOADS => [
-                'root' => Storage::disk('upload')->path(''),
+                'root' => Storage::disk('uploads')->path(''),
                 'excluded' => [],
             ],
         ];

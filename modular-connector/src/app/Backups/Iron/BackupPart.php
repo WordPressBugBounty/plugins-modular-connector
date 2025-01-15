@@ -1,465 +1,465 @@
 <?php
 
-namespace Modular\Connector\Backups;
+namespace Modular\Connector\Backups\Iron;
 
-use Illuminate\Support\Facades\Storage;
-use Modular\Connector\Backups\Phantom\Events\ManagerBackupPartUpdated;
-use Modular\Connector\Helper\OauthClient;
-use Modular\Connector\Jobs\Backup\ManagerBackupCompressFilesJob;
-use Modular\Connector\Jobs\Backup\ManagerBackupUploadJob;
-use Modular\Connector\Services\Helpers\File;
+use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
+use Modular\Connector\Backups\Iron\Helpers\File;
+use Modular\Connector\Backups\Iron\Jobs\ProcessFilesJob;
+use Modular\Connector\Backups\Iron\Jobs\ProcessUploadJob;
+use Modular\Connector\Backups\Iron\Manifest\Manifest;
+use Modular\Connector\Facades\Manager;
+use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use function Modular\ConnectorDependencies\data_get;
+use function Modular\ConnectorDependencies\dispatch;
+use function Modular\ConnectorDependencies\event;
 
-class BackupPart implements \JsonSerializable
+/**
+ * Optimized BackupOptions class.
+ */
+class BackupPart
 {
+    /**
+     * @var string
+     */
+    public string $mrid;
+
+    /**
+     * @var string
+     */
+    public string $name;
+
+    /**
+     * @var int
+     */
+    public int $siteBackup;
+
+    /**
+     * @var int|null
+     */
+    public ?int $totalItems = null;
+
     /**
      * @var string
      */
     public string $type;
 
     /**
-     * @var BackupOptions
-     */
-    public BackupOptions $options;
-
-    /**
-     * @var int
-     */
-    public int $maxDepth = 0;
-
-    /**
-     * Cursor position (offset) of finder
-     *
      * @var int
      */
     public int $offset = 0;
 
     /**
-     * @var int Total items to include in this part
+     * @var string
      */
-    public int $totalItems = 0;
+    public string $status = ManagerBackupPartUpdated::STATUS_PENDING;
 
     /**
-     * @var int Current batch number (ex. plugins-{$batch})
+     * @var int
      */
     public int $batch = 1;
 
     /**
-     * @var int Current batch size
+     * @var int
      */
     public int $batchSize = 0;
 
     /**
      * @var string
      */
-    public string $dbKey;
+    public string $manifestPath;
 
     /**
-     * @var string Current status of this part
+     * @var string
      */
-    public string $status = self::PART_STATUS_EXCLUDED;
+    public string $filesystem = self::FILESYSTEM_DEFAULT;
 
-    public const PART_TYPE_DATABASE = 'database';
-    public const PART_TYPE_CORE = 'core';
-    public const PART_TYPE_PLUGINS = 'plugins';
-    public const PART_TYPE_THEMES = 'themes';
-    public const PART_TYPE_UPLOADS = 'uploads';
+    /**
+     * @var array|string[]
+     */
+    public array $included = [];
 
-    public const PART_STATUS_EXCLUDED = 'excluded';
+    /**
+     * @var array|string[]
+     */
+    public array $excludedFiles = [];
 
-    public const PART_STATUS_PENDING = 'pending';
-    public const PART_STATUS_IN_PROGRESS = 'in_progress';
-    public const PART_STATUS_UPLOAD_PENDING = 'upload_pending';
-    public const PART_STATUS_UPLOADING = 'uploading';
-    public const PART_STATUS_DONE = 'done';
+    /**
+     * @var array|string[]
+     */
+    public array $excludedTables = [];
 
-    public const STATUS_FAILED_FILE_NOT_FOUND = 'failed_file_not_found';
-    public const STATUS_FAILED_EXPORT_DATABASE = 'failed_export_database';
-    public const STATUS_FAILED_UPLOADED = 'failed_uploaded';
-    public const STATUS_FAILED_EXPORT_FILES = 'failed_export_files';
+    /**
+     * @var int
+     */
+    public int $limit = 5000;
 
+    /**
+     * @var int
+     */
+    public int $batchMaxFileSize = 128 * 1024 * 1024; // 128 MB
 
-    public function __construct(string $type, BackupOptions $options, int $maxDepth = 0)
+    /**
+     * @var int
+     */
+    public int $batchMaxTimeout = 1800; // 30 minutes
+
+    /**
+     * @var array
+     */
+    public array $connection;
+
+    /**
+     * @var int
+     */
+    public int $timestamp = 0;
+
+    public const INCLUDE_DATABASE = 'database';
+    public const INCLUDE_CORE = 'core';
+    public const INCLUDE_PLUGINS = 'plugins';
+    public const INCLUDE_THEMES = 'themes';
+    public const INCLUDE_MU_PLUGINS = 'mu_plugins';
+    public const INCLUDE_CONTENT = 'content';
+    public const INCLUDE_UPLOADS = 'uploads';
+
+    public const FILESYSTEM_DEFAULT = 'default';
+    public const FILESYSTEM_CUSTOM = 'custom';
+
+    /**
+     * Class constructor.
+     *
+     * @param string $mrid
+     * @param \stdClass $payload
+     */
+    public function __construct(string $mrid, \stdClass $payload)
+    {
+        $this->mrid = $mrid;
+        $this->name = trim($payload->name, '"');
+        $this->siteBackup = (int)$payload->site_backup;
+
+        $this->filesystem = $filesystem = $payload->filesystem ?? self::FILESYSTEM_DEFAULT;
+        $included = $payload->included ?? [];
+
+        // When the filesystem is default and the core is included, we need to include all other directories
+        if ($filesystem === self::FILESYSTEM_DEFAULT && in_array(self::INCLUDE_CORE, $included)) {
+            $included = array_merge($included, [
+                self::INCLUDE_PLUGINS,
+                self::INCLUDE_THEMES,
+                self::INCLUDE_MU_PLUGINS,
+                self::INCLUDE_CONTENT,
+                self::INCLUDE_UPLOADS,
+            ]);
+        }
+
+        $this->included = $included;
+
+        $this->excludedFiles = Collection::make($included)
+            ->filter(fn($type) => $type !== self::INCLUDE_DATABASE)
+            ->mapWithKeys(fn($type) => [$type => $this->getExcludedFiles($type, data_get($payload, 'excluded', []))])
+            ->toArray();
+
+        $this->excludedTables = $this->getExcludedTables(data_get($payload, 'excluded.tables', []));
+
+        if (isset($payload->batch->size)) {
+            $size = $payload->batch->size;
+
+            if ($size < 24 * 1024 * 1024) {
+                $size = 24 * 1024 * 1024;
+            } elseif ($size > 2 * 1024 * 1024 * 1024) {
+                $size = 2 * 1024 * 1024 * 1024;
+            }
+
+            $this->batchMaxFileSize = $size;
+        }
+
+        if (isset($payload->batch->timeout)) {
+            $this->batchMaxTimeout = $payload->batch->timeout;
+        }
+
+        if (isset($payload->batch->max_files)) {
+            $this->limit = $payload->batch->max_files;
+        }
+
+        $this->connection = [
+            'host' => $payload->db->host ?? DB_HOST,
+            'database' => $payload->db->database ?? DB_NAME,
+            'username' => $payload->db->username ?? DB_USER,
+            'password' => $payload->db->password ?? DB_PASSWORD,
+            'port' => null,
+            'socket' => null,
+        ];
+
+        [$host, $port, $socket, $isIpv6] = $this->parseDbHost($this->connection['host']);
+
+        if ($isIpv6 && extension_loaded('mysqlnd')) {
+            $host = "[$host]";
+        }
+
+        $this->connection['host'] = $host;
+        $this->connection['port'] = $port;
+        $this->connection['socket'] = $socket;
+
+        $this->timestamp = data_get($payload, 'timestamp', 0);
+    }
+
+    /**
+     * Parses the DB_HOST setting to interpret it for mysqli_real_connect().
+     *
+     * @param string $host
+     * @return array
+     */
+    private function parseDbHost(string $host): array
+    {
+        global $wpdb;
+
+        return $wpdb->parse_db_host($host);
+    }
+
+    /**
+     * Gets the excluded files.
+     *
+     * @param string $type
+     * @param mixed $excluded
+     * @return array
+     */
+    private function getExcludedFiles(string $type, $excluded): array
+    {
+        $filesystem = $this->filesystem;
+
+        if ($filesystem === self::FILESYSTEM_DEFAULT) {
+            $files = data_get($excluded, 'files', []);
+        } else {
+            $files = data_get($excluded, $type, []);
+        }
+
+        $defaultExclusions = File::getDefaultExclusions($type);
+
+        $excluded = array_merge($defaultExclusions, $files);
+
+        return array_values(array_unique($excluded));
+    }
+
+    /**
+     * Gets the excluded tables.
+     *
+     * @param array $excludedTables
+     * @return array
+     */
+    private function getExcludedTables(array $excludedTables = []): array
+    {
+        $excludedTables = array_merge($excludedTables, Manager::driver('database')->views());
+
+        return Manager::driver('database')->tree()
+            ->filter(fn($table) => in_array($table->path, $excludedTables) || in_array($table->name, $excludedTables))
+            ->values()
+            ->map(fn($table) => $table->name)
+            ->toArray();
+    }
+
+    /**
+     * @param string $type
+     * @return $this
+     */
+    public function setType(string $type): BackupPart
     {
         $this->type = $type;
-        $this->setOptions($options);
-        $this->maxDepth = $maxDepth;
+        $this->excludedFiles = data_get($this->excludedFiles, $type, []);
+
+        return $this;
     }
 
     /**
-     * @return Manifest
+     * @return $this
      */
-    public function getManifestInstance(?int $maxDepth = null)
+    public function setManifestPath(): BackupPart
     {
-        return Manifest::getInstance($this->options, $maxDepth ?: $this->maxDepth);
+        $this->manifestPath = Manifest::path($this);
+
+        return $this;
     }
 
     /**
-     * @param BackupOptions $options
      * @return void
      */
-    public function setOptions(BackupOptions $options)
+    public function cleanFiles()
     {
-        $this->options = $options;
-    }
-
-    /**
-     * @param string $key
-     * @return void
-     */
-    public function setDbKey(string $key)
-    {
-        $this->dbKey = $key;
-    }
-
-    /**
-     * @param array $extraArgs
-     * @return void
-     * @throws \Throwable
-     */
-    protected function update(array $extraArgs = [])
-    {
-        BackupWorker::getInstance()->update($this);
-        ManagerBackupPartUpdated::dispatch($this, $extraArgs);
-    }
-
-    /**
-     * @param string $status
-     * @param array $extraArgs
-     * @return void
-     * @throws \Throwable
-     */
-    protected function markAs(string $status, array $extraArgs = [])
-    {
-        if ($this->status !== $status) {
-            $this->status = $status;
-
-            $this->update($extraArgs);
+        if ($this->type !== self::INCLUDE_DATABASE && Storage::disk('backups')->exists($this->manifestPath)) {
+            Storage::disk('backups')->delete($this->manifestPath);
+        } elseif (Storage::disk('backups')->exists($this->getFileNameWithExtension('sql'))) {
+            Storage::disk('backups')->delete($this->getFileNameWithExtension('sql'));
         }
+
+        Storage::disk('backups')->delete($this->getFileNameWithExtension('zip'));
     }
 
     /**
-     * @return void
+     * @param $status
+     * @param bool $emitEvent
+     * @param array $extra
+     * @return BackupPart
      */
-    public function markAsPending()
+    public function markAs($status, bool $emitEvent = true, array $extra = []): BackupPart
     {
-        $this->status = self::PART_STATUS_PENDING;
-
-        if ($this->type !== self::PART_TYPE_DATABASE) {
-            // If the part is not database, we need to add first folder to manifest
-            $this->scanRootDir();
+        if ($this->status === $status) {
+            return $this;
         }
-    }
 
-    /**
-     * @return void
-     * @throws \Throwable
-     */
-    public function markAsInProgress()
-    {
-        $this->markAs(self::PART_STATUS_IN_PROGRESS);
-    }
+        $this->status = $status;
 
-    /**
-     * @return void
-     */
-    public function markAsUploadPending()
-    {
-        $this->markAs(self::PART_STATUS_UPLOAD_PENDING);
+        // The excluded and pending statuses are not needed to be updated
+        if ($emitEvent) {
+            event(new ManagerBackupPartUpdated($this, $status, $extra));
+        }
 
-        ManagerBackupUploadJob::dispatch($this);
-    }
+        if ($status === ManagerBackupPartUpdated::STATUS_EXCLUDED) {
+            Storage::disk('backups')->delete($this->manifestPath);
+        } elseif ($status === ManagerBackupPartUpdated::STATUS_MANIFEST_UPLOAD_PENDING) {
+            dispatch(new ProcessUploadJob($this, true));
+        } elseif ($status === ManagerBackupPartUpdated::STATUS_UPLOAD_PENDING) {
+            dispatch(new ProcessUploadJob($this));
+        } elseif ($status === ManagerBackupPartUpdated::STATUS_MANIFEST_DONE) {
+            // We set the offset to 0 because the file reader starts from 0
+            $this->offset = 0;
 
-    /**
-     * @return void
-     */
-    public function markAsUploading()
-    {
-        $this->markAs(self::PART_STATUS_UPLOADING);
-    }
+            dispatch(new ProcessFilesJob($this));
+        } elseif ($status === ManagerBackupPartUpdated::STATUS_DONE) {
+            $this->cleanFiles();
+        }
 
-    /**
-     * @return void
-     * @throws \Throwable
-     */
-    public function markAsDone()
-    {
-        $this->markAs(self::PART_STATUS_DONE);
-
-        BackupWorker::getInstance()->dispatch();
+        return $this;
     }
 
     /**
      * @param string $status
      * @param \Throwable|null $e
-     * @return void
-     * @throws \Throwable
      */
-    public function markAsFailed(string $status, ?\Throwable $e = null)
+    public function markAsFailed($status, ?\Throwable $e = null)
     {
-        $error = [];
+        $this->cleanFiles();
 
-        if (!is_null($e)) {
-            $error = [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ];
-        }
-
-        $this->markAs($status, [
-            'error' => $error,
-        ]);
-
-        BackupWorker::getInstance()->dispatch();
-    }
-
-    /**
-     * @return void
-     */
-    public function calculateMainManifest()
-    {
-        // We need to remove previous manifest
-        $manifestPath = $this->getManifestInstance()->getPath($this->type, false);
-
-        if (Storage::exists($manifestPath)) {
-            Storage::delete($manifestPath);
-        }
-
-        $manifestIndexPath = $this->getManifestInstance()->getPath($this->type, false, 'index');
-
-        if (Storage::exists($manifestIndexPath)) {
-            Storage::delete($manifestIndexPath);
-        }
-
-        $manifestPath = $this->getManifestInstance()->getPath($this->type, true);
-
-        if (Storage::exists($manifestPath)) {
-            Storage::delete($manifestPath);
-        }
-
-        $manifestIndexPath = $this->getManifestInstance()->getPath($this->type, true, 'index');
-
-        if (Storage::exists($manifestIndexPath)) {
-            Storage::delete($manifestIndexPath);
-        }
-
-        // Get total items
-        $this->totalItems = $this->getManifestInstance()
-            ->make($this->type, true);
-
-        if ($this->totalItems > 0) {
-            $this->markAsPending();
-        }
-    }
-
-    /**
-     * @return array|false
-     */
-    public function getNextItemFromManifest()
-    {
-        $item = $this->getManifestInstance()->getItem($this);
-
-        return !empty($item) ? $item : false;
-    }
-
-    public function scanRootDir()
-    {
-        $manifestInstance = $this->getManifestInstance();
-
-        [$tree, $index] = $manifestInstance->scanDir($this, true);
-
-        $manifestInstance->saveManifest($this->type, $tree, false);
-        $manifestInstance->saveManifestIndex($this->type, [$index], false);
-    }
-
-    /**
-     * @return void
-     */
-    public function scanDirs(array $dirs)
-    {
-        $carryDirs = [];
-        $carryIndex = [];
-        $manifestInstance = $this->getManifestInstance();
-
-        array_walk(
-            $dirs,
-            function ($dir) use ($manifestInstance, &$carryDirs, &$carryIndex) {
-                $items = $manifestInstance->scanDir($this, !($dir['depth'] >= $this->maxDepth), $dir);
-
-                if (!$items) {
-                    return;
-                }
-
-                [$tree, $index] = $items;
-
-                $carryDirs = array_merge($carryDirs, $tree);
-                $carryIndex[] = $index;
-            }
+        $this->markAs(
+            $status,
+            true,
+            [
+                'error' => [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ],
+            ]
         );
-
-        $manifestInstance->saveManifest($this->type, $carryDirs, false);
-        $manifestInstance->saveManifestIndex($this->type, $carryIndex, false);
     }
 
     /**
-     * @return string
-     */
-    public function getZipName(): string
-    {
-        $suffix = $this->type;
-
-        return sprintf('%s-%s-part-%d', $this->options->name, $suffix, $this->batch);
-    }
-
-    /**
-     * Get real path of zip file
-     *
-     * @return string
-     */
-    public function getPath(bool $relative = false, string $extension = 'zip')
-    {
-        $name = $this->getZipName();
-        $path = Backup::path(sprintf('%s/%s.%s', $this->options->name, $name, $extension));
-
-        if (!$relative) {
-            $path = Storage::path(ltrim($path, '/'));
-        }
-
-        return $path;
-    }
-
-    /**
-     * @param \ZipArchive $zip
-     * @param int $totalItems
      * @return bool
-     * @throws \ErrorException
-     * @throws \Throwable
      */
-    public function checkIfBatchSizeIsOversize(\ZipArchive &$zip, int $totalItems): bool
+    public function isCancelled(): bool
     {
-        if ($totalItems >= $this->options->limit) {
-            // Close the zip file after added the files
-            File::closeZip($zip);
-
-            // Get real size of zip file
-            $this->batchSize = $this->getZipSize();
-
-            // If we have reached the limit, we need to stop
-            return true;
-        }
-
-        if ($this->batchSize >= $this->options->batchMaxFileSize) {
-            // Close the zip file after added the files
-            File::closeZip($zip);
-
-            // Get real size of zip file
-            $this->batchSize = $this->getZipSize();
-
-            if ($this->batchSize >= $this->options->batchMaxFileSize) {
-                // Create new part before upload
-                $newPart = clone $this;
-
-                $newPart->batchSize = 0;
-                $newPart->batch++;
-                $newPart->offset++;
-                $newPart->status = self::PART_STATUS_PENDING;
-
-                BackupWorker::getInstance()->addPart($newPart);
-
-                // Send current part to upload
-                $this->markAsUploadPending();
-
-                $zip = null;
-
-                return true;
-            }
-
-            $zip = File::openZip($this->getPath());
-        }
-
-        return false;
+        return in_array($this->name, Cache::get('_cancelled_backup', []));
     }
 
     /**
      * @return int
      */
-    public function getZipSize()
+    public function offset(): int
     {
-        $path = $this->getPath(true);
-
-        return Storage::exists($path) ? Storage::size($path) : 0;
+        return $this->offset;
     }
 
     /**
-     * Get Upload URL
-     *
-     * @return mixed
-     * @throws \ErrorException
-     */
-    public function getUploadUri(): string
-    {
-        $client = OauthClient::getClient();
-
-        return $client->backup->createUpload($this->options->siteBackup, [
-            'name' => $this->getZipName(),
-            'type' => $this->type,
-            'batch' => $this->batch,
-        ]);
-    }
-
-    /**
-     * Check if the part is ready
-     *
-     * @param \ZipArchive|null $zip
-     * @param $finished
-     * @return void
-     * @throws \ErrorException
-     * @throws \Throwable
-     */
-    public function checkFilesIsReady(?\ZipArchive $zip, bool $finished)
-    {
-        // Close the zip file after added the files
-        if ($zip instanceof \ZipArchive) {
-            File::closeZip($zip);
-        }
-
-        $this->batchSize = $this->getZipSize();
-
-        if ($finished) {
-            $this->markAsUploadPending();
-        } else {
-            $this->update();
-
-            ManagerBackupCompressFilesJob::dispatch($this);
-        }
-    }
-
-    /**
-     * Transform to array
-     *
+     * @param int $start
+     * @param int|null $end
      * @return array
      */
-    public function toArray(): array
+    public function nextFiles(int $start, int $end = null): array
     {
-        return $this->jsonSerialize();
-    }
+        $path = Storage::disk('backups')->path($this->manifestPath);
 
-    /**
-     * Transform to array
-     *
-     * @return array
-     */
-    public function jsonSerialize(): array
-    {
-        return [
-            'type' => $this->type,
-            'offset' => $this->offset,
-            'total_items' => $this->totalItems,
-            'batch' => $this->batch,
-            'batch_size' => $this->batchSize,
-            'status' => $this->status,
-            'site_backup' => $this->options->siteBackup,
-            'options' => $this->options->toArray(),
+        $file = new \SplFileObject($path);
+        $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
+        $file->setCsvControl(File::$delimiter, File::$enclosure, File::$escape);
+
+        // Got to the start of the range
+        $file->seek($start);
+
+        $headers = [
+            'checksum',
+            'type',
+            'size',
+            'timestamp',
+            'path',
         ];
+
+        $data = [];
+
+        // If no end is provided, return the first row
+        if ($end === null) {
+            $row = $file->current();
+
+            if ($row && count($row) > 1) {
+                return array_combine($headers, $row);
+            }
+
+            return $data;
+        }
+
+        for ($currentLine = $start; $currentLine <= $end && !$file->eof(); $currentLine++) {
+            $row = $file->current();
+
+            if ($row && count($row) > 1) {
+                $data[] = array_combine($headers, $row);
+            }
+
+            $file->next();
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDone(): bool
+    {
+        return $this->offset() >= $this->totalItems;
+    }
+
+    /**
+     * @param bool $isManifest
+     * @return string
+     */
+    public function getFileName(bool $isManifest = false): string
+    {
+        $batch = $isManifest ? 'manifest' : sprintf('part-%s', $this->batch);
+
+        return sprintf('%s-%s-%s', $this->name, $this->type, $batch);
+    }
+
+    /**
+     * @param string $extension
+     * @return string
+     */
+    public function getFileNameWithExtension(string $extension): string
+    {
+        return sprintf('%s.%s', $this->getFileName(), $extension);
+    }
+
+    /**
+     * @param string $extension
+     * @return mixed
+     */
+    public function getPath(string $extension)
+    {
+        return Storage::disk('backups')->path($this->getFileNameWithExtension($extension));
+    }
+
+    /**
+     * @param string $extension
+     * @return int
+     */
+    public function getPathSize(string $extension): int
+    {
+        return Storage::disk('backups')->size($this->getFileNameWithExtension($extension));
     }
 }

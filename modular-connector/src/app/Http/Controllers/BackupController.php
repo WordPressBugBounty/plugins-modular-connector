@@ -3,8 +3,8 @@
 namespace Modular\Connector\Http\Controllers;
 
 use Modular\Connector\Backups\Facades\Backup;
+use Modular\Connector\Backups\Iron\Helpers\File;
 use Modular\Connector\Facades\Manager;
-use Modular\Connector\Services\Helpers\File;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
@@ -28,10 +28,14 @@ class BackupController extends Controller
      */
     public function getDirectoryTree(SiteRequest $modularRequest)
     {
-        $path = $modularRequest->body;
-        $path = Storage::path(untrailingslashit($path));
+        $filesystem = data_get($modularRequest->body, 'filesystem', 'default');
+        $path = data_get($modularRequest->body, 'path', is_string($modularRequest->body) ? $modularRequest->body : '');
+        $disk = data_get($modularRequest->body, 'disk', 'core');
 
-        return File::getTree($path);
+        $path = Storage::disk($disk)->path(untrailingslashit($path));
+        $tree = File::getTree($disk, $path, $filesystem !== 'default');
+
+        return Response::json($tree);
     }
 
     /**

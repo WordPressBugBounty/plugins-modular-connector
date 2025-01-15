@@ -3,7 +3,7 @@
 namespace Modular\Connector\Backups\Phantom\Events;
 
 
-use Modular\Connector\Backups\BackupOptions;
+use Modular\Connector\Backups\Phantom\BackupOptions;
 
 class ManagerBackupFailedCreation extends AbstractBackupEvent
 {

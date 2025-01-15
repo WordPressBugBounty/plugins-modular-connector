@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Backups\Phantom;
 
-use Modular\Connector\Backups\BackupOptions;
 use Modular\Connector\Backups\Contracts\BackupDriver;
 use Modular\Connector\Backups\Facades\Backup as BackupFacade;
 use Modular\Connector\Backups\Phantom\Events\ManagerBackupFailedCreation;
@@ -55,7 +54,7 @@ class BackupDriverPhantomDriver implements BackupDriver
      * @return void
      * @throws \Throwable
      */
-    public function make()
+    public function make(): void
     {
         try {
             BackupFacade::init();

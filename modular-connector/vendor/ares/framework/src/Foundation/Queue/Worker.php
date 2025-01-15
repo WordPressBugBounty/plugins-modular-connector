@@ -30,25 +30,37 @@ class Worker extends IlluminateWorker
     protected function stopIfNecessary(WorkerOptions $options, $lastRestart, $startTime = 0, $jobsProcessed = 0, $job = null)
     {
         if ($this->shouldQuit) {
-            Log::debug('Worker should quit');
+            if (class_exists(Log::class)) {
+                Log::debug('Worker should quit');
+            }
             return static::EXIT_SUCCESS;
         } elseif ($this->memoryExceeded($options->memory)) {
-            Log::debug('Worker memory exceeded');
+            if (class_exists(Log::class)) {
+                Log::debug('Worker memory exceeded');
+            }
             \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_MEMORY_LIMIT;
         } elseif ($this->queueShouldRestart($lastRestart)) {
-            Log::debug('Worker queue should restart');
+            if (class_exists(Log::class)) {
+                Log::debug('Worker queue should restart');
+            }
             \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_SUCCESS;
         } elseif ($options->stopWhenEmpty && is_null($job)) {
-            Log::debug('Worker stop when empty');
+            if (class_exists(Log::class)) {
+                Log::debug('Worker stop when empty');
+            }
             return static::EXIT_SUCCESS;
         } elseif ($options->maxTime && hrtime(\true) / 1000000000.0 - $startTime >= $options->maxTime) {
-            Log::debug('Worker max time exceeded');
+            if (class_exists(Log::class)) {
+                Log::debug('Worker max time exceeded');
+            }
             \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_SUCCESS;
         } elseif ($options->maxJobs && $jobsProcessed >= $options->maxJobs) {
-            Log::debug('Worker max jobs exceeded');
+            if (class_exists(Log::class)) {
+                Log::debug('Worker max jobs exceeded');
+            }
             \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_SUCCESS;
         }

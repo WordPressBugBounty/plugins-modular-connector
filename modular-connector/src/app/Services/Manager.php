@@ -177,7 +177,7 @@ class Manager extends IlluminateManager
     {
         OauthClient::deleteClients();
 
-        $path = Storage::disk('backup')->path('');
+        $path = Storage::disk('backups')->path('');
         FileFacade::deleteDirectory($path);
     }
 

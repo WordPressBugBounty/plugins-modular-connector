@@ -200,29 +200,29 @@ class ManagerServer
     {
         $directories = [
             'root' => [
-                'path' => Storage::disk('root')->path(''),
-                'exists' => file_exists(Storage::disk('root')->path('')),
-                'writable' => wp_is_writable(Storage::disk('root')->path('')),
+                'path' => Storage::disk('core')->path(''),
+                'exists' => file_exists(Storage::disk('core')->path('')),
+                'writable' => wp_is_writable(Storage::disk('core')->path('')),
             ],
             'uploads' => [
-                'path' => Storage::disk('upload')->path(''),
-                'exists' => file_exists(Storage::disk('upload')->path('')),
-                'writable' => wp_is_writable(Storage::disk('upload')->path('')),
+                'path' => Storage::disk('uploads')->path(''),
+                'exists' => file_exists(Storage::disk('uploads')->path('')),
+                'writable' => wp_is_writable(Storage::disk('uploads')->path('')),
             ],
             'themes' => [
-                'path' => Storage::disk('theme')->path(''),
-                'exists' => file_exists(Storage::disk('theme')->path('')),
-                'writable' => wp_is_writable(Storage::disk('theme')->path('')),
+                'path' => Storage::disk('themes')->path(''),
+                'exists' => file_exists(Storage::disk('themes')->path('')),
+                'writable' => wp_is_writable(Storage::disk('themes')->path('')),
             ],
             'plugins' => [
-                'path' => Storage::disk('plugin')->path(''),
-                'exists' => file_exists(Storage::disk('plugin')->path('')),
-                'writable' => wp_is_writable(Storage::disk('plugin')->path('')),
+                'path' => Storage::disk('plugins')->path(''),
+                'exists' => file_exists(Storage::disk('plugins')->path('')),
+                'writable' => wp_is_writable(Storage::disk('plugins')->path('')),
             ],
             'mu_plugins' => [
-                'path' => Storage::disk('mu-plugin')->path(''),
-                'exists' => file_exists(Storage::disk('mu-plugin')->path('')),
-                'writable' => wp_is_writable(Storage::disk('mu-plugin')->path('')),
+                'path' => Storage::disk('mu_plugins')->path(''),
+                'exists' => file_exists(Storage::disk('mu_plugins')->path('')),
+                'writable' => wp_is_writable(Storage::disk('mu_plugins')->path('')),
             ],
             'content' => [
                 'path' => Storage::disk('content')->path(''),
@@ -573,16 +573,16 @@ class ManagerServer
 
     /**
      * @param null $user
-     * @param bool $force
+     * @param bool $withCookies
      * @return void
      */
-    public function login($user = null, bool $force = false)
+    public function login($user = null, bool $withCookies = false)
     {
         if (!function_exists('wp_set_current_user')) {
             include_once ABSPATH . '/wp-includes/pluggable.php';
         }
 
-        if (!$force && is_user_logged_in()) {
+        if (!$withCookies && is_user_logged_in()) {
             return;
         }
 
@@ -602,10 +602,12 @@ class ManagerServer
         // Log in with the new user
         wp_set_current_user($id, data_get($user, 'user_login'));
 
-        try {
-            wp_set_auth_cookie($id);
-        } catch (\Throwable $e) {
-            // Silence is golden
+        if ($withCookies) {
+            try {
+                wp_set_auth_cookie($id);
+            } catch (\Throwable $e) {
+                // Silence is golden
+            }
         }
 
         return apply_filters('ares/login/match', [], $id, $this->useSsl());
@@ -623,8 +625,6 @@ class ManagerServer
         try {
             // Emulate the logout process without do_action( 'wp_logout', $user_id );
             wp_set_current_user(0);
-            wp_destroy_current_session();
-            wp_clear_auth_cookie();
         } catch (\Throwable $e) {
             // Silence is golden
         }

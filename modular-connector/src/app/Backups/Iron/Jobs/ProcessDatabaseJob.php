@@ -1,8 +1,9 @@
 <?php
 
-namespace Modular\Connector\Backups\Phantom\Jobs;
+namespace Modular\Connector\Backups\Iron\Jobs;
 
-use Modular\Connector\Backups\Phantom\BackupPart;
+use Modular\Connector\Backups\Iron\BackupPart;
+use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
 use Modular\Connector\Backups\Phantom\Helpers\File;
 use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
@@ -11,7 +12,7 @@ use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 
-class ManagerBackupCompressDatabaseJob implements ShouldQueue
+class ProcessDatabaseJob implements ShouldQueue
 {
     use Dispatchable;
     use Queueable;
@@ -38,25 +39,26 @@ class ManagerBackupCompressDatabaseJob implements ShouldQueue
     {
         $part = $this->part;
 
-        $isCancelled = $part->options->isCancelled();
+        $isCancelled = $part->isCancelled();
 
         if ($isCancelled) {
             return;
         }
 
-        $part->markAsInProgress();
+        $part->markAs(ManagerBackupPartUpdated::STATUS_IN_PROGRESS);
 
         try {
-            $filename = $part->options->name . '.sql';
+            $filename = $part->getFileNameWithExtension('sql');
+
             $path = Storage::disk('backups')->path($filename);
 
             if (!Storage::disk('backups')->exists($filename)) {
                 Storage::disk('backups')->put($filename, '');
             }
 
-            Manager::driver('database')->dump($path, $part->options);
+            Manager::driver('database')->dump($path, $part);
 
-            $zip = File::openZip($part->getZipPath());
+            $zip = File::openZip($part->getPath('zip'));
 
             File::addToZip($zip, [
                 'type' => 'file',
@@ -69,11 +71,19 @@ class ManagerBackupCompressDatabaseJob implements ShouldQueue
 
             Storage::disk('backups')->delete($filename);
 
-            $part->markAsUploadPending();
+            $part->markAs(ManagerBackupPartUpdated::STATUS_UPLOAD_PENDING);
         } catch (\Throwable $e) {
             Log::error($e);
 
-            $part->markAsFailed(BackupPart::STATUS_FAILED_EXPORT_DATABASE, $e);
+            $part->markAsFailed(ManagerBackupPartUpdated::STATUS_FAILED_EXPORT_DATABASE, $e);
         }
+    }
+
+    /**
+     * @return string
+     */
+    public function uniqueId(): string
+    {
+        return $this->part->mrid . '-' . $this->part->type . '-' . $this->part->batch;
     }
 }

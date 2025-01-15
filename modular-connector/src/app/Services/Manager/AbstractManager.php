@@ -164,10 +164,18 @@ abstract class AbstractManager implements ManagerContract
      */
     protected function clearUpdates(string $transientType)
     {
-        $data = get_site_transient($transientType);
+        $transient = get_site_transient($transientType);
 
-        set_transient($transientType, $data);
-        set_site_transient($transientType, $data);
+        if (!is_object($transient)) {
+            $transient = (object)[
+                'last_checked' => time() - (13 * 3600), /* Making sure that we passed the 12 hour period check */
+                'checked' => ['default' => 'none'],
+                'response' => ['default' => 'none'],
+            ];
+        }
+
+        set_transient($transientType, $transient);
+        set_site_transient($transientType, $transient);
     }
 
     /**

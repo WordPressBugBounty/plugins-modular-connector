@@ -2,7 +2,7 @@
 
 namespace Modular\Connector\Backups;
 
-use Modular\Connector\Backups\Adapters\BackupIronDriver;
+use Modular\Connector\Backups\Iron\BackupIronDriver;
 use Modular\Connector\Backups\Phantom\BackupDriverPhantomDriver;
 use Modular\Connector\Facades\Manager as ModularManager;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
@@ -18,21 +18,6 @@ class BackupManager extends Manager
     public function getDefaultDriver()
     {
         return Cache::get('backup.driver') ?: $this->config->get('backup.default');
-    }
-
-    /**
-     * Get a driver instance.
-     *
-     * @param string|null $driver
-     * @return mixed
-     *
-     * @throws \InvalidArgumentException
-     */
-    public function driver($driver = null)
-    {
-        $driver = 'phantom';
-        
-        return parent::driver($driver);
     }
 
     /**
@@ -59,47 +44,7 @@ class BackupManager extends Manager
      */
     public function path(?string $path = null)
     {
-        return Storage::disk('backup')->path(untrailingslashit($path));
-    }
-
-    /**
-     * Return core WordPress dir
-     *
-     * @return string
-     */
-    public function getCoreDir()
-    {
-        return Storage::disk('root')->path('');
-    }
-
-    /**
-     * Return plugin WordPress dir
-     *
-     * @return string
-     */
-    public function getPluginsDir()
-    {
-        return Storage::disk('plugin')->path('');
-    }
-
-    /**
-     * Return theme WordPress dir
-     *
-     * @return string
-     */
-    public function getThemesDir()
-    {
-        return Storage::disk('theme')->path('');
-    }
-
-    /**
-     * Return upload WordPress dir
-     *
-     * @return string
-     */
-    public function getUploadsDir()
-    {
-        return Storage::disk('upload')->path('');
+        return Storage::disk('backups')->path(untrailingslashit($path));
     }
 
     /**
@@ -114,19 +59,19 @@ class BackupManager extends Manager
      */
     public function init(): void
     {
-        if (!Storage::disk('backup')->exists('index.html')) {
-            Storage::disk('backup')->put('index.html', '<!-- // Silence is golden. -->');
+        if (!Storage::disk('backups')->exists('index.html')) {
+            Storage::disk('backups')->put('index.html', '<!-- // Silence is golden. -->');
         }
 
-        if (!Storage::disk('backup')->exists('index.php')) {
-            Storage::disk('backup')->put('index.php', '<?php // Silence is golden.');
+        if (!Storage::disk('backups')->exists('index.php')) {
+            Storage::disk('backups')->put('index.php', '<?php // Silence is golden.');
         }
 
-        if (!Storage::disk('backup')->exists('.htaccess')) {
-            Storage::disk('backup')->put('.htaccess', 'deny from all');
+        if (!Storage::disk('backups')->exists('.htaccess')) {
+            Storage::disk('backups')->put('.htaccess', 'deny from all');
         }
 
-        if (!Storage::disk('backup')->exists('web.config')) {
+        if (!Storage::disk('backups')->exists('web.config')) {
             $webConfig = '<configuration>';
             $webConfig .= '<system.webServer>';
             $webConfig .= '<authorization>';
@@ -135,7 +80,7 @@ class BackupManager extends Manager
             $webConfig .= '</system.webServer>';
             $webConfig .= '</configuration>';
 
-            Storage::disk('backup')->put('web.config', $webConfig);
+            Storage::disk('backups')->put('web.config', $webConfig);
         }
     }
 

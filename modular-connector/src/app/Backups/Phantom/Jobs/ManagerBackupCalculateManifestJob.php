@@ -2,7 +2,7 @@
 
 namespace Modular\Connector\Backups\Phantom\Jobs;
 
-use Modular\Connector\Backups\BackupOptions;
+use Modular\Connector\Backups\Phantom\BackupOptions;
 use Modular\Connector\Backups\Phantom\BackupWorker;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;

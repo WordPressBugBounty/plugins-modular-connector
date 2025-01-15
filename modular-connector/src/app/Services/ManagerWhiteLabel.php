@@ -67,6 +67,14 @@ class ManagerWhiteLabel
     }
 
     /**
+     * @return void
+     */
+    public function forget()
+    {
+        Cache::forget($this->key);
+    }
+
+    /**
      * @param $payload
      * @return void
      */

@@ -45,13 +45,13 @@ class ManagerBackupUploadJob implements ShouldQueue
         $name = $part->getZipName();
         $fileName = $name . '.zip';
 
-        if (!Storage::disk('backup')->exists($fileName)) {
+        if (!Storage::disk('backups')->exists($fileName)) {
             $part->markAsFailed(BackupPart::STATUS_FAILED_FILE_NOT_FOUND);
 
             return;
         }
 
-        $realPath = Storage::disk('backup')->path($fileName);
+        $realPath = Storage::disk('backups')->path($fileName);
 
         try {
             $uploadUri = $part->getUploadUri();

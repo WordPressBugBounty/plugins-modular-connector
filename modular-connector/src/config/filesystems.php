@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => 'root',
+    'default' => 'core',
 
     /*
     |--------------------------------------------------------------------------
@@ -29,39 +29,39 @@ return [
     */
 
     'disks' => [
-        'root' => [
+        'core' => [
             'driver' => 'local',
             'root' => untrailingslashit(ABSPATH),
             'visibility' => 'public',
         ],
-        'backup' => [
+        'backups' => [
             'driver' => 'local',
             'root' => untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'modular_backups',
             'visibility' => 'public',
         ],
-        'upload' => [
-            'driver' => 'local',
-            'root' => _wp_upload_dir()['basedir'],
-            'visibility' => 'public',
-        ],
-        'plugin' => [
+        'plugins' => [
             'driver' => 'local',
             'root' => untrailingslashit(WP_PLUGIN_DIR),
             'visibility' => 'public',
         ],
-        'mu-plugin' => [
+        'mu_plugins' => [
             'driver' => 'local',
             'root' => untrailingslashit(WPMU_PLUGIN_DIR),
-            'visibility' => 'public',
-        ],
-        'theme' => [
-            'driver' => 'local',
-            'root' => untrailingslashit(get_theme_root()),
             'visibility' => 'public',
         ],
         'content' => [
             'driver' => 'local',
             'root' => untrailingslashit(WP_CONTENT_DIR),
+            'visibility' => 'public',
+        ],
+        'uploads' => [
+            'driver' => 'local',
+            'root' => _wp_upload_dir()['basedir'],
+            'visibility' => 'public',
+        ],
+        'themes' => [
+            'driver' => 'local',
+            'root' => untrailingslashit(get_theme_root()),
             'visibility' => 'public',
         ],
     ],

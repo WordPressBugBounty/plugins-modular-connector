@@ -3,7 +3,7 @@
 namespace Modular\Connector\Backups\Phantom\Jobs;
 
 use Modular\Connector\Backups\Phantom\BackupPart;
-use Modular\Connector\Services\Helpers\File;
+use Modular\Connector\Backups\Phantom\Helpers\File;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;

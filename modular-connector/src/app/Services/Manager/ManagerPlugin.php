@@ -5,6 +5,8 @@ namespace Modular\Connector\Services\Manager;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use function Modular\ConnectorDependencies\data_get;
+use function Modular\ConnectorDependencies\data_set;
 
 /**
  * Handles all functionality related to WordPress Plugins.
@@ -185,6 +187,14 @@ class ManagerPlugin extends AbstractManager
         Manager::includeUpgrader();
 
         try {
+            add_filter('upgrader_package_options', function ($options) {
+                if (data_get($options, 'hook_extra.plugin', '') === MODULAR_CONNECTOR_BASENAME) {
+                    data_set($options, 'hook_extra.temp_backup', []);
+                }
+
+                return $options;
+            });
+
             $skin = new \WP_Ajax_Upgrader_Skin();
             $upgrader = new \Plugin_Upgrader($skin);
 
