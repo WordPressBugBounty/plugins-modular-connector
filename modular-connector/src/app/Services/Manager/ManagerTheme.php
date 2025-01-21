@@ -32,6 +32,10 @@ class ManagerTheme extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/theme.php';
         }
 
+        if (!function_exists('get_theme_updates')) {
+            require_once ABSPATH . 'wp-admin/includes/update.php';
+        }
+
         $updatableThemes = $this->getItemsToUpdate(ManagerTheme::THEMES);
         $installedThemes = Collection::make(wp_get_themes());
 

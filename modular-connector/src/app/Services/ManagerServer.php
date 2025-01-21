@@ -476,8 +476,8 @@ class ManagerServer
                 'user_count' => count_users(), // TODO admin_user_count
             ],
             'server' => [
-                'uname' => php_uname(), // mode: a
-                'hostname' => php_uname('n'),
+                'uname' => function_exists('php_uname') ? php_uname() : null, // mode: a
+                'hostname' => function_exists('php_uname') ? php_uname('n') : null,
                 'disk_free_space' => $this->getDiskSpace(),
                 'is_unix' => $this->isUnix(),
                 'web_server' => $this->getWebServer(), // TODO split: web_server and web_server_version

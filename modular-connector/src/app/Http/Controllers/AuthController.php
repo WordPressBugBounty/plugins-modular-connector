@@ -6,6 +6,7 @@ use Modular\Connector\Facades\Server;
 use Modular\Connector\Helper\OauthClient;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\SDK\Objects\SiteRequest;
 use function Modular\ConnectorDependencies\data_get;
@@ -37,6 +38,11 @@ class AuthController
                 ->setExpiresIn(0)
                 ->setConnectedAt(null)
                 ->save();
+
+            Log::error(sprintf('%s on line %d', $e->getMessage(), $e->getLine()), [
+                'code' => $e->getCode(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return Response::json([
                 'success' => 'KO',

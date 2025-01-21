@@ -52,12 +52,12 @@ class ProcessFilesJob implements ShouldQueue
 
             $offset = $part->offset();
 
+            $break = false;
+
             for ($i = 0; $i < $chucks; $i++) {
                 $limit = $offset + $chunkSize - 1;
 
                 $files = $part->nextFiles($offset, $limit);
-
-                $break = false;
 
                 foreach ($files as $file) {
                     if ($file['timestamp'] <= $part->timestamp) {
@@ -136,7 +136,7 @@ class ProcessFilesJob implements ShouldQueue
                 return true;
             }
 
-            $zip = File::openZip($this->part->getPathSize('zip'));
+            $zip = File::openZip($this->part->getPath('zip'));
         }
 
         return false;

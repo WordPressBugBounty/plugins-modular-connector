@@ -59,6 +59,7 @@ class File
                         'litepeed',
                         'et-cache',
                         'updraft',
+                        'wpvividbackups',
                         'aiowps_backups',
                         'ai1wm-backups',
                         'backups-dup-pro',

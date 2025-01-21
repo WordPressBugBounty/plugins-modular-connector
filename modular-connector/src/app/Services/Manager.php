@@ -175,7 +175,7 @@ class Manager extends IlluminateManager
      */
     public static function uninstall()
     {
-        OauthClient::deleteClients();
+        OauthClient::uninstall();
 
         $path = Storage::disk('backups')->path('');
         FileFacade::deleteDirectory($path);

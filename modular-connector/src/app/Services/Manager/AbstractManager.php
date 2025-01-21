@@ -3,6 +3,7 @@
 namespace Modular\Connector\Services\Manager;
 
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
+use function Modular\ConnectorDependencies\data_get;
 
 abstract class AbstractManager implements ManagerContract
 {
@@ -118,11 +119,7 @@ abstract class AbstractManager implements ManagerContract
             $newVersion = null;
 
             if (isset($updatableItems[$basename])) {
-                if (is_array($updatableItems[$basename]) && isset($updatableItems[$basename]['new_version'])) {
-                    $newVersion = $updatableItems[$basename]['new_version'];
-                } elseif (isset($updatableItems[$basename]->new_version)) {
-                    $newVersion = $updatableItems[$basename]->new_version;
-                }
+                $newVersion = data_get($updatableItems[$basename], 'update.new_version');
             }
 
             $homepage = '';
@@ -160,22 +157,69 @@ abstract class AbstractManager implements ManagerContract
     /**
      * Clears the update cache.
      *
-     * @return void
+     * @return array
      */
-    protected function clearUpdates(string $transientType)
+    protected function tryFillMissingUpdates($updatableItems, $type)
     {
-        $transient = get_site_transient($transientType);
+        /**
+         * We create a dummy transient object that gets passed to the “pre_set_site_transient_*” filter so plugins
+         * or themes can fill it with update data.
+         *
+         * We set default properties to ensure they don’t skip adding update information,
+         * since many scripts check these properties or rely on the 12-hour interval before populating updates.
+         * */
+        $transient = (object)[
+            'last_checked' => time() - (13 * 3600), /* Making sure that we passed the 12 hour period check */
+            'checked' => ['default' => 'none'],
+            'response' => ['default' => 'none'],
+        ];
 
-        if (!is_object($transient)) {
-            $transient = (object)[
-                'last_checked' => time() - (13 * 3600), /* Making sure that we passed the 12 hour period check */
-                'checked' => ['default' => 'none'],
-                'response' => ['default' => 'none'],
-            ];
+        /**
+         * Premium plugin often use the “pre_set_site_transient_update_$TYPEs” filter
+         * for automatic updates. Here, we manually add any plugins or themes that weren’t
+         * automatically included in “update_plugins” or “update_themes.”
+         * */
+        $updatesFromHook = apply_filters("pre_set_site_transient_update_{$type}s", $transient, "update_{$type}s");
+
+        switch ($type) {
+            case 'plugin':
+                $allItems = get_plugins();
+                break;
+            case 'theme':
+                $allItems = wp_get_themes();
+                break;
+            default:
+                $allItems = [];
+                break;
         }
 
-        set_transient($transientType, $transient);
-        set_site_transient($transientType, $transient);
+        if (!is_array($allItems)) {
+            $allItems = (array)$allItems;
+        }
+
+        foreach ($allItems as $basename => $data) {
+            if (isset($updatableItems[$basename]) || !isset($updatesFromHook->response[$basename])) {
+                continue;
+            }
+
+            $updateInfo = data_get($updatesFromHook, 'response.' . $basename, $data);
+
+            /**
+             * An empty “package” means the plugin or theme doesn’t support automatic updates
+             * (no download link available). For premium items, that field typically
+             * depends on a valid access key. It defaults to “false,” and
+             * we only include items with a non-empty “package”
+             * for automatic updates.
+             * */
+            $isPackageEmpty = empty(data_get($updateInfo, 'package'));
+
+            if (!$isPackageEmpty) {
+                $updatableItems[$basename] = $type === 'plugin' ? (object)$data : wp_get_theme($basename);
+                $updatableItems[$basename]->update = $updateInfo;
+            }
+        }
+
+        return $updatableItems;
     }
 
     /**
@@ -186,18 +230,19 @@ abstract class AbstractManager implements ManagerContract
      */
     protected function getItemsToUpdate(string $itemType)
     {
-        $updatableItems = [];
-        $transientType = 'update_' . $itemType;
+        $itemsToUpdate = [];
 
-        $this->clearUpdates($transientType);
-        $transient = get_site_transient($transientType);
-
-        if (isset($transient->response) && !empty($transient->response)) {
-            foreach ($transient->response as $basename => $data) {
-                $updatableItems[$basename] = $data;
-            }
+        switch ($itemType) {
+            case 'themes':
+                wp_update_themes();
+                $itemsToUpdate = $this->tryFillMissingUpdates(get_theme_updates(), 'theme');
+                break;
+            case 'plugins':
+                wp_update_plugins();
+                $itemsToUpdate = $this->tryFillMissingUpdates(get_plugin_updates(), 'plugin');
+                break;
         }
 
-        return $updatableItems;
+        return $itemsToUpdate;
     }
 }

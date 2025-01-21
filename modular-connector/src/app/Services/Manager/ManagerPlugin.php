@@ -26,6 +26,10 @@ class ManagerPlugin extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
+        if (!function_exists('get_plugin_updates')) {
+            require_once ABSPATH . 'wp-admin/includes/update.php';
+        }
+
         $updatablePlugins = $this->getItemsToUpdate(ManagerPlugin::PLUGINS);
         $plugins = Collection::make(get_plugins());
 

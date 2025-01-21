@@ -131,6 +131,7 @@ class BackupOptions implements \JsonSerializable
             Storage::disk('content')->path('lscache'),
             Storage::disk('content')->path('et-cache'),
             Storage::disk('content')->path('updraft'),
+            Storage::disk('content')->path('wpvividbackups'),
             Storage::disk('content')->path('aiowps_backups'),
             Storage::disk('content')->path('ai1wm-backups'),
             Storage::disk('content')->path('backups-dup-pro'),
