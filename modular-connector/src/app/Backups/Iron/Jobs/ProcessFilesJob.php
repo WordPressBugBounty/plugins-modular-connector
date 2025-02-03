@@ -50,7 +50,7 @@ class ProcessFilesJob implements ShouldQueue
         try {
             $zip = File::openZip($part->getPath('zip'));
 
-            $offset = $part->offset();
+            $offset = $part->offset;
 
             $break = false;
 
@@ -165,7 +165,7 @@ class ProcessFilesJob implements ShouldQueue
 
         $this->part->batchSize = $zipExists ? $this->part->getPathSize('zip') : 0;
 
-        if ($this->part->offset >= $this->part->totalItems) {
+        if ($this->part->isDone()) {
             // When the backup is incremental there is the possibility that the zip file is empty
             $status = $zipExists ? ManagerBackupPartUpdated::STATUS_UPLOAD_PENDING : ManagerBackupPartUpdated::STATUS_DONE;
 

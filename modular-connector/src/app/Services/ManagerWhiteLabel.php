@@ -137,19 +137,37 @@ class ManagerWhiteLabel
             return $info;
         }
 
-        $setWhiteLabel = function (&$info) use ($whiteLabel) {
+        $setWhiteLabel = function ($data) use ($whiteLabel) {
             if (!empty($whiteLabel['Name'])) {
-                $info['label'] = $whiteLabel['Name'];
+                $data['label'] = $whiteLabel['Name'];
             }
 
             if (!empty($whiteLabel['Author'])) {
-                $info["value"] = Str::replace('Modular DS', $whiteLabel['Author'], $info['value']);
-                $info["debug"] = Str::replace('Modular DS', $whiteLabel['Author'], $info['debug']);
+                $author = data_get($whiteLabel, 'Author');
+                $value = data_get($data, 'value');
+
+                if (!empty($value)) {
+                    $data['value'] = Str::replace('Modular DS', $author, $value);
+                }
+
+                $debug = data_get($data, 'debug');
+
+                if (!empty($debug)) {
+                    $data['debug'] = Str::replace('Modular DS', $author, $debug);
+                }
             }
+
+            return $data;
         };
 
-        $setWhiteLabel($info["wp-plugins-active"]["fields"]['Modular Connector']);
-        $setWhiteLabel($info["wp-mu-plugins"]["fields"]['Modular Connector']);
+        $pluginData = data_get($info, 'wp-plugins-active.fields.Modular Connector', []);
+        $muPluginData = data_get($info, 'wp-mu-plugins.fields.Modular Connector', []);
+
+        $info['wp-plugins-active']['fields']['Modular Connector'] = $setWhiteLabel($pluginData);
+
+        if (isset($info['wp-mu-plugins']['fields']['Modular Connector'])) {
+            $info['wp-mu-plugins']['fields']['Modular Connector'] = $setWhiteLabel($muPluginData);
+        }
 
         return $info;
     }

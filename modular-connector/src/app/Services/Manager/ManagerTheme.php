@@ -7,7 +7,6 @@ use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
 /**
- * Handles all functionality related to WordPress Themes.
  */
 class ManagerTheme extends AbstractManager
 {
@@ -26,7 +25,7 @@ class ManagerTheme extends AbstractManager
      *
      * @return array
      */
-    public function all()
+    public function all(bool $checkUpdates = true)
     {
         if (!function_exists('wp_get_themes')) {
             require_once ABSPATH . 'wp-admin/includes/theme.php';
@@ -36,7 +35,7 @@ class ManagerTheme extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/update.php';
         }
 
-        $updatableThemes = $this->getItemsToUpdate(ManagerTheme::THEMES);
+        $updatableThemes = $checkUpdates ? $this->getItemsToUpdate(ManagerTheme::THEMES) : [];
         $installedThemes = Collection::make(wp_get_themes());
 
         return $this->map('theme', $installedThemes, $updatableThemes);

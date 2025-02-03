@@ -20,7 +20,7 @@ class ManagerPlugin extends AbstractManager
      *
      * @return array
      */
-    public function all()
+    public function all(bool $checkUpdates = true)
     {
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -30,7 +30,7 @@ class ManagerPlugin extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/update.php';
         }
 
-        $updatablePlugins = $this->getItemsToUpdate(ManagerPlugin::PLUGINS);
+        $updatablePlugins = $checkUpdates ? $this->getItemsToUpdate(ManagerPlugin::PLUGINS) : [];
         $plugins = Collection::make(get_plugins());
 
         // TODO Get drop-ins and must-use plugins.

@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Http\Controllers;
 
-use Illuminate\Http\JsonResponse;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Jobs\Health\ManagerHealthDataJob;
@@ -49,7 +48,7 @@ class ServerController extends Controller
     }
 
     /**
-     * @return JsonResponse
+     * @return \Illuminate\Http\JsonResponse
      */
     public function getWhiteLabel()
     {

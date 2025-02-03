@@ -136,6 +136,7 @@ class BackupOptions implements \JsonSerializable
             Storage::disk('content')->path('ai1wm-backups'),
             Storage::disk('content')->path('backups-dup-pro'),
             Storage::disk('content')->path('debug.log'),
+            Storage::disk('content')->path('mysql.sql'),
         ];
 
         $excluded = array_merge($defaultExclusions, $files);

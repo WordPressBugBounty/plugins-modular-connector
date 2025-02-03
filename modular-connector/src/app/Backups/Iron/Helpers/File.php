@@ -64,6 +64,7 @@ class File
                         'ai1wm-backups',
                         'backups-dup-pro',
                         'debug.log',
+                        'mysql.sql',
 
                         // WordPress default values
                         'uploads', // INCLUDE_UPLOADS

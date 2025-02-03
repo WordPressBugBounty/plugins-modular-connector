@@ -52,6 +52,11 @@ class ManagerHealthDataJob implements ShouldQueue
      */
     public function handle()
     {
+        if (!function_exists('wp_is_auto_update_forced_for_item')) {
+            require_once ABSPATH . 'wp-admin/includes/update.php';
+        }
+
+
         $adminLocale = get_locale();
         load_textdomain('default', WP_LANG_DIR . '/admin-' . $adminLocale . '.mo', $adminLocale);
         unset($adminLocale);

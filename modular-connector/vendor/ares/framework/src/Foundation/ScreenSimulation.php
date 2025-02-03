@@ -81,6 +81,9 @@ class ScreenSimulation
         if (!function_exists('set_current_screen')) {
             require_once \ABSPATH . 'wp-admin/includes/screen.php';
         }
+        if (!function_exists('add_meta_box')) {
+            require_once \ABSPATH . 'wp-admin/includes/template.php';
+        }
         $this->forceCompability();
         $this->loadAdmin();
         $this->loadLogin();

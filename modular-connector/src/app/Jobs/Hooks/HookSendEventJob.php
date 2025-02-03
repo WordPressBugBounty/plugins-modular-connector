@@ -47,8 +47,13 @@ class HookSendEventJob implements ShouldQueue
     public function handle()
     {
         $client = OauthClient::getClient();
-        $client->validateOrRenewAccessToken();
 
+        // If the client is not connected, we don't need to send the event
+        if (!$client->getConnectedAt()) {
+            return;
+        }
+
+        $client->validateOrRenewAccessToken();
         $client->wordpress->handleHook($this->event);
     }
 }

@@ -62,33 +62,7 @@ class Manifest
      */
     public static function create(BackupPart $part): self
     {
-        return new static($part);
-    }
-
-
-    /**
-     * We need to calculate the total items to process
-     *
-     * @return void
-     */
-    private function calculateTotalItems()
-    {
-        $disk = $this->part->type;
-        $excludedFiles = Collection::make($this->part->excludedFiles);
-
-        $path = Storage::disk($disk)->path('');
-        $finder = File::finder($disk, $path, $excludedFiles);
-        $totalItems = $this->part->totalItems = $finder->count();
-
-        if ($totalItems === 0) {
-            $this->part->markAs(ManagerBackupPartUpdated::STATUS_EXCLUDED);
-        } else {
-            // We set the offset to 0 because the finder starts from 0
-            $this->part->offset = 0;
-            $this->part->markAs(ManagerBackupPartUpdated::STATUS_MANIFEST_IN_PROGRESS);
-
-            dispatch(new CalculateManifestJob($this->part));
-        }
+        return new self($part);
     }
 
     /**
@@ -110,6 +84,10 @@ class Manifest
      */
     public function count(): int
     {
+        if (!Storage::disk('backups')->exists($this->part->manifestPath)) {
+            return 0;
+        }
+
         $path = Storage::disk('backups')->path($this->part->manifestPath);
         $file = new \SplFileObject($path, 'r');
 
@@ -124,9 +102,10 @@ class Manifest
     public function calculate(): void
     {
         // We need to increment the offset to avoid processing the same files
-        if (is_null($this->part->totalItems)) {
-            $this->calculateTotalItems();
-            return;
+        if ($this->part->status === ManagerBackupPartUpdated::STATUS_PENDING) {
+            // We set the offset to 0 because the finder starts from 0
+            $this->part->offset = 0;
+            $this->part->markAs(ManagerBackupPartUpdated::STATUS_MANIFEST_IN_PROGRESS);
         }
 
         $disk = $this->part->type;
@@ -172,14 +151,15 @@ class Manifest
             unset($buffer);
         }
 
-        if ($hasFiles && $this->part->offset < $this->part->totalItems) {
-            // Manifest is not ready yet
+        // We don't know how many files we have, so we need search for more while we have files
+        if ($hasFiles) {
             dispatch(new CalculateManifestJob($this->part));
         } else {
-            $exists = Storage::disk('backups')->exists($this->part->manifestPath);
+            // When we don't have files, we need to update the total items
+            $totalItems = $this->count();
 
-            if ($exists) {
-                $this->part->totalItems = $this->count();
+            if ($totalItems > 0) {
+                $this->part->totalItems = $totalItems;
                 $this->part->markAs(ManagerBackupPartUpdated::STATUS_MANIFEST_UPLOAD_PENDING);
             } else {
                 $this->part->markAs(ManagerBackupPartUpdated::STATUS_EXCLUDED);

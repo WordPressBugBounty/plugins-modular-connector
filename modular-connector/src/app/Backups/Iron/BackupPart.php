@@ -11,6 +11,7 @@ use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
@@ -36,9 +37,9 @@ class BackupPart
     public int $siteBackup;
 
     /**
-     * @var int|null
+     * @var int
      */
-    public ?int $totalItems = null;
+    public int $totalItems = 0;
 
     /**
      * @var string
@@ -229,12 +230,17 @@ class BackupPart
 
         if ($filesystem === self::FILESYSTEM_DEFAULT) {
             $files = data_get($excluded, 'files', []);
+
+            $relativePath = File::getRelativeDiskToDisk($type, 'core');
+
+            $files = Collection::make($files)
+                ->map(fn($file) => ltrim(Str::after($file, $relativePath), '/\\'))
+                ->toArray();
         } else {
             $files = data_get($excluded, $type, []);
         }
 
         $defaultExclusions = File::getDefaultExclusions($type);
-
         $excluded = array_merge($defaultExclusions, $files);
 
         return array_values(array_unique($excluded));
@@ -325,7 +331,7 @@ class BackupPart
 
             dispatch(new ProcessFilesJob($this));
         } elseif ($status === ManagerBackupPartUpdated::STATUS_DONE) {
-            $this->cleanFiles($this->offset >= $this->totalItems);
+            $this->cleanFiles($this->isDone());
         }
 
         return $this;
@@ -358,14 +364,6 @@ class BackupPart
     public function isCancelled(): bool
     {
         return in_array($this->name, Cache::get('_cancelled_backup', []));
-    }
-
-    /**
-     * @return int
-     */
-    public function offset(): int
-    {
-        return $this->offset;
     }
 
     /**
@@ -423,7 +421,7 @@ class BackupPart
      */
     public function isDone(): bool
     {
-        return $this->offset() >= $this->totalItems;
+        return $this->offset >= $this->totalItems;
     }
 
     /**

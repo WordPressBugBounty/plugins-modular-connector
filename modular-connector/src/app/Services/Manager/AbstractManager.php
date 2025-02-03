@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\data_get;
 
@@ -179,7 +180,13 @@ abstract class AbstractManager implements ManagerContract
          * for automatic updates. Here, we manually add any plugins or themes that weren’t
          * automatically included in “update_plugins” or “update_themes.”
          * */
-        $updatesFromHook = apply_filters("pre_set_site_transient_update_{$type}s", $transient, "update_{$type}s");
+        try {
+            $updatesFromHook = apply_filters("pre_set_site_transient_update_{$type}s", $transient, "update_{$type}s");
+        } catch (\Throwable $e) {
+            $updatesFromHook = $transient;
+
+            Log::error(sprintf('%s on line %s: %s', $e->getFile(), $e->getLine(), $e->getMessage()));
+        }
 
         switch ($type) {
             case 'plugin':

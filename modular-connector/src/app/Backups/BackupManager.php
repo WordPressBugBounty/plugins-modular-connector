@@ -102,7 +102,7 @@ class BackupManager extends Manager
             'posts' => wp_count_posts(),
             'attachment' => wp_count_posts('attachment'),
             'core' => ModularManager::driver('core')->get(),
-            'plugins' => Collection::make(ModularManager::driver('plugin')->all())
+            'plugins' => Collection::make(ModularManager::driver('plugin')->all(false))
                 ->map(function ($item) {
                     return [
                         'name' => $item['name'],
@@ -111,7 +111,7 @@ class BackupManager extends Manager
                         'status' => $item['status'],
                     ];
                 }),
-            'themes' => Collection::make(ModularManager::driver('theme')->all())
+            'themes' => Collection::make(ModularManager::driver('theme')->all(false))
                 ->map(function ($item) {
                     return [
                         'name' => $item['name'],

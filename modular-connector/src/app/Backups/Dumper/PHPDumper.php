@@ -108,7 +108,7 @@ class PHPDumper
      */
     public static function create()
     {
-        return new static();
+        return new self();
     }
 
     /**

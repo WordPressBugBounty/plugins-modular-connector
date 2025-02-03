@@ -61,9 +61,7 @@ class WordPressStore implements Store, LockProvider
     public function get($key)
     {
         $key = $this->getKey($key);
-        if (wp_using_ext_object_cache()) {
-            $value = wp_cache_get($key, $this->prefix);
-        } else if (is_multisite()) {
+        if (is_multisite()) {
             $value = get_site_transient($key);
         } else {
             $value = get_transient($key);
@@ -97,9 +95,7 @@ class WordPressStore implements Store, LockProvider
     public function put($key, $value, $seconds)
     {
         $key = $this->getKey($key);
-        if (wp_using_ext_object_cache()) {
-            $stored = wp_cache_set($key, $value, $this->prefix, $seconds);
-        } else if (is_multisite()) {
+        if (is_multisite()) {
             $stored = set_site_transient($key, $value, $seconds);
         } else {
             $stored = set_transient($key, $value, $seconds);
@@ -170,9 +166,7 @@ class WordPressStore implements Store, LockProvider
     public function forget($key)
     {
         $key = $this->getKey($key);
-        if (wp_using_ext_object_cache()) {
-            $deleted = wp_cache_delete($key, $this->prefix);
-        } else if (is_multisite()) {
+        if (is_multisite()) {
             $deleted = delete_site_transient($key);
         } else {
             $deleted = delete_transient($key);
@@ -186,13 +180,6 @@ class WordPressStore implements Store, LockProvider
      */
     public function flush()
     {
-        if (wp_using_ext_object_cache()) {
-            if (function_exists('wp_cache_flush_group')) {
-                return wp_cache_flush_group($this->prefix);
-            } else {
-                return wp_cache_flush();
-            }
-        }
         global $wpdb;
         // Determine if we're in multisite
         $isMultisite = is_multisite();
