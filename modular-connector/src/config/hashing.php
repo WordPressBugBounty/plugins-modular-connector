@@ -22,12 +22,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | This is the default key used to sign the generated JWT tokens.
-    | If not set or specified on the generate function, 
+    | If not set or specified on the generate function,
     | an insecure one will be generated.
     |
     */
 
-    'default_key' => SECURE_AUTH_KEY,
+    'default_key' => defined('SECURE_AUTH_KEY') ? SECURE_AUTH_KEY : null,
 
     /*
     |--------------------------------------------------------------------------
