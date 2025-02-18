@@ -42,6 +42,9 @@ Route::middleware('auth')
 
         Route::get('/manager/{modular_request}/delete', [ManagerController::class, 'update'])
             ->name('manager.delete');
+
+        Route::get('/manager/{modular_request}/maintenance', [ManagerController::class, 'maintenance'])
+            ->name('manager.maintenance.toggle');
         #endregion
 
         #region Backup

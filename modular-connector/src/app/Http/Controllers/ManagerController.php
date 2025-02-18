@@ -2,12 +2,14 @@
 
 namespace Modular\Connector\Http\Controllers;
 
+use Modular\Connector\Facades\Server;
 use Modular\Connector\Jobs\ManagerInstallJob;
 use Modular\Connector\Jobs\ManagerManageItemJob;
 use Modular\Connector\Jobs\ManagerUpdateJob;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Modular\SDK\Objects\SiteRequest;
+use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
 
 class ManagerController
@@ -47,6 +49,22 @@ class ManagerController
         $type = Str::replace('manager.', '', $modularRequest->type);
 
         dispatch(new ManagerManageItemJob($modularRequest->request_id, $modularRequest->body, $type));
+
+        return Response::json([
+            'success' => 'OK',
+        ]);
+    }
+
+    /**
+     * @param SiteRequest $modularRequest
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function maintenance(SiteRequest $modularRequest)
+    {
+        $payload = $modularRequest->body;
+        $activate = data_get($payload, 'activate', false);
+
+        Server::maintenanceMode($activate, true);
 
         return Response::json([
             'success' => 'OK',

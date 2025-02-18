@@ -4,8 +4,8 @@ namespace Modular\Connector\WordPress;
 
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Helper\OauthClient;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Request;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\View;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Psr\Container\ContainerExceptionInterface;

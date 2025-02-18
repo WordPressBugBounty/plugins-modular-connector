@@ -14,7 +14,7 @@ return [
     | you may use many connections at once using the Database library.
     |
     */
-    'default' => \Modular\ConnectorDependencies\env('DB_CONNECTION', 'mysql'),
+    'default' => 'mysql',
     /*
     |--------------------------------------------------------------------------
     | Database Connections
@@ -30,7 +30,7 @@ return [
     | choice installed on your machine before you begin development.
     |
     */
-    'connections' => ['mysql' => ['driver' => 'mysql', 'url' => \Modular\ConnectorDependencies\env('DATABASE_URL'), 'host' => \defined('DB_HOST') ? \DB_HOST : null, 'port' => \defined('Modular\ConnectorDependencies\DB_PORT') ? \Modular\ConnectorDependencies\DB_PORT : 3306, 'database' => \defined('DB_NAME') ? \DB_NAME : \Modular\ConnectorDependencies\env('DB_DATABASE', 'forge'), 'username' => \defined('DB_USER') ? \DB_USER : \Modular\ConnectorDependencies\env('DB_USERNAME', 'forge'), 'password' => \defined('DB_PASSWORD') ? \DB_PASSWORD : \Modular\ConnectorDependencies\env('DB_PASSWORD', ''), 'unix_socket' => \defined('DB_HOST') ? \DB_HOST : \Modular\ConnectorDependencies\env('DB_SOCKET', ''), 'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci', 'prefix' => !empty($table_prefix) ? $table_prefix : '', 'prefix_indexes' => \true, 'strict' => \true, 'engine' => null, 'options' => \extension_loaded('pdo_mysql') ? \array_filter([\PDO::MYSQL_ATTR_SSL_CA => \defined('Modular\ConnectorDependencies\DB_ATTR_SSL_CA') ? \Modular\ConnectorDependencies\DB_ATTR_SSL_CA : \Modular\ConnectorDependencies\env('MYSQL_ATTR_SSL_CA')]) : []]],
+    'connections' => ['mysql' => ['driver' => 'mysql', 'host' => \defined('DB_HOST') ? \DB_HOST : null, 'port' => \defined('Modular\ConnectorDependencies\DB_PORT') ? \Modular\ConnectorDependencies\DB_PORT : 3306, 'database' => \defined('DB_NAME') ? \DB_NAME : null, 'username' => \defined('DB_USER') ? \DB_USER : null, 'password' => \defined('DB_PASSWORD') ? \DB_PASSWORD : null, 'unix_socket' => \defined('DB_HOST') ? \DB_HOST : null, 'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci', 'prefix' => !empty($table_prefix) ? $table_prefix : '', 'prefix_indexes' => \true, 'strict' => \true, 'engine' => null, 'options' => \extension_loaded('pdo_mysql') ? \array_filter([\PDO::MYSQL_ATTR_SSL_CA => \defined('Modular\ConnectorDependencies\DB_ATTR_SSL_CA') ? \Modular\ConnectorDependencies\DB_ATTR_SSL_CA : null]) : []]],
     /*
     |--------------------------------------------------------------------------
     | Migration Repository Table

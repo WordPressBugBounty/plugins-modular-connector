@@ -59,7 +59,7 @@ return [
     | this array to grant expanded functionality to your applications.
     |
     */
-    'providers' => [Ares\Framework\Foundation\Auth\AuthServiceProvider::class, \Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers\BusServiceProvider::class, Ares\Framework\Foundation\Cache\CacheServiceProvider::class, Illuminate\Filesystem\FilesystemServiceProvider::class, Ares\Framework\Foundation\Providers\FoundationServiceProvider::class, Illuminate\View\ViewServiceProvider::class, Ares\Framework\Foundation\Queue\QueueServiceProvider::class, \Modular\Connector\Providers\ModularConnectorServiceProvider::class, \Modular\Connector\Providers\EventServiceProvider::class, \Modular\Connector\Providers\RouteServiceProvider::class],
+    'providers' => [Ares\Framework\Foundation\Auth\AuthServiceProvider::class, Ares\Framework\Foundation\Providers\BusServiceProvider::class, Ares\Framework\Foundation\Cache\CacheServiceProvider::class, Illuminate\Filesystem\FilesystemServiceProvider::class, Ares\Framework\Foundation\Providers\FoundationServiceProvider::class, Illuminate\View\ViewServiceProvider::class, Ares\Framework\Foundation\Queue\QueueServiceProvider::class, \Modular\Connector\Providers\ModularConnectorServiceProvider::class, \Modular\Connector\Providers\EventServiceProvider::class, \Modular\Connector\Providers\RouteServiceProvider::class],
     'router' => [
         'direct' => ['origin' => 'mo', 'type' => fn($value) => !empty($value)],
         // TODO Now we use Laravel routes but we can't directly use the routes

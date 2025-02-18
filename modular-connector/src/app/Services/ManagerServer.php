@@ -497,9 +497,10 @@ class ManagerServer
      * Force the maintenance mode on or off.
      *
      * @param $enable
+     * @param $indefinite
      * @return void
      */
-    public function maintenanceMode($enable = true)
+    public function maintenanceMode($enable = true, $indefinite = false)
     {
         global $wp_filesystem;
 
@@ -513,7 +514,10 @@ class ManagerServer
 
         if ($enable) {
             // Create maintenance file to signal that we are upgrading.
-            $maintenanceString = '<?php $upgrading = ' . time() . '; ?>';
+            $maintenanceString = sprintf(
+                '<?php $upgrading = (!isset($_GET["origin"], $_GET["type"], $_GET["mrid"]) || $_GET["origin"] !== "mo") ? %s : 0; ?>',
+                $indefinite ? 'time()' : time()
+            );
 
             $wp_filesystem->delete($file);
             $wp_filesystem->put_contents($file, $maintenanceString, FS_CHMOD_FILE);

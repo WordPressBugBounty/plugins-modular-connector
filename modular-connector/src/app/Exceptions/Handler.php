@@ -2,10 +2,10 @@
 
 namespace Modular\Connector\Exceptions;
 
-use Modular\ConnectorDependencies\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Exceptions\Handler as ExceptionHandler;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\View;
 use Modular\ConnectorDependencies\Illuminate\Support\ViewErrorBag;
+use Modular\ConnectorDependencies\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class Handler extends ExceptionHandler
 {

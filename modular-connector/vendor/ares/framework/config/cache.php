@@ -27,7 +27,7 @@ return [
     |         "memcached", "redis", "dynamodb", "octane", "null"
     |
     */
-    'stores' => ['apc' => ['driver' => 'apc'], 'array' => ['driver' => 'array', 'serialize' => \false], 'file' => ['driver' => 'file', 'path' => \Modular\ConnectorDependencies\storage_path('framework/cache/data')], 'wordpress' => ['driver' => 'wordpress', 'prefix' => \defined('MODULAR_ARES_CACHE_PREFIX') ? \MODULAR_ARES_CACHE_PREFIX : 'modular_connector_cache_']],
+    'stores' => ['apc' => ['driver' => 'apc'], 'array' => ['driver' => 'array', 'serialize' => \false], 'wordpress' => ['driver' => 'wordpress', 'prefix' => \defined('MODULAR_ARES_CACHE_PREFIX') ? \MODULAR_ARES_CACHE_PREFIX : 'modular_connector_cache_']],
     /*
     |--------------------------------------------------------------------------
     | Cache Key Prefix

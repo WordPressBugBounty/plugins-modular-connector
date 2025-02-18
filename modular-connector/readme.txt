@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, maintenance, Manage Multiple Sites, monitoring, update, security
 Requires at least: 5.6
 Tested up to: 6.7
-Stable tag: 1.10.4
+Stable tag: 1.11.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -12,7 +12,7 @@ Connect and manage all your WordPress websites in an easier and more efficient w
 
 == Description ==
 
-Modular is the tool you need to improve your web maintenance processes and get your clients to value your work. In order to save time on day-to-day tasks while getting more recurring maintenance contracts.
+Modular DS is the tool you need to improve your web maintenance processes and get your clients to value your work. In order to save time on day-to-day tasks while getting more recurring maintenance contracts.
 
 With [Modular DS](https://modulards.com/en/) you will have a centralized panel from which to control and access all your WordPress websites to perform tasks such as:
 
@@ -20,7 +20,7 @@ With [Modular DS](https://modulards.com/en/) you will have a centralized panel f
 * Status monitoring (__Uptime__) and SSL.
 * Cloud __backups__ (__RGPD__ compliant)
 * __Health and vulnerability__ monitoring
-* __Maintenance reports for clients__ with statistics from Google Analytics, Search Console, PageSpeed and any task performed on the website.
+* __Maintenance reports for clients__ with statistics from Google Analytics, Search Console, PageSpeed, WooCommerce and any task performed on the website.
 
 And what's more, you'll find a committed team on the other side that you can talk to whenever you need to. Because even though Modular is a software, there are people behind it.
 
@@ -69,27 +69,27 @@ And if you have any problems, contact us and we will be happy to help you throug
 
 = Is website maintenance important? =
 
-Yes, a lot. And even more so with WordPress. And we're not just talking about updates (necessary for security and performance). If you are a professional and offer this service to your clients, you must make sure you have everything under control. For that you need backups, an uptime monitor service, to be aware of vulnerabilities that may arise, etc...
+Yes, a lot. And even more so with WordPress. And we're not just talking about updates (necessary for security and performance). If you are a professional and offer this service to your clients, you must make sure you have everything under control. For that, you need backups, an uptime monitor service, to be aware of vulnerabilities that may arise, etc...
 
-= Is Modular free? =
+= Is Modular DS free? =
 
-Modular has a free plan with which you can connect up to 5 websites and test all the features in its basic version. With the PRO plans, starting at 29€ per month, you will be able to connect unlimited websites and have access to all the features.
+Modular DS has a free plan with which you can connect up to 5 websites and test all the features in its basic version. With the premium plans, starting at 29€ per month, you will be able to connect unlimited websites and have access to all the features.
 
 = Do I have to have my websites hosted on a specific hosting company? =
 
-No, Modular works independently of your hosting service.
+No, Modular DS works independently of your hosting service.
 
-= Is Modular secure? =
+= Is Modular DS secure? =
 
 Yes, we use the oAuth2 protocol for authentication of the connection between your website and our servers. Thanks to this protocol we generate tokens with expiration and revocable at any time. In addition, we do not store any WordPress user passwords.
 
-= How does Modular stand out from other existing solutions? =
+= How does Modular DS stand out from other existing solutions? =
 
-We have put a lot of emphasis on making the user experience of the application is excellent. So you can manage all your websites in the simplest and most intuitive way possible. We are also constantly updating the tool and releasing new features.
+We have put a lot of emphasis on making the user experience of the application excellent. So you can manage all your websites in the simplest and most intuitive way possible. Something our clients love (you can see the plugin reviews). We are also constantly updating the tool and releasing new features.
 
 = What does the plugin Modular Connector do? =
 
-Modular Connector bridges the gap between your WordPress and Modular. Something fundamental for both systems to communicate easily, allowing commands such as plugin updates or backup scheduling to go back and forth.
+Modular Connector bridges the gap between your WordPress and Modular DS. Something fundamental for both systems to communicate easily, allowing commands such as plugin updates or backup scheduling to go back and forth.
 
 
 == Screenshots ==
@@ -105,6 +105,18 @@ Modular Connector bridges the gap between your WordPress and Modular. Something 
 9. Client report overview page
 
 == Changelog ==
+= v1.11.1 =
+Release date: 2025-02-18
+
+* Validate nonce to maintain backward compatibility with older versions
+
+= v1.11.0 =
+Release date: 2025-02-18
+
+* New JWT validation for loopback requests
+* FIXED: Compatibility with some plugins
+* FIXED: Errors in the WordPress manager (updater)
+
 = v1.10.4 =
 Release date: 2025-02-03
 

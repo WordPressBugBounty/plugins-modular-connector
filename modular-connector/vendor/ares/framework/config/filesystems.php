@@ -13,7 +13,7 @@ return [
     | based disks are available to your application. Just store away!
     |
     */
-    'default' => 'local',
+    'default' => 'core',
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -26,5 +26,5 @@ return [
     | Supported Drivers: "local", "ftp", "sftp", "s3"
     |
     */
-    'disks' => ['local' => ['driver' => 'local', 'root' => \ABSPATH, 'visibility' => 'public']],
+    'disks' => ['core' => ['driver' => 'local', 'root' => \untrailingslashit(\ABSPATH), 'visibility' => 'public'], 'backups' => ['driver' => 'local', 'root' => \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'modular_backups', 'visibility' => 'public'], 'plugins' => ['driver' => 'local', 'root' => \untrailingslashit(\WP_PLUGIN_DIR), 'visibility' => 'public'], 'mu_plugins' => ['driver' => 'local', 'root' => \untrailingslashit(\WPMU_PLUGIN_DIR), 'visibility' => 'public'], 'content' => ['driver' => 'local', 'root' => \untrailingslashit(\WP_CONTENT_DIR), 'visibility' => 'public'], 'uploads' => ['driver' => 'local', 'root' => \_wp_upload_dir()['basedir'], 'visibility' => 'public'], 'themes' => ['driver' => 'local', 'root' => \untrailingslashit(\get_theme_root()), 'visibility' => 'public']],
 ];

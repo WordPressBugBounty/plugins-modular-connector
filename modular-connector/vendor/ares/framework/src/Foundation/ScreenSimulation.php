@@ -2,6 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\Compatibilities;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Symfony\Component\HttpFoundation\Cookie;
 class ScreenSimulation
@@ -156,6 +157,8 @@ class ScreenSimulation
             set_current_screen();
             do_action('load-update-core.php');
         }, \PHP_INT_MAX);
+        // Not using wp object cache
+        $GLOBALS['_wp_using_ext_object_cache'] = \false;
     }
     /**
      * @return void
@@ -179,5 +182,7 @@ class ScreenSimulation
     {
         add_filter('http_response', [$this, 'interceptUpdateCall'], \PHP_INT_MAX, 3);
         add_filter('pre_http_request', [$this, 'interceptUpdateCache'], \PHP_INT_MAX, 3);
+        $compatibilityFixes = Compatibilities::getCompatibilityFixes();
+        array_walk($compatibilityFixes, fn($compatibility) => $compatibility::fix());
     }
 }

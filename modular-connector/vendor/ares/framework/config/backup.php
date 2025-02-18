@@ -29,22 +29,6 @@ return [
          * Setting of 0 for some algorithms may switch to the strongest compression.
          */
         'compression_level' => 9,
-        'exclude' => [
-            \untrailingslashit(\ABSPATH) . \DIRECTORY_SEPARATOR . '.wp-cli',
-            // Error logs
-            \untrailingslashit(\ABSPATH) . \DIRECTORY_SEPARATOR . 'error_log',
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'error_log',
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'debug.log',
-            // Default caches
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'cache',
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'lscache',
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'et-cache',
-            // Default backups
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'updraft',
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'aiowps_backups',
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'ai1wm-backups',
-            \untrailingslashit(\WP_CONTENT_DIR) . \DIRECTORY_SEPARATOR . 'backups-dup-pro',
-        ],
     ],
     /*
      * The number of attempts, in case the backup command encounters an exception

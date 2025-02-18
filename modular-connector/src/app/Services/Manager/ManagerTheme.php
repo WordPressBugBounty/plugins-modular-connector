@@ -134,8 +134,8 @@ class ManagerTheme extends AbstractManager
     {
         add_filter('auto_update_theme', '__return_false', PHP_INT_MAX);
 
-        Manager::clean();
         Manager::includeUpgrader();
+        Manager::clean();
 
         try {
             $skin = new \WP_Ajax_Upgrader_Skin();

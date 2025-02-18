@@ -4,6 +4,7 @@ namespace Modular\Connector\Services\Manager;
 
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
+use Modular\Connector\WordPress\ModularPluginUpgrader;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\data_set;
@@ -45,8 +46,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function install(string $downloadLink, bool $overwrite = true)
     {
-        Manager::clean();
         Manager::includeUpgrader();
+        Manager::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
             $options['clear_destination'] = $overwrite;
@@ -56,7 +57,7 @@ class ManagerPlugin extends AbstractManager
 
         try {
             $skin = new \WP_Ajax_Upgrader_Skin();
-            $upgrader = new \Plugin_Upgrader($skin);
+            $upgrader = new ModularPluginUpgrader($skin);
 
             // $result is null when the plugin is already installed.
             $result = $upgrader->install($downloadLink, [
@@ -187,8 +188,8 @@ class ManagerPlugin extends AbstractManager
     {
         add_filter('auto_update_plugin', '__return_false', PHP_INT_MAX);
 
-        Manager::clean();
         Manager::includeUpgrader();
+        Manager::clean();
 
         try {
             add_filter('upgrader_package_options', function ($options) {
@@ -200,7 +201,7 @@ class ManagerPlugin extends AbstractManager
             });
 
             $skin = new \WP_Ajax_Upgrader_Skin();
-            $upgrader = new \Plugin_Upgrader($skin);
+            $upgrader = new ModularPluginUpgrader($skin);
 
             $response = $upgrader->bulk_upgrade($items);
         } finally {

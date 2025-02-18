@@ -2,6 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Routing\Router;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Foundation\Application as ApplicationContract;
@@ -117,6 +118,9 @@ class Bootloader
             // We use Laravel Response to make our redirections.
             add_filter('wp_redirect', '__return_false');
         }
+        if (!isset($GLOBALS['hook_suffix'])) {
+            $GLOBALS['hook_suffix'] = null;
+        }
         // We're just before the WordPress bootstrap, so we can load the admin files.
         ScreenSimulation::getInstance()->boot();
     }
@@ -205,9 +209,16 @@ class Bootloader
             // Don't lock up other requests while processing.
             session_write_close();
             $action = $kernel->getApplication()->getScheduleHook();
-            $isValid = check_ajax_referer($action, 'nonce', \false);
-            if (!$isValid) {
-                wp_die(sprintf('Invalid nonce for %s', $action), 403);
+            if ($request->hasHeader('Authentication')) {
+                $authHeader = $request->header('Authentication', '');
+                if (!JWT::verify($authHeader, $action)) {
+                    wp_die(sprintf('Invalid token for %s', $action), 403);
+                }
+            } else {
+                $isValid = check_ajax_referer($action, 'nonce', \false);
+                if (!$isValid) {
+                    wp_die(sprintf('Invalid nonce for %s', $action), 403);
+                }
             }
             // If this is an AJAX request, we need to force a response using the default route.
             add_action($action, fn() => HttpUtils::forceCloseConnection(), 1);

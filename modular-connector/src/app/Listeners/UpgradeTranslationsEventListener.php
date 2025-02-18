@@ -15,7 +15,8 @@ class UpgradeTranslationsEventListener
     {
         if (!array_key_exists('translations', $event->payload)) {
             $payload = [
-                'translations' => '',
+                'type' => 'translation',
+                'items' => [],
             ];
 
             dispatch(new ManagerManageItemJob($event->mrid, $payload, 'upgrade'));

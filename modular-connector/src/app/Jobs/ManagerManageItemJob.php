@@ -9,13 +9,14 @@ use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
-use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
+use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\event;
 
-class ManagerManageItemJob implements ShouldQueue, ShouldBeUnique
+class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable;
     use Queueable;
@@ -30,6 +31,9 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUnique
      */
     protected $payload;
 
+    /**
+     * @var string
+     */
     protected string $action;
 
     /**
@@ -56,30 +60,30 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUnique
         $payload = $this->payload;
         $action = $this->action;
 
-        $type = $this->payload->type ?? null;
-        $items = $this->payload->items ?? null;
+        $type = data_get($payload, 'type');
+        $items = data_get($payload, 'items');
 
         if (empty($type)) {
             switch (true) {
-                case isset($payload->plugins):
+                case !empty(data_get($payload, 'plugins')):
                     $type = 'plugin';
-                    $items = $payload->plugins;
+                    $items = data_get($payload, 'plugins');
                     break;
-                case isset($payload->themes):
+                case !empty(data_get($payload, 'themes')):
                     $type = 'theme';
-                    $items = $payload->themes;
+                    $items = data_get($payload, 'themes');
                     break;
-                case isset($payload->core):
+                case !empty(data_get($payload, 'core')):
                     $type = 'core';
-                    $items = $payload->core;
+                    $items = data_get($payload, 'core');
                     break;
-                case $payload->translations:
+                case !empty(data_get($payload, 'translations')):
                     $type = 'translation';
-                    $items = $payload->translations;
+                    $items = data_get($payload, 'translations');
                     break;
-                case $payload->database:
+                case !empty(data_get($payload, 'database')):
                     $type = 'database';
-                    $items = $payload->database;
+                    $items = data_get($payload, 'database');
                     break;
             }
         }
@@ -88,6 +92,8 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUnique
         if ($type === 'theme' && in_array($action, ['deactivate'])) {
             return;
         } elseif (in_array($type, ['core', 'translation', 'database']) && !in_array($action, ['upgrade'])) {
+            return;
+        } elseif (empty($type)) {
             return;
         }
 

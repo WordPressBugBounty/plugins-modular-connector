@@ -9,6 +9,7 @@ use Modular\ConnectorDependencies\Illuminate\Contracts\Debug\ExceptionHandler;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Foundation\Application;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Http\Kernel as FoundationKernel;
 use Modular\ConnectorDependencies\Illuminate\Routing\Router;
+use Modular\ConnectorDependencies\Illuminate\Foundation\Http\Events\RequestHandled;
 class Kernel extends FoundationKernel
 {
     /**
@@ -124,5 +125,27 @@ class Kernel extends FoundationKernel
             $this->commands();
             $this->commandsLoaded = \true;
         }
+    }
+    /**
+     * Handle an incoming HTTP request.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function handle($request)
+    {
+        try {
+            $request->enableHttpMethodParameterOverride();
+            $response = $this->sendRequestThroughRouter($request);
+        } catch (Throwable $e) {
+            $this->reportException($e);
+            $response = $this->renderException($request, $e);
+        }
+        try {
+            $this->app['events']->dispatch(new RequestHandled($request, $response));
+        } catch (\Throwable $e) {
+            // Silence is golden
+        }
+        return $response;
     }
 }

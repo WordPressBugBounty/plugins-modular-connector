@@ -5,7 +5,6 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue;
 use Modular\ConnectorDependencies\Illuminate\Queue\Worker as IlluminateWorker;
 use Modular\ConnectorDependencies\Illuminate\Queue\WorkerOptions;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
-use Modular\ConnectorDependencies\Symfony\Component\Console\SignalRegistry\SignalRegistry;
 class Worker extends IlluminateWorker
 {
     /**
@@ -15,7 +14,19 @@ class Worker extends IlluminateWorker
      */
     protected function supportsAsyncSignals()
     {
-        return SignalRegistry::isSupported();
+        $functions = ['pcntl_signal', 'pcntl_alarm', 'pcntl_async_signals'];
+        foreach ($functions as $function) {
+            if (!function_exists($function)) {
+                return \false;
+            }
+        }
+        $disabledFunctions = explode(',', @ini_get('disable_functions'));
+        foreach ($functions as $function) {
+            if (\in_array($function, $disabledFunctions)) {
+                return \false;
+            }
+        }
+        return \true;
     }
     /**
      * Determine the exit code to stop the process if necessary.

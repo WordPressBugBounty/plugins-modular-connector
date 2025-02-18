@@ -86,8 +86,8 @@ class ManagerCore extends AbstractManager
         add_filter('allow_minor_auto_core_updates', '__return_true', PHP_INT_MAX);
         add_filter('auto_core_update_send_email', '__return_false', PHP_INT_MAX);
 
-        Manager::clean();
         Manager::includeUpgrader();
+        Manager::clean();
 
         try {
             $skin = new \WP_Ajax_Upgrader_Skin();

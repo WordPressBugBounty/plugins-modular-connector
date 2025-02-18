@@ -2,6 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
 use Modular\ConnectorDependencies\Illuminate\Console\Scheduling\Schedule;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
@@ -45,13 +46,15 @@ class FoundationServiceProvider extends ServiceProvider
             $debugSchedule = $this->app->make('config')->get('app.debug_schedule', \false);
             $hook = $this->app->getScheduleHook();
             $url = apply_filters(sprintf('%s_query_url', $hook), admin_url('admin-ajax.php'));
-            $query = apply_filters(sprintf('%s_query_args', $hook), ['action' => $hook, 'nonce' => wp_create_nonce($hook)]);
+            $query = apply_filters(sprintf('%s_query_args', $hook), ['action' => $hook]);
             $url = add_query_arg($query, $url);
+            $token = JWT::generate($hook);
             $args = apply_filters(sprintf('%s_post_args', $hook), [
                 'timeout' => 10,
                 // In some websites, the default value of 5 seconds is too short.
                 'sslverify' => \false,
                 'blocking' => $debugSchedule,
+                'headers' => ['Authentication' => 'Bearer ' . $token],
             ]);
             $response = wp_remote_get(esc_url_raw($url), $args);
             if ($debugSchedule) {

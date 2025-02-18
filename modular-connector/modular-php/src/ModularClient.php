@@ -76,11 +76,11 @@ class ModularClient implements ModularClientInterface
                 'X-Redirect-Uri' => $this->getClientRedirectUri(),
             ],
             'allow_redirects' => [
-                'max'             => 5,
-                'strict'          => true,
-                'referer'         => false,
-                'protocols'       => ['http', 'https'],
-                'track_redirects' => false
+                'max' => 5,
+                'strict' => true,
+                'referer' => false,
+                'protocols' => ['http', 'https'],
+                'track_redirects' => false,
             ],
         ]);
     }
