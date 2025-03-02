@@ -5,6 +5,7 @@ namespace Modular\Connector\Backups;
 use Modular\Connector\Backups\Iron\BackupIronDriver;
 use Modular\Connector\Backups\Phantom\BackupDriverPhantomDriver;
 use Modular\Connector\Facades\Manager as ModularManager;
+use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
@@ -122,5 +123,21 @@ class BackupManager extends Manager
                 }),
             'database' => ModularManager::driver('database')->get(),
         ];
+    }
+
+    /**
+     * @param string|null $name
+     * @return void
+     */
+    public function cancel(?string $name)
+    {
+        if (!$name) {
+            return;
+        }
+
+        $value = Cache::get('_cancelled_backup', []);
+        $value[] = $name;
+
+        Cache::put('_cancelled_backup', array_unique($value), Carbon::now()->addDay());
     }
 }

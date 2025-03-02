@@ -2,9 +2,9 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\WordPress\ModularPluginUpgrader;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\data_set;
@@ -46,8 +46,7 @@ class ManagerPlugin extends AbstractManager
      */
     public function install(string $downloadLink, bool $overwrite = true)
     {
-        Manager::includeUpgrader();
-        Manager::clean();
+        ServerSetup::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
             $options['clear_destination'] = $overwrite;
@@ -104,7 +103,7 @@ class ManagerPlugin extends AbstractManager
 
             $basename = $results[0] ?? '';
 
-            Manager::clean();
+            ServerSetup::clean();
 
             $updatablePlugins = $this->getItemsToUpdate(static::PLUGINS);
             $data = $this->map('plugin', Collection::make([$basename => $data]), $updatablePlugins);
@@ -188,8 +187,7 @@ class ManagerPlugin extends AbstractManager
     {
         add_filter('auto_update_plugin', '__return_false', PHP_INT_MAX);
 
-        Manager::includeUpgrader();
-        Manager::clean();
+        ServerSetup::clean();
 
         try {
             add_filter('upgrader_package_options', function ($options) {
@@ -205,7 +203,7 @@ class ManagerPlugin extends AbstractManager
 
             $response = $upgrader->bulk_upgrade($items);
         } finally {
-            Manager::clean();
+            ServerSetup::clean();
             Server::logout();
         }
 

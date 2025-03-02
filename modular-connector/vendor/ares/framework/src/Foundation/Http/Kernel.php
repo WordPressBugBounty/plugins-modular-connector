@@ -2,14 +2,13 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Http;
 
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Bootloader;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Scheduling\Schedule;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Scheduling\ScheduleRunCommand;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Debug\ExceptionHandler;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Foundation\Application;
+use Modular\ConnectorDependencies\Illuminate\Foundation\Http\Events\RequestHandled;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Http\Kernel as FoundationKernel;
 use Modular\ConnectorDependencies\Illuminate\Routing\Router;
-use Modular\ConnectorDependencies\Illuminate\Foundation\Http\Events\RequestHandled;
 class Kernel extends FoundationKernel
 {
     /**
@@ -71,11 +70,6 @@ class Kernel extends FoundationKernel
     {
         $hook = $this->app->getScheduleHook();
         add_action($hook, function () {
-            // When running from cron, we need to boot the bootloader.
-            if (HttpUtils::isCron()) {
-                $bootloader = Bootloader::getInstance();
-                $bootloader->bootCron();
-            }
             $schedule = \Modular\ConnectorDependencies\app()->make(Schedule::class);
             $dispatcher = \Modular\ConnectorDependencies\app()->make('events');
             $exceptionHandler = \Modular\ConnectorDependencies\app()->make(ExceptionHandler::class);
@@ -137,7 +131,7 @@ class Kernel extends FoundationKernel
         try {
             $request->enableHttpMethodParameterOverride();
             $response = $this->sendRequestThroughRouter($request);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->reportException($e);
             $response = $this->renderException($request, $e);
         }

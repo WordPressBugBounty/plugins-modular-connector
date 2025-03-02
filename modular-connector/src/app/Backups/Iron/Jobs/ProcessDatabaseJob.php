@@ -38,7 +38,6 @@ class ProcessDatabaseJob implements ShouldQueue
     public function handle()
     {
         $part = $this->part;
-
         $isCancelled = $part->isCancelled();
 
         if ($isCancelled) {

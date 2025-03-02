@@ -4,6 +4,7 @@ namespace Modular\Connector\Http\Controllers;
 
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Helper\OauthClient;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -62,14 +63,14 @@ class AuthController
      */
     public function getLogin(SiteRequest $modularRequest)
     {
-        $user = data_get($modularRequest->body, 'user', Server::getAdminUser());
+        $user = data_get($modularRequest->body, 'user', ServerSetup::getAdminUser());
 
         if (empty($user)) {
             // TODO Make a custom exception
             throw new \Exception('No admin user detected.');
         }
 
-        $cookies = Server::login($user, true);
+        $cookies = ServerSetup::loginAs($user, true);
 
         return Response::redirectTo(admin_url('index.php'))
             ->withCookies($cookies);

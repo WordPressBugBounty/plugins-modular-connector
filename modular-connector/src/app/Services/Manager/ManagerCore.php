@@ -2,8 +2,8 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
 /**
@@ -86,8 +86,7 @@ class ManagerCore extends AbstractManager
         add_filter('allow_minor_auto_core_updates', '__return_true', PHP_INT_MAX);
         add_filter('auto_core_update_send_email', '__return_false', PHP_INT_MAX);
 
-        Manager::includeUpgrader();
-        Manager::clean();
+        ServerSetup::clean();
 
         try {
             $skin = new \WP_Ajax_Upgrader_Skin();
@@ -95,7 +94,7 @@ class ManagerCore extends AbstractManager
 
             $result = @$core->upgrade($this->getLatestUpdate());
         } finally {
-            Manager::clean();
+            ServerSetup::clean();
             Server::logout();
         }
 

@@ -10,6 +10,7 @@ use Modular\Connector\Services\Manager\ManagerDatabase;
 use Modular\Connector\Services\Manager\ManagerPlugin;
 use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\Connector\Services\Manager\ManagerTranslation;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\File as FileFacade;
@@ -35,49 +36,13 @@ class Manager extends IlluminateManager
     }
 
     /**
-     * @return void
-     */
-    public function clean()
-    {
-        // We need to simulate the WordPress environment to make the update process work.
-        Server::login();
-
-        global $wp_current_filter;
-
-        $wp_current_filter[] = 'load-update-core.php';
-
-        // Force clean cache.
-        if (function_exists('wp_clean_update_cache')) {
-            wp_clean_update_cache();
-        }
-
-        wp_update_plugins();
-        wp_update_themes();
-
-        array_pop($wp_current_filter);
-
-        /**
-         * This hook call to wp_update_plugins() and wp_update_themes() is necessary to avoid issues with the updater.
-         *
-         * @see wp_update_plugins
-         * @see wp_update_themes
-         */
-
-        set_current_screen();
-        do_action('load-update-core.php');
-
-        wp_version_check();
-        wp_version_check([], true);
-    }
-
-    /**
      * Returns a list with the existing plugins and themes.
      *
      * @return array
      */
     public function update()
     {
-        $this->clean();
+        ServerSetup::clean();
 
         $response = [
             'core' => $this->driver('core')->get(),
@@ -90,44 +55,7 @@ class Manager extends IlluminateManager
 
         return $response;
     }
-
-    /**
-     * Makes the necessary WordPress upgrader includes
-     * to handle plugin and themes functionality.
-     *
-     * @return void
-     */
-    public function includeUpgrader(): void
-    {
-        if (!function_exists('wp_update_plugins') || !function_exists('wp_update_themes')) {
-            ob_start();
-
-            require_once ABSPATH . 'wp-admin/includes/update.php';
-
-            ob_end_flush();
-            ob_end_clean();
-        }
-
-        if (!class_exists('WP_Upgrader')) {
-            require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-        }
-
-        if (!function_exists('wp_install')) {
-            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        }
-
-        if (!function_exists('plugins_api')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
-        }
-
-        if (empty($GLOBALS['wp_filesystem'])) {
-            WP_Filesystem();
-        }
-
-        if (empty($GLOBALS['wp_theme_directories'])) {
-            register_theme_directory(get_theme_root());
-        }
-    }
+    
 
     /**
      * Deletes all pending jobs from the queue.

@@ -3,6 +3,7 @@
 namespace Modular\Connector\Providers;
 
 use Modular\Connector\Helper\OauthClient;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\GuzzleHttp\Exception\ClientException;
 use Modular\ConnectorDependencies\GuzzleHttp\Exception\ServerException;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
@@ -44,67 +45,69 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function bindOldRoutes($route, $removeQuery = false)
     {
+        if (!HttpUtils::isDirectRequest()) {
+            return $route;
+        }
+
         $request = request();
 
-        if ($request->has('origin') && $request->get('origin') === 'mo') {
-            $routes = app('router')->getRoutes();
+        $routes = app('router')->getRoutes();
 
-            if ($request->has('type') && $request->get('type') === 'request') {
-                $modularRequest = Cache::driver('array')->get('modularRequest') ?: $this->getModularRequest($request->get('mrid'));
+        if ($request->get('type') === 'request') {
+            $modularRequest = Cache::driver('array')->get('modularRequest') ?: $this->getModularRequest($request->get('mrid'));
 
-                if (!$modularRequest) {
-                    return $route;
-                }
-
-                if (!$removeQuery && !Cache::driver('array')->has('modularRequest')) {
-                    Cache::driver('array')->set('modularRequest', $modularRequest);
-                } elseif ($removeQuery) {
-                    Cache::driver('array')->forget('modularRequest');
-                }
-
-                $type = $modularRequest->type;
-
-                /**
-                 * @var \Illuminate\Routing\Route $route
-                 */
-                $routeByName = $routes->getByName($type);
-
-                if (!$routeByName) {
-                    return $route;
-                }
-
-                $route = $routeByName;
-
-                if ($removeQuery) {
-                    $request->query->remove('origin');
-                    $request->query->remove('type');
-                    $request->query->remove('mrid');
-                }
-
-                $route = $route->bind($request);
-
-                if ($removeQuery) {
-                    $params = $route->parameterNames();
-
-                    if (in_array('modular_request', $params)) {
-                        $route->setParameter('modular_request', $modularRequest);
-                    }
-                }
+            if (!$modularRequest) {
+                return $route;
             }
 
-            if ($request->has('type') && $request->get('type') === 'oauth') {
-                /**
-                 * @var \Illuminate\Routing\Route $route
-                 */
-                $route = $routes->getByName('modular-connector.oauth');
-
-                if ($removeQuery) {
-                    $request->query->remove('origin');
-                    $request->query->remove('type');
-                }
-
-                $route = $route->bind($request);
+            if (!$removeQuery && !Cache::driver('array')->has('modularRequest')) {
+                Cache::driver('array')->set('modularRequest', $modularRequest);
+            } elseif ($removeQuery) {
+                Cache::driver('array')->forget('modularRequest');
             }
+
+            $type = $modularRequest->type;
+
+            /**
+             * @var \Illuminate\Routing\Route $route
+             */
+            $routeByName = $routes->getByName($type);
+
+            if (!$routeByName) {
+                return $route;
+            }
+
+            $route = $routeByName;
+
+            if ($removeQuery) {
+                $request->query->remove('origin');
+                $request->query->remove('type');
+                $request->query->remove('mrid');
+            }
+
+            $route = $route->bind($request);
+
+            if ($removeQuery) {
+                $params = $route->parameterNames();
+
+                if (in_array('modular_request', $params)) {
+                    $route->setParameter('modular_request', $modularRequest);
+                }
+            }
+        }
+
+        if ($request->get('type') === 'oauth') {
+            /**
+             * @var \Illuminate\Routing\Route $route
+             */
+            $route = $routes->getByName('modular-connector.oauth');
+
+            if ($removeQuery) {
+                $request->query->remove('origin');
+                $request->query->remove('type');
+            }
+
+            $route = $route->bind($request);
         }
 
         return $route;

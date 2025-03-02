@@ -17,11 +17,6 @@ class Manifest
     protected BackupPart $part;
 
     /**
-     * @var bool
-     */
-    protected bool $includeHeaders = false;
-
-    /**
      * @var string
      */
     protected $delimiter = ';';
@@ -34,17 +29,6 @@ class Manifest
     public function __construct(BackupPart $part)
     {
         $this->part = $part;
-    }
-
-    /**
-     * @param $include
-     * @return $this
-     */
-    public function includeHeaders($include)
-    {
-        $this->includeHeaders = $include;
-
-        return $this;
     }
 
     /**
@@ -72,9 +56,20 @@ class Manifest
      */
     private function writeManifest(array $buffer, int $offset): void
     {
+        $currentOffset = $this->part->offset;
+
+        if ($currentOffset > 0 && !Storage::disk('backups')->exists($this->part->manifestPath)) {
+            throw new \RuntimeException('Manifest file not found');
+        }
+
         $content = implode("\n", $buffer);
 
-        Storage::disk('backups')->append($this->part->manifestPath, $content);
+        // When the offset is 0, we need to create the file
+        if ($currentOffset === 0) {
+            Storage::disk('backups')->put($this->part->manifestPath, $content);
+        } else {
+            Storage::disk('backups')->append($this->part->manifestPath, $content);
+        }
 
         $this->part->offset = $offset;
     }

@@ -3,6 +3,7 @@
 namespace Modular\Connector\Backups\Phantom;
 
 use Modular\Connector\Backups\Contracts\BackupDriver;
+use Modular\Connector\Backups\Facades\Backup;
 use Modular\Connector\Backups\Facades\Backup as BackupFacade;
 use Modular\Connector\Backups\Phantom\Events\ManagerBackupFailedCreation;
 use Modular\Connector\Backups\Phantom\Events\ManagerBackupPartsCalculated;
@@ -11,8 +12,6 @@ use Modular\Connector\Backups\Phantom\Jobs\ManagerBackupCalculateManifestJob;
 use Modular\Connector\Backups\Phantom\Listeners\BackupRemoveEventListener;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Listeners\HookEventListener;
-use Modular\ConnectorDependencies\Carbon\Carbon;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\File as FileFacade;
 use function Modular\ConnectorDependencies\dispatch;
@@ -90,12 +89,7 @@ class BackupDriverPhantomDriver implements BackupDriver
         }
 
         if ($removeAll) {
-            if ($name) {
-                $value = Cache::get('_cancelled_backup', []);
-                $value[] = $name;
-
-                Cache::put('_cancelled_backup', $value, Carbon::now()->addDay());
-            }
+            Backup::cancel($name);
 
             BackupWorker::getInstance()->deleteAll();
             Manager::clearQueue('backups');

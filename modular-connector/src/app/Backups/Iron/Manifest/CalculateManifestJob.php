@@ -3,9 +3,11 @@
 namespace Modular\Connector\Backups\Iron\Manifest;
 
 use Modular\Connector\Backups\Iron\BackupPart;
+use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 
 class CalculateManifestJob implements ShouldQueue
 {
@@ -31,9 +33,20 @@ class CalculateManifestJob implements ShouldQueue
      */
     public function handle()
     {
-        Manifest::create($this->part)
-            ->includeHeaders(true)
-            ->calculate();
+        $part = $this->part;
+        $isCancelled = $part->isCancelled();
+
+        if ($isCancelled) {
+            return;
+        }
+
+        try {
+            Manifest::create($part)->calculate();
+        } catch (\Throwable $e) {
+            Log::error($e);
+
+            $part->markAsFailed(ManagerBackupPartUpdated::STATUS_FAILED_EXPORT_MANIFEST, $e);
+        }
     }
 
     /**

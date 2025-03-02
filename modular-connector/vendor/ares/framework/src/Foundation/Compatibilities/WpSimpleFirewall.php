@@ -6,7 +6,7 @@ class WpSimpleFirewall
 {
     public static function fix()
     {
-        if (!class_exists('Modular\ConnectorDependencies\ICWP_WPSF_Shield_Security')) {
+        if (!class_exists('ICWP_WPSF_Shield_Security')) {
             return;
         }
         includeWPSFClassIfNeeded();
@@ -14,7 +14,7 @@ class WpSimpleFirewall
 }
 function includeWPSFClassIfNeeded()
 {
-    if (class_exists('Modular\ConnectorDependencies\ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth', \false)) {
+    if (class_exists('ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth', \false)) {
         return;
     }
     class ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth

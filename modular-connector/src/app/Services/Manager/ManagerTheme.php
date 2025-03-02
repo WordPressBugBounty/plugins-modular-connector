@@ -2,8 +2,8 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
 /**
@@ -43,8 +43,7 @@ class ManagerTheme extends AbstractManager
 
     public function install(string $downloadLink, bool $overwrite = true)
     {
-        Manager::includeUpgrader();
-        Manager::clean();
+        ServerSetup::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
             $options['clear_destination'] = $overwrite;
@@ -134,8 +133,7 @@ class ManagerTheme extends AbstractManager
     {
         add_filter('auto_update_theme', '__return_false', PHP_INT_MAX);
 
-        Manager::includeUpgrader();
-        Manager::clean();
+        ServerSetup::clean();
 
         try {
             $skin = new \WP_Ajax_Upgrader_Skin();
@@ -143,7 +141,7 @@ class ManagerTheme extends AbstractManager
 
             $response = @$upgrader->bulk_upgrade($themes);
         } finally {
-            Manager::clean();
+            ServerSetup::clean();
             Server::logout();
         }
 

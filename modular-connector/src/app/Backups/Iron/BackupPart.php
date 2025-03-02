@@ -11,6 +11,7 @@ use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use Modular\ConnectorDependencies\Illuminate\Support\LazyCollection;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
@@ -133,9 +134,17 @@ class BackupPart
      * @param string $mrid
      * @param \stdClass $payload
      */
-    public function __construct(string $mrid, \stdClass $payload)
+    public function __construct(string $mrid)
     {
         $this->mrid = $mrid;
+    }
+
+    /**
+     * @param \stdClass $payload
+     * @return $this
+     */
+    public function setPayload(\stdClass $payload): BackupPart
+    {
         $this->name = trim($payload->name, '"');
         $this->siteBackup = (int)$payload->site_backup;
 
@@ -202,6 +211,8 @@ class BackupPart
         $this->connection['socket'] = $socket;
 
         $this->timestamp = data_get($payload, 'timestamp', 0);
+
+        return $this;
     }
 
     /**
@@ -286,6 +297,28 @@ class BackupPart
     }
 
     /**
+     * @return $this
+     */
+    public function calculateExclusion(): BackupPart
+    {
+        $status = ManagerBackupPartUpdated::STATUS_PENDING;
+
+        $isIncluded = array_search($this->type, $this->included);
+
+        if ($isIncluded === false) {
+            $status = ManagerBackupPartUpdated::STATUS_EXCLUDED;
+        } else {
+            $isExcluded = in_array('', data_get($this->excludedFiles, $this->type, []));
+
+            if ($isExcluded) {
+                $status = ManagerBackupPartUpdated::STATUS_EXCLUDED;
+            }
+        }
+
+        return $this->markAs($status, false);
+    }
+
+    /**
      * @param bool $manifest
      * @return void
      */
@@ -320,7 +353,7 @@ class BackupPart
         }
 
         if ($status === ManagerBackupPartUpdated::STATUS_EXCLUDED) {
-            Storage::disk('backups')->delete($this->manifestPath);
+            $this->cleanFiles(true);
         } elseif ($status === ManagerBackupPartUpdated::STATUS_MANIFEST_UPLOAD_PENDING) {
             dispatch(new ProcessUploadJob($this, true));
         } elseif ($status === ManagerBackupPartUpdated::STATUS_UPLOAD_PENDING) {
@@ -374,14 +407,6 @@ class BackupPart
     public function nextFiles(int $start, int $end = null): array
     {
         $path = Storage::disk('backups')->path($this->manifestPath);
-
-        $file = new \SplFileObject($path);
-        $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
-        $file->setCsvControl(File::$delimiter, File::$enclosure, File::$escape);
-
-        // Got to the start of the range
-        $file->seek($start);
-
         $headers = [
             'checksum',
             'type',
@@ -390,30 +415,28 @@ class BackupPart
             'path',
         ];
 
-        $data = [];
+        $lines = LazyCollection::make(function () use ($path) {
+            $file = new \SplFileObject($path);
+            $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
+            $file->setCsvControl(File::$delimiter, File::$enclosure, File::$escape);
+
+            while (!$file->eof()) {
+                yield $file->fgetcsv();
+            }
+        })->skip($start);
 
         // If no end is provided, return the first row
         if ($end === null) {
-            $row = $file->current();
+            $row = $lines->first();
 
-            if ($row && count($row) > 1) {
-                return array_combine($headers, $row);
-            }
-
-            return $data;
+            return ($row && count($row) > 1) ? array_combine($headers, $row) : [];
         }
 
-        for ($currentLine = $start; $currentLine <= $end && !$file->eof(); $currentLine++) {
-            $row = $file->current();
-
-            if ($row && count($row) > 1) {
-                $data[] = array_combine($headers, $row);
-            }
-
-            $file->next();
-        }
-
-        return $data;
+        return $lines->take($end - $start + 1)
+            ->filter(fn($row) => is_array($row) && count($row) > 1)
+            ->map(fn($row) => array_combine($headers, $row))
+            ->values()
+            ->all();
     }
 
     /**
@@ -421,7 +444,7 @@ class BackupPart
      */
     public function isDone(): bool
     {
-        return $this->offset >= $this->totalItems;
+        return $this->offset >= $this->totalItems && ($this->type === self::INCLUDE_DATABASE || empty($this->nextFiles($this->offset + 1)));
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Modular\Connector\Services\Manager;
 
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 
 /**
  * Handles all functionality related to WordPress translations.
@@ -48,8 +49,7 @@ class ManagerTranslation extends AbstractManager
      */
     public function upgrade(array $items = [])
     {
-        Manager::includeUpgrader();
-        Manager::clean();
+        ServerSetup::clean();
 
         try {
             $skin = new \WP_Ajax_Upgrader_Skin([]);
@@ -57,7 +57,7 @@ class ManagerTranslation extends AbstractManager
 
             $result = @$upgrader->bulk_upgrade();
         } finally {
-            Manager::clean();
+            ServerSetup::clean();
             Server::logout();
         }
 

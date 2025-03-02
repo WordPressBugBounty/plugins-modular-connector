@@ -34,8 +34,8 @@ return [
     | Default JWT Expiration
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default expiration time (as a string) for the generated
-    | JWTs. If not specified, it will default to 2 days.
+    | Here you may specify the default expiration time in minutes for the generated
+    | JWTs. If not specified, it will default to 6 hours.
     |
     */
 

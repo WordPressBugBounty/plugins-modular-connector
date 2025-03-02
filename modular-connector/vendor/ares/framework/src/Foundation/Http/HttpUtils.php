@@ -2,9 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Http;
 
-use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use Modular\ConnectorDependencies\Symfony\Component\HttpFoundation\InputBag;
-use Modular\ConnectorDependencies\Symfony\Component\HttpFoundation\Response;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 class HttpUtils
 {
     /**
@@ -58,64 +56,38 @@ class HttpUtils
     }
     /**
      * @return bool
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     public static function isAjax(): bool
     {
         $request = \Modular\ConnectorDependencies\app('request');
-        /**
-         * @var \Illuminate\Config\Repository $config
-         */
-        $config = \Modular\ConnectorDependencies\app('config');
-        $isFromCron = $config->get('app.router.ajax', fn() => fn($request) => \false);
-        return $isFromCron($request);
+        return defined('DOING_AJAX') && \DOING_AJAX && Str::startsWith($request->get('action'), 'modular_');
     }
     /**
      * @return bool
      */
     public static function isCron(): bool
     {
-        $request = \Modular\ConnectorDependencies\app('request');
-        /**
-         * @var \Illuminate\Config\Repository $config
-         */
-        $config = \Modular\ConnectorDependencies\app('config');
-        $isFromCron = $config->get('app.router.cron', fn() => fn($request) => \false);
-        return $isFromCron($request);
+        return defined('DOING_CRON') && \DOING_CRON;
     }
     /**
-     * @return true
+     * @return bool
      */
     public static function isDirectRequest(): bool
     {
         $request = \Modular\ConnectorDependencies\app('request');
-        /**
-         * @var \Illuminate\Config\Repository $config
-         */
-        $config = \Modular\ConnectorDependencies\app('config');
-        /**
-         * [
-         * 'origin' => 'mo',
-         * 'type' => fn($value) => !empty($value),
-         * 'mrid' => fn($value) => !empty($value),
-         * ],
-         */
-        $queryParams = Collection::make($config->get('app.router.direct', []));
-        /**
-         * @var InputBag $query
-         */
-        $query = $request->query;
-        $isFromQuery = $query->count() >= count($queryParams) && $queryParams->filter(function ($value, $key) use ($request) {
-            if (is_callable($value)) {
-                return $request->has($key) && $value($request->get($key));
-            }
-            return $request->has($key) && $request->get($key) === $value;
-        })->count() === $queryParams->count();
+        $userAgent = $request->header('User-Agent');
+        $userAgentMatches = $userAgent && Str::is('ModularConnector/* (Linux)', $userAgent);
+        $originQuery = $request->has('origin') && $request->get('origin') === 'mo';
+        $isFromQuery = ($originQuery || $userAgentMatches) && $request->has('type');
         // When is wp-load.php request
         if ($isFromQuery) {
             return \true;
         }
-        $isFromSegment = $config->get('app.router.segments', fn() => fn($request) => \false);
-        if ($isFromSegment($request)) {
+        // TODO Now we use Laravel routes but we can't directly use the routes
+        $isFromSegment = \false && $request->segment(1) === 'api' && $request->segment(2) === 'modular-connector';
+        if ($isFromSegment) {
             return \true;
         }
         return \false;

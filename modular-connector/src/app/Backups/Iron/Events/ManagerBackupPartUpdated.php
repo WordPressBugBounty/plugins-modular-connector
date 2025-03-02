@@ -22,6 +22,7 @@ class ManagerBackupPartUpdated extends AbstractEvent
     public const STATUS_FAILED_UPLOADED = 'failed_uploaded';
     public const STATUS_FAILED_EXPORT_DATABASE = 'failed_export_database';
     public const STATUS_FAILED_EXPORT_FILES = 'failed_export_files';
+    public const STATUS_FAILED_EXPORT_MANIFEST = 'failed_export_manifest';
 
 
     public function __construct(BackupPart $backupPart, string $status, array $extraArgs)

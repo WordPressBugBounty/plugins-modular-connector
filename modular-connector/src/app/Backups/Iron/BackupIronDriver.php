@@ -3,6 +3,7 @@
 namespace Modular\Connector\Backups\Iron;
 
 use Modular\Connector\Backups\Contracts\BackupDriver;
+use Modular\Connector\Backups\Facades\Backup;
 use Modular\Connector\Backups\Facades\Backup as BackupFacade;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartsCalculated;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
@@ -10,9 +11,7 @@ use Modular\Connector\Backups\Iron\Jobs\ProcessDatabaseJob;
 use Modular\Connector\Backups\Iron\Manifest\CalculateManifestJob;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Listeners\HookEventListener;
-use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\File as FileFacade;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
@@ -22,9 +21,14 @@ use function Modular\ConnectorDependencies\event;
 class BackupIronDriver implements BackupDriver
 {
     /**
-     * @var BackupPart|null
+     * @var
      */
-    protected ?BackupPart $mainPart;
+    protected $payload;
+
+    /**
+     * @var
+     */
+    protected $requestId;
 
     public function listeners(): void
     {
@@ -39,7 +43,8 @@ class BackupIronDriver implements BackupDriver
      */
     public function options($requestId, $payload): self
     {
-        $this->mainPart = new BackupPart($requestId, $payload);
+        $this->payload = $payload;
+        $this->requestId = $requestId;
 
         return $this;
     }
@@ -64,19 +69,13 @@ class BackupIronDriver implements BackupDriver
 
         BackupFacade::init();
 
-        $types = $types->map(function ($type) {
-            $status = ManagerBackupPartUpdated::STATUS_EXCLUDED;
-            $isIncluded = array_search($type, $this->mainPart->included);
-
-            if ($isIncluded !== false) {
-                $status = ManagerBackupPartUpdated::STATUS_PENDING;
-            }
-
-            return (clone $this->mainPart)
+        $types = $types->map(
+            fn($type) => (new BackupPart($this->requestId))
                 ->setType($type)
+                ->setPayload($this->payload)
                 ->setManifestPath()
-                ->markAs($status, false);
-        });
+                ->calculateExclusion()
+        );
 
         event(new ManagerBackupPartsCalculated($types));
 
@@ -116,15 +115,9 @@ class BackupIronDriver implements BackupDriver
         }
 
         if ($removeAll) {
-            if ($name) {
-                $value = Cache::get('_cancelled_backup', []);
-                $value[] = $name;
-
-                Cache::put('_cancelled_backup', $value, Carbon::now()->addDay());
-            }
+            Backup::cancel($name);
 
             Manager::clearQueue('backups');
         }
     }
-
 }

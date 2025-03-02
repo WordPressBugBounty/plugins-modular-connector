@@ -7,8 +7,8 @@ class SpamShield
     public static function fix()
     {
         // Fix needed undefined constant
-        if (!defined('Modular\ConnectorDependencies\WPSS_IP_BAN_CLEAR')) {
-            define('Modular\ConnectorDependencies\WPSS_IP_BAN_CLEAR', \true);
+        if (!defined('WPSS_IP_BAN_CLEAR')) {
+            define('WPSS_IP_BAN_CLEAR', \true);
         }
         // Fix spam shield ban
         $wpssUblCache = get_option('spamshield_ubl_cache');

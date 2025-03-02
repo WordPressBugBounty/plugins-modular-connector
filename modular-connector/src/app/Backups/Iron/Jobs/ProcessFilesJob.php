@@ -6,6 +6,7 @@ use Modular\Connector\Backups\Iron\BackupPart;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
 use Modular\Connector\Backups\Iron\Helpers\File;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use function Modular\ConnectorDependencies\dispatch;
 
@@ -87,6 +88,8 @@ class ProcessFilesJob implements ShouldQueue
 
             $this->checkFilesIsReady($zip, $offset);
         } catch (\Throwable $e) {
+            Log::error($e);
+
             $part->markAsFailed(ManagerBackupPartUpdated::STATUS_FAILED_EXPORT_FILES, $e);
         }
     }
@@ -123,13 +126,15 @@ class ProcessFilesJob implements ShouldQueue
                 $this->part->markAs(ManagerBackupPartUpdated::STATUS_UPLOAD_PENDING);
 
                 // Create new part upload
-                $newPart = clone $this->part;
+                if (!$this->part->isDone()) {
+                    $newPart = clone $this->part;
 
-                $newPart->batchSize = 0;
-                $newPart->batch++;
-                $newPart->markAs(ManagerBackupPartUpdated::STATUS_PENDING);
+                    $newPart->batchSize = 0;
+                    $newPart->batch++;
+                    $newPart->markAs(ManagerBackupPartUpdated::STATUS_PENDING);
 
-                dispatch(new ProcessFilesJob($newPart));
+                    dispatch(new ProcessFilesJob($newPart));
+                }
 
                 $zip = null;
 

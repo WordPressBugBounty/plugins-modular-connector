@@ -69,7 +69,7 @@ class Application extends FoundationApplication
      */
     public function isDownForMaintenance()
     {
-        return is_file($this->storagePath() . '/framework/down') || defined('ABSPATH') && is_file(constant('ABSPATH') . '/.maintenance');
+        return is_file($this->storagePath() . '/framework/down') || wp_is_maintenance_mode();
     }
     /**
      * Determine if we need to force the schedule run.

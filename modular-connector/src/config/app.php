@@ -1,8 +1,5 @@
 <?php
 
-use Modular\ConnectorDependencies\Illuminate\Http\Request;
-use Modular\ConnectorDependencies\Illuminate\Support\Str;
-
 return [
     /*
     |--------------------------------------------------------------------------
@@ -74,16 +71,5 @@ return [
         Modular\Connector\Providers\ModularConnectorServiceProvider::class,
         Modular\Connector\Providers\EventServiceProvider::class,
         Modular\Connector\Providers\RouteServiceProvider::class,
-    ],
-
-    'router' => [
-        'direct' => [
-            'origin' => 'mo',
-            'type' => fn($value) => !empty($value),
-        ],
-        // 'segments' => fn(Request $request) => $request->segment(1) === 'api' && $request->segment(2) === 'modular-connector',
-        'segments' => fn(Request $request) => false,
-        'cron' => fn(Request $request) => defined('DOING_CRON') && DOING_CRON,
-        'ajax' => fn(Request $request) => defined('DOING_AJAX') && DOING_AJAX && Str::startsWith($request->get('action', ''), 'modular_'),
     ],
 ];

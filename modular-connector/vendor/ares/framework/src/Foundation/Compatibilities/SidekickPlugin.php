@@ -7,7 +7,7 @@ class SidekickPlugin
     public static function fix()
     {
         add_action('init', function () {
-            if (!class_exists('Modular\ConnectorDependencies\Sidekick')) {
+            if (!class_exists('Sidekick')) {
                 return null;
             }
             global $wp_filter;
@@ -18,7 +18,7 @@ class SidekickPlugin
                 if (empty($callable['function']) || !is_array($callable['function']) || count($callable['function']) < 2) {
                     continue;
                 }
-                if (!is_a($callable['function'][0], 'Modular\ConnectorDependencies\Sidekick')) {
+                if (!is_a($callable['function'][0], 'Sidekick')) {
                     continue;
                 }
                 if ($callable['function'][1] !== 'redirect') {

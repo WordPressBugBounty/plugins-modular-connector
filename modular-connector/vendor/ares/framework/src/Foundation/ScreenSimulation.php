@@ -85,10 +85,46 @@ class ScreenSimulation
         if (!function_exists('add_meta_box')) {
             require_once \ABSPATH . 'wp-admin/includes/template.php';
         }
+        $this->includeUpgrader();
         $this->forceCompability();
         $this->loadAdmin();
         $this->loadLogin();
+        // Force login as admin.
+        ServerSetup::loginAs();
+        \Modular\ConnectorDependencies\app()->terminating(function () {
+            ServerSetup::logout();
+        });
         $this->booted = \true;
+    }
+    /**
+     * Makes the necessary WordPress upgrader includes
+     * to handle plugin and themes functionality.
+     *
+     * @return void
+     */
+    public function includeUpgrader(): void
+    {
+        if (!function_exists('wp_update_plugins') || !function_exists('wp_update_themes')) {
+            ob_start();
+            require_once \ABSPATH . 'wp-admin/includes/update.php';
+            ob_end_flush();
+            ob_end_clean();
+        }
+        if (!class_exists('WP_Upgrader')) {
+            require_once \ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+        }
+        if (!function_exists('wp_install')) {
+            require_once \ABSPATH . 'wp-admin/includes/upgrade.php';
+        }
+        if (!function_exists('plugins_api')) {
+            require_once \ABSPATH . 'wp-admin/includes/plugin-install.php';
+        }
+        if (empty($GLOBALS['wp_filesystem'])) {
+            WP_Filesystem();
+        }
+        if (empty($GLOBALS['wp_theme_directories'])) {
+            register_theme_directory(get_theme_root());
+        }
     }
     /**
      * @param $response
@@ -129,36 +165,34 @@ class ScreenSimulation
      */
     private function loadAdmin()
     {
+        if (!defined('WP_ADMIN')) {
+            define('WP_ADMIN', \true);
+        }
+        if (!defined('WP_NETWORK_ADMIN')) {
+            define('WP_NETWORK_ADMIN', HttpUtils::isMultisite());
+        }
+        if (!defined('WP_USER_ADMIN')) {
+            define('WP_USER_ADMIN', \false);
+        }
+        if (!defined('WP_BLOG_ADMIN')) {
+            define('WP_BLOG_ADMIN', \true);
+        }
+        if (!isset($GLOBALS['hook_suffix'])) {
+            $GLOBALS['hook_suffix'] = '';
+        }
         add_action('wp_loaded', function () {
-            if (!defined('WP_ADMIN')) {
-                define('WP_ADMIN', \true);
-            }
-            if (!defined('WP_NETWORK_ADMIN')) {
-                define('WP_NETWORK_ADMIN', HttpUtils::isMultisite());
-            }
-            if (!defined('WP_USER_ADMIN')) {
-                define('WP_USER_ADMIN', \false);
-            }
-            if (!defined('WP_BLOG_ADMIN')) {
-                define('WP_BLOG_ADMIN', \true);
-            }
-            if (!isset($GLOBALS['hook_suffix'])) {
-                $GLOBALS['hook_suffix'] = '';
-            }
             // When we're in Direct Request (wp-load.php) or wp-cron.php, we need to load the main admin files.
             if (HttpUtils::isDirectRequest() || HttpUtils::isCron()) {
                 // Initialize ob_start to avoid any content that has already been sent.
-                ob_start();
+                @ob_start();
                 require_once \ABSPATH . 'wp-admin/includes/admin.php';
                 do_action('admin_init');
-                ob_end_flush();
-                ob_end_clean();
+                @ob_end_flush();
+                @ob_end_clean();
             }
             set_current_screen();
             do_action('load-update-core.php');
         }, \PHP_INT_MAX);
-        // Not using wp object cache
-        $GLOBALS['_wp_using_ext_object_cache'] = \false;
     }
     /**
      * @return void

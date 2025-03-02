@@ -7,7 +7,7 @@ class AllInOneSecurity
 {
     public static function fix()
     {
-        if (!class_exists('Modular\ConnectorDependencies\AIO_WP_Security')) {
+        if (!class_exists('AIO_WP_Security')) {
             return;
         }
         add_action('init', function () {

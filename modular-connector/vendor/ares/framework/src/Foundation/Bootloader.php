@@ -11,6 +11,7 @@ use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Http\Response;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Facade;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 /**
  * Class Bootloader inspired by Roots (Acorn).
@@ -77,13 +78,7 @@ class Bootloader
     {
         $except = Collection::make([admin_url(), wp_login_url(), wp_registration_url()])->map(fn($url) => parse_url($url, \PHP_URL_PATH))->unique()->filter();
         $path = $this->getPath($request);
-        if (!HttpUtils::isAjax() && !$this->isWpLoad($path) && (Str::startsWith($path, $except->all()) || Str::endsWith($path, '.php'))) {
-            return \true;
-        }
-        $api = parse_url(rest_url(), \PHP_URL_PATH);
-        $isApi = Str::startsWith($path, $api);
-        // Redirect canonical URLs
-        return $isApi && redirect_canonical(null, \false);
+        return !HttpUtils::isAjax() && !$this->isWpLoad($path) && (Str::startsWith($path, $except->all()) || Str::endsWith($path, '.php'));
     }
     /**
      * Initialize and retrieve the Application instance.
@@ -97,7 +92,7 @@ class Bootloader
     /**
      * @return void
      */
-    public static function configRequest()
+    public function configRequest()
     {
         if (function_exists('set_time_limit')) {
             @set_time_limit(600);
@@ -117,9 +112,6 @@ class Bootloader
             remove_action('init', 'wp_cron');
             // We use Laravel Response to make our redirections.
             add_filter('wp_redirect', '__return_false');
-        }
-        if (!isset($GLOBALS['hook_suffix'])) {
-            $GLOBALS['hook_suffix'] = null;
         }
         // We're just before the WordPress bootstrap, so we can load the admin files.
         ScreenSimulation::getInstance()->boot();
@@ -169,39 +161,26 @@ class Bootloader
      *
      * @param IlluminateHttpKernel $kernel
      * @param Request $request
-     * @return bool|null
+     * @return void
      */
-    protected function registerRequestHandler(IlluminateHttpKernel $kernel, Request $request): bool
+    protected function registerRequestHandler(IlluminateHttpKernel $kernel, Request $request): void
     {
         $path = $this->getPath($request);
         $isWpLoad = $this->isWpLoad($path);
         // Handle the request if the route exists
         $hook = $isWpLoad ? 'wp_loaded' : 'parse_request';
         add_action($hook, fn() => $this->handleRequest($kernel, $request));
-        return \true;
-    }
-    /**
-     * @return void
-     */
-    public function bootCron(): void
-    {
-        /**
-         * @var IlluminateHttpKernel $kernel
-         */
-        $kernel = $this->app->make(IlluminateHttpKernel::class);
-        $request = $this->app->make('request');
-        $this->bootHttp($kernel, $request, \true);
     }
     /**
      * @param IlluminateHttpKernel $kernel
      * @param Request $request
-     * @return bool
+     * @return void
      * @link https://github.com/deliciousbrains/wp-background-processing/blob/master/classes/wp-async-request.php Method inspired by wp-background-processing
      */
-    protected function bootAjax(IlluminateHttpKernel $kernel, Request $request): bool
+    protected function bootAjax(IlluminateHttpKernel $kernel, Request $request): void
     {
         if (!HttpUtils::isAjax() && !HttpUtils::isCron()) {
-            return \false;
+            return;
         }
         HttpUtils::configMaxLimit();
         // If the request is an AJAX request, we need to check the nonce.
@@ -220,42 +199,41 @@ class Bootloader
                     wp_die(sprintf('Invalid nonce for %s', $action), 403);
                 }
             }
-            // If this is an AJAX request, we need to force a response using the default route.
+            // If this is an AJAX request, we need to force close the connection to avoid the server hanging.
             add_action($action, fn() => HttpUtils::forceCloseConnection(), 1);
         }
         // When is a cron request, WP takes care of forcing the shutdown to proxy server (nginx, apache)
         remove_action('shutdown', 'wp_ob_end_flush_all', 1);
         add_action('shutdown', fn() => $this->handleRequest($kernel, $request), 100);
-        return \true;
     }
     /**
      * Boot the Application for HTTP requests.
      *
      * @param IlluminateHttpKernel $kernel
      * @param Request $request
-     * @param bool $isCron
-     * @return bool
+     * @return void
      */
-    protected function bootHttp(IlluminateHttpKernel $kernel, Request $request, bool $isCron = \false): bool
+    protected function bootHttp(IlluminateHttpKernel $kernel, Request $request): void
     {
-        if (!$isCron && ($this->isExcluded($request) || !HttpUtils::isDirectRequest() && !HttpUtils::isAjax())) {
-            return \false;
+        if (!HttpUtils::isCron() && ($this->isExcluded($request) || !HttpUtils::isDirectRequest() && !HttpUtils::isAjax())) {
+            return;
         }
-        // Ensure the script continues to run even if the user aborts the connection.
+        Log::debug('Booting the Application for HTTP requests', ['is_direct_request' => HttpUtils::isDirectRequest(), 'is_ajax' => HttpUtils::isAjax(), 'is_cron' => HttpUtils::isCron()]);
         $this->configRequest();
         $this->registerDefaultRoute();
         try {
-            // First, we need to search for the route.
+            // First, we need to search for the route to confirm if it exists and check if the modular request is valid.
             $routes = $this->app->make('router')->getRoutes();
             $route = apply_filters('ares/routes/match', $routes->match($request), \false);
-            if (HttpUtils::isAjax() || $isCron) {
-                return $this->bootAjax($kernel, $request);
+            if (HttpUtils::isDirectRequest()) {
+                if ($route->getName() === 'wordpress') {
+                    // If the route is not found, return false.
+                    \Modular\ConnectorDependencies\abort(404);
+                }
+                add_action('after_setup_theme', fn() => $this->registerRequestHandler($kernel, $request), 0);
+            } elseif (HttpUtils::isAjax() || HttpUtils::isCron()) {
+                $this->bootAjax($kernel, $request);
             }
-            if ($route->getName() === 'wordpress') {
-                // If the route is not found, return false.
-                \Modular\ConnectorDependencies\abort(404);
-            }
-            return $this->registerRequestHandler($kernel, $request);
         } catch (\Throwable $e) {
             throw $e;
         }
@@ -279,9 +257,7 @@ class Bootloader
             $this->app->instance('request', $request);
             Facade::clearResolvedInstance('request');
             $kernel->bootstrap();
-            if (!HttpUtils::isCron()) {
-                add_action('after_setup_theme', fn() => $this->bootHttp($kernel, $request), 0);
-            }
+            $this->bootHttp($kernel, $request);
         }, 0);
     }
 }

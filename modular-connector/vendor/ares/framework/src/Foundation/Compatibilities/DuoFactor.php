@@ -6,7 +6,7 @@ class DuoFactor
 {
     public static function fix()
     {
-        if (!class_exists('Modular\ConnectorDependencies\Duo')) {
+        if (!class_exists('Duo')) {
             return;
         }
         add_action('init', function () {

@@ -18,6 +18,7 @@ class WordPressStore implements Store, LockProvider
     public function __construct($prefix = '')
     {
         $this->prefix = $prefix;
+        $GLOBALS['_wp_using_ext_object_cache'] = \false;
     }
     /**
      * Get a lock instance.

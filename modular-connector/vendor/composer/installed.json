@@ -2,17 +2,17 @@
     "packages": [
         {
             "name": "ares\/framework",
-            "version": "3.1.2",
-            "version_normalized": "3.1.2.0",
+            "version": "3.2.0",
+            "version_normalized": "3.2.0.0",
             "source": {
                 "type": "git",
                 "url": "git@gitlab.modulards.com:modular\/connector\/ares.git",
-                "reference": "c29389d748588b8ce1593a818d0aaeadac8e3e03"
+                "reference": "29b6c2fc6ca470a47d8be307e0ea6ae61b66f7f0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https:\/\/gitlab.modulards.com\/api\/v4\/projects\/modular%2Fconnector%2Fares\/repository\/archive.zip?sha=c29389d748588b8ce1593a818d0aaeadac8e3e03",
-                "reference": "c29389d748588b8ce1593a818d0aaeadac8e3e03",
+                "url": "https:\/\/gitlab.modulards.com\/api\/v4\/projects\/modular%2Fconnector%2Fares\/repository\/archive.zip?sha=29b6c2fc6ca470a47d8be307e0ea6ae61b66f7f0",
+                "reference": "29b6c2fc6ca470a47d8be307e0ea6ae61b66f7f0",
                 "shasum": ""
             },
             "require": {
@@ -41,7 +41,7 @@
             "require-dev": {
                 "filp\/whoops": "^2.12"
             },
-            "time": "2025-02-18T22:45:07+01:00",
+            "time": "2025-03-02T17:55:18+01:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -68,7 +68,7 @@
                 "wordpress"
             ],
             "support": {
-                "source": "https:\/\/gitlab.modulards.com\/modular\/connector\/ares\/-\/tree\/3.1.2",
+                "source": "https:\/\/gitlab.modulards.com\/modular\/connector\/ares\/-\/tree\/3.2.0",
                 "issues": "https:\/\/gitlab.modulards.com\/modular\/connector\/ares\/-\/issues"
             },
             "install-path": "..\/ares\/framework"
@@ -3210,26 +3210,26 @@
         },
         {
             "name": "sniccowp\/php-scoper-wordpress-excludes",
-            "version": "6.7.1",
-            "version_normalized": "6.7.1.0",
+            "version": "6.7.2",
+            "version_normalized": "6.7.2.0",
             "source": {
                 "type": "git",
                 "url": "https:\/\/github.com\/snicco\/php-scoper-wordpress-excludes.git",
-                "reference": "d8e6b5fdc9e42300a8ab18b44b775836a7b52363"
+                "reference": "1e65b207d6f4753904774430ccfc06cb6bfa486e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https:\/\/api.github.com\/repos\/snicco\/php-scoper-wordpress-excludes\/zipball\/d8e6b5fdc9e42300a8ab18b44b775836a7b52363",
-                "reference": "d8e6b5fdc9e42300a8ab18b44b775836a7b52363",
+                "url": "https:\/\/api.github.com\/repos\/snicco\/php-scoper-wordpress-excludes\/zipball\/1e65b207d6f4753904774430ccfc06cb6bfa486e",
+                "reference": "1e65b207d6f4753904774430ccfc06cb6bfa486e",
                 "shasum": ""
             },
             "require-dev": {
                 "php": "^7.4",
                 "php-stubs\/wordpress-globals": "0.2.0",
-                "php-stubs\/wordpress-stubs": "6.7.1",
+                "php-stubs\/wordpress-stubs": "6.7.2",
                 "sniccowp\/php-scoper-excludes": "dev-master"
             },
-            "time": "2024-11-25T00:31:50+00:00",
+            "time": "2025-02-06T00:29:24+00:00",
             "type": "library",
             "installation-source": "dist",
             "notification-url": "https:\/\/packagist.org\/downloads\/",
@@ -3254,7 +3254,7 @@
             ],
             "support": {
                 "issues": "https:\/\/github.com\/snicco\/php-scoper-wordpress-excludes\/issues",
-                "source": "https:\/\/github.com\/snicco\/php-scoper-wordpress-excludes\/tree\/6.7.1"
+                "source": "https:\/\/github.com\/snicco\/php-scoper-wordpress-excludes\/tree\/6.7.2"
             },
             "install-path": "..\/sniccowp\/php-scoper-wordpress-excludes"
         },

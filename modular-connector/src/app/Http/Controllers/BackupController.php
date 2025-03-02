@@ -94,6 +94,8 @@ class BackupController extends Controller
     {
         $name = data_get($modularRequest, 'body.name', '');
 
+        Backup::cancel($name);
+
         dispatch(fn() => Backup::remove($name, true));
 
         return Response::json([

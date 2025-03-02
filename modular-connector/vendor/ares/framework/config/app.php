@@ -2,8 +2,6 @@
 
 namespace Modular\ConnectorDependencies;
 
-use Modular\ConnectorDependencies\Illuminate\Http\Request;
-use Modular\ConnectorDependencies\Illuminate\Support\Str;
 return [
     /*
     |--------------------------------------------------------------------------
@@ -60,14 +58,4 @@ return [
     |
     */
     'providers' => [Ares\Framework\Foundation\Auth\AuthServiceProvider::class, Ares\Framework\Foundation\Providers\BusServiceProvider::class, Ares\Framework\Foundation\Cache\CacheServiceProvider::class, Illuminate\Filesystem\FilesystemServiceProvider::class, Ares\Framework\Foundation\Providers\FoundationServiceProvider::class, Illuminate\View\ViewServiceProvider::class, Ares\Framework\Foundation\Queue\QueueServiceProvider::class, \Modular\Connector\Providers\ModularConnectorServiceProvider::class, \Modular\Connector\Providers\EventServiceProvider::class, \Modular\Connector\Providers\RouteServiceProvider::class],
-    'router' => [
-        'direct' => ['origin' => 'mo', 'type' => fn($value) => !empty($value)],
-        // TODO Now we use Laravel routes but we can't directly use the routes
-        //   because we need to check if the request is from our API
-        //   so we disabled this for now
-        // 'segments' => fn(Request $request) => $request->segment(1) === 'api' && $request->segment(2) === 'modular-connector',
-        'segments' => fn(Request $request) => \false,
-        'cron' => fn(Request $request) => \defined('DOING_CRON') && \DOING_CRON,
-        'ajax' => fn(Request $request) => \defined('DOING_AJAX') && \DOING_AJAX && Str::startsWith($request->get('action', ''), 'modular_'),
-    ],
 ];

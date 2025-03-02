@@ -3,7 +3,6 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Command;
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Cache\Repository as Cache;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\Job;
 use Modular\ConnectorDependencies\Illuminate\Queue\Events\JobFailed;
