@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Http;
 
+use Modular\Connector\Backups\Console\AutoCleanUpCommand;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Scheduling\Schedule;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Kernel as HttpKernel;
@@ -44,7 +45,7 @@ class Kernel extends HttpKernel
             '--max-time' => 30,
             '--max-jobs' => 4,
         ])
-            ->withoutOverlapping(15) // 15 min
+            ->withoutOverlapping(10) // 15 min
             ->everyMinute();
 
         $schedule->command(WorkCommand::class, [
@@ -55,7 +56,14 @@ class Kernel extends HttpKernel
             '--max-time' => 30,
             '--max-jobs' => 4,
         ])
-            ->withoutOverlapping(15) // 15 min
+            ->withoutOverlapping(10) // 15 min
+            ->everyMinute();
+
+        $schedule->command(AutoCleanUpCommand::class, [
+            '--max-files' => 10,
+            '--max-age' => 1,
+        ])
+            ->withoutOverlapping(60) // 1 hour
             ->everyMinute();
     }
 }

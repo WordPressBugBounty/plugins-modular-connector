@@ -41,4 +41,6 @@ return [
             'retry_after' => 10 * 60, // 10 minutes
         ],
     ],
+
+    'names' => ['default', 'backups']
 ];

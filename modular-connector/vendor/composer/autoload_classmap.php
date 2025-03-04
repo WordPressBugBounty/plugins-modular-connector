@@ -24,6 +24,7 @@ return array(
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\AllInOneSecurity' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/AllInOneSecurity.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\Compatibilities' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/Compatibilities.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\DuoFactor' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/DuoFactor.php',
+    'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\JetPlugins' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/JetPlugins.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\ShieldUserManagementICWP' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/ShieldUserManagementICWP.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SidekickPlugin' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/SidekickPlugin.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SpamShield' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/SpamShield.php',

@@ -221,43 +221,43 @@ class Bootloader
         Log::debug('Booting the Application for HTTP requests', ['is_direct_request' => HttpUtils::isDirectRequest(), 'is_ajax' => HttpUtils::isAjax(), 'is_cron' => HttpUtils::isCron()]);
         $this->configRequest();
         $this->registerDefaultRoute();
-        try {
-            // First, we need to search for the route to confirm if it exists and check if the modular request is valid.
-            $routes = $this->app->make('router')->getRoutes();
-            $route = apply_filters('ares/routes/match', $routes->match($request), \false);
-            if (HttpUtils::isDirectRequest()) {
-                if ($route->getName() === 'wordpress') {
-                    // If the route is not found, return false.
-                    \Modular\ConnectorDependencies\abort(404);
+        add_action('plugins_loaded', function () use ($kernel, $request) {
+            try {
+                // First, we need to search for the route to confirm if it exists and check if the modular request is valid.
+                $routes = $this->app->make('router')->getRoutes();
+                $route = apply_filters('ares/routes/match', $routes->match($request), \false);
+                if (HttpUtils::isDirectRequest()) {
+                    if ($route->getName() === 'wordpress') {
+                        // If the route is not found, return false.
+                        \Modular\ConnectorDependencies\abort(404);
+                    }
+                    add_action('after_setup_theme', fn() => $this->registerRequestHandler($kernel, $request), 0);
+                } elseif (HttpUtils::isAjax() || HttpUtils::isCron()) {
+                    $this->bootAjax($kernel, $request);
                 }
-                add_action('after_setup_theme', fn() => $this->registerRequestHandler($kernel, $request), 0);
-            } elseif (HttpUtils::isAjax() || HttpUtils::isCron()) {
-                $this->bootAjax($kernel, $request);
+            } catch (\Throwable $e) {
+                throw $e;
             }
-        } catch (\Throwable $e) {
-            throw $e;
-        }
+        });
     }
     public function boot(string $basePath, $callback)
     {
-        add_action('plugins_loaded', function () use ($basePath, $callback) {
-            if (!defined('LARAVEL_START')) {
-                define('LARAVEL_START', microtime(\true));
-            }
-            $this->basePath = $basePath;
-            $callback($this->getApplication());
-            if ($this->app->hasBeenBootstrapped()) {
-                return;
-            }
-            /**
-             * @var IlluminateHttpKernel $kernel
-             */
-            $kernel = $this->app->make(IlluminateHttpKernel::class);
-            $request = Request::capture();
-            $this->app->instance('request', $request);
-            Facade::clearResolvedInstance('request');
-            $kernel->bootstrap();
-            $this->bootHttp($kernel, $request);
-        }, 0);
+        if (!defined('LARAVEL_START')) {
+            define('LARAVEL_START', microtime(\true));
+        }
+        $this->basePath = $basePath;
+        $callback($this->getApplication());
+        if ($this->app->hasBeenBootstrapped()) {
+            return;
+        }
+        /**
+         * @var IlluminateHttpKernel $kernel
+         */
+        $kernel = $this->app->make(IlluminateHttpKernel::class);
+        $request = Request::capture();
+        $this->app->instance('request', $request);
+        Facade::clearResolvedInstance('request');
+        $kernel->bootstrap();
+        $this->bootHttp($kernel, $request);
     }
 }

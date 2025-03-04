@@ -85,10 +85,10 @@ class ScreenSimulation
         if (!function_exists('add_meta_box')) {
             require_once \ABSPATH . 'wp-admin/includes/template.php';
         }
-        $this->includeUpgrader();
-        $this->forceCompability();
         $this->loadAdmin();
         $this->loadLogin();
+        $this->forceCompability();
+        $this->includeUpgrader();
         // Force login as admin.
         ServerSetup::loginAs();
         \Modular\ConnectorDependencies\app()->terminating(function () {

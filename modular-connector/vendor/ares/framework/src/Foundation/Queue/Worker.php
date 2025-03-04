@@ -49,13 +49,11 @@ class Worker extends IlluminateWorker
             if (class_exists(Log::class)) {
                 Log::debug('Worker memory exceeded');
             }
-            \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_MEMORY_LIMIT;
         } elseif ($this->queueShouldRestart($lastRestart)) {
             if (class_exists(Log::class)) {
                 Log::debug('Worker queue should restart');
             }
-            \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_SUCCESS;
         } elseif ($options->stopWhenEmpty && is_null($job)) {
             if (class_exists(Log::class)) {
@@ -66,13 +64,11 @@ class Worker extends IlluminateWorker
             if (class_exists(Log::class)) {
                 Log::debug('Worker max time exceeded');
             }
-            \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_SUCCESS;
         } elseif ($options->maxJobs && $jobsProcessed >= $options->maxJobs) {
             if (class_exists(Log::class)) {
                 Log::debug('Worker max jobs exceeded');
             }
-            \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
             return static::EXIT_SUCCESS;
         }
     }

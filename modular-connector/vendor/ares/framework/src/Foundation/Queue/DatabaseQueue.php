@@ -116,8 +116,6 @@ class DatabaseQueue extends Queue implements QueueContract, ClearableQueue
      */
     public function push($job, $data = '', $queue = null)
     {
-        // Force to dispatch the schedule
-        \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
         $queue = $this->getQueue($queue);
         return $this->enqueueUsing($job, $this->createPayload($job, $queue, $data), $queue, null, fn($payload, $queue) => $this->pushToDatabase($queue, $payload));
     }
