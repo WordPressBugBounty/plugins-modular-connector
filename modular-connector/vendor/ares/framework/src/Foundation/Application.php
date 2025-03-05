@@ -15,6 +15,12 @@ class Application extends FoundationApplication
      */
     public const VERSION = 'Ares 3.x (Laravel ' . parent::VERSION . ')';
     /**
+     * Many sites have problems with the WP Cron system, so we need to force the schedule run.
+     *
+     * @var bool
+     */
+    public bool $forceDispatchScheduleRun = \false;
+    /**
      * @return string
      */
     public function getScheduleHook()
@@ -64,6 +70,19 @@ class Application extends FoundationApplication
     public function isDownForMaintenance()
     {
         return is_file($this->storagePath() . '/framework/down') || wp_is_maintenance_mode();
+    }
+    /**
+     * Determine if we need to force the schedule run.
+     *
+     * This method will be called when any job is dispatched to the queue.
+     *
+     * @param bool $force
+     * @return $this
+     */
+    public function forceDispatchScheduleRun(bool $force = \true)
+    {
+        $this->forceDispatchScheduleRun = $force;
+        return $this;
     }
     /**
      * Format the given command as a fully-qualified executable command.

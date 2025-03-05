@@ -26,5 +26,5 @@ return [
     | Drivers: "sync", "database", "beanstalkd", "sqs", "redis", "null"
     |
     */
-    'connections' => ['sync' => ['driver' => 'sync'], 'modular' => ['prefix' => 'modular', 'driver' => 'database', 'table' => 'options', 'queue' => 'default', 'retry_after' => 10 * 60], 'names' => ['default', 'backups']],
+    'connections' => ['sync' => ['driver' => 'sync'], 'modular' => ['prefix' => 'modular', 'driver' => 'database', 'table' => 'options', 'queue' => 'default', 'retry_after' => 10 * 60]],
 ];

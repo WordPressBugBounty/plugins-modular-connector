@@ -6,10 +6,10 @@ use DateTime;
 use DateTimeZone;
 use Imagick;
 use Modular\Connector\Facades\Manager;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Modular\ConnectorDependencies\Symfony\Component\Console\SignalRegistry\SignalRegistry;
-use function Modular\ConnectorDependencies\data_get;
 
 /**
  * Handles all functionality related to WordPress Core.
@@ -401,6 +401,7 @@ class ManagerServer
             'MODULAR_CONNECTOR_DEBUG_SCHEDULE' => defined('MODULAR_CONNECTOR_DEBUG_SCHEDULE') ? MODULAR_CONNECTOR_DEBUG_SCHEDULE : null,
             'MODULAR_CONNECTOR_TIMEZONE' => defined('MODULAR_CONNECTOR_TIMEZONE') ? MODULAR_CONNECTOR_TIMEZONE : null,
             'MODULAR_CONNECTOR_BASENAME' => defined('MODULAR_CONNECTOR_BASENAME') ? MODULAR_CONNECTOR_BASENAME : null,
+            'MODULAR_CONNECTOR_MU_BASENAME' => defined('MODULAR_CONNECTOR_MU_BASENAME') ? MODULAR_CONNECTOR_MU_BASENAME : null,
             'MODULAR_CONNECTOR_VERSION' => defined('MODULAR_CONNECTOR_VERSION') ? MODULAR_CONNECTOR_VERSION : null,
             'MODULAR_ARES_SCHEDULE_HOOK' => defined('MODULAR_ARES_SCHEDULE_HOOK') ? MODULAR_ARES_SCHEDULE_HOOK : null,
             'MODULAR_CONNECTOR_QUEUE_SYNC' => defined('MODULAR_CONNECTOR_QUEUE_SYNC') ? MODULAR_CONNECTOR_QUEUE_SYNC : null,
@@ -474,6 +475,7 @@ class ManagerServer
                 'timezone' => wp_timezone_string(),
                 'is_public' => $this->isPublic(),
                 'user_count' => count_users(), // TODO admin_user_count
+                'is_mu_plugin' => HttpUtils::isMuPlugin(),
             ],
             'server' => [
                 'uname' => function_exists('php_uname') ? php_uname() : null, // mode: a

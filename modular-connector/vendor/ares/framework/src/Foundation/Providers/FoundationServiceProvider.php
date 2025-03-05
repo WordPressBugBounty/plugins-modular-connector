@@ -3,11 +3,8 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Console\Scheduling\Schedule;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel;
-use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 class FoundationServiceProvider extends ServiceProvider
 {
@@ -43,19 +40,10 @@ class FoundationServiceProvider extends ServiceProvider
     public function registerForceCallSchedule()
     {
         $this->app->terminating(function () {
-            $queues = Collection::make($this->app->make('config')->get('queue.names', []));
-            $debugSchedule = $this->app->make('config')->get('app.debug_schedule', \false);
-            // We force the schedule run only if there are pending jobs in the queues or if it's a direct request.
-            $hasPendingJobs = HttpUtils::isDirectRequest() || $queues->some(function ($queue) use ($debugSchedule) {
-                $size = $this->app->make('queue')->size($queue);
-                if ($debugSchedule) {
-                    Log::debug('Checking queue', ['queue' => $queue, 'size' => $size]);
-                }
-                return $size > 0;
-            });
-            if (!$hasPendingJobs) {
+            if (!$this->app->forceDispatchScheduleRun) {
                 return;
             }
+            $debugSchedule = $this->app->make('config')->get('app.debug_schedule', \false);
             $hook = $this->app->getScheduleHook();
             $url = apply_filters(sprintf('%s_query_url', $hook), admin_url('admin-ajax.php'));
             $query = apply_filters(sprintf('%s_query_args', $hook), ['action' => $hook, 'nonce' => wp_create_nonce($hook)]);

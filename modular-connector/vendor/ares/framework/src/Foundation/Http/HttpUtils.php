@@ -100,6 +100,13 @@ class HttpUtils
         return is_multisite();
     }
     /**
+     * @return bool
+     */
+    public static function isMuPlugin()
+    {
+        return \Modular\ConnectorDependencies\data_get($GLOBALS, 'modular_is_mu_plugin', \false);
+    }
+    /**
      * @return void
      */
     public static function forceCloseConnection(): void

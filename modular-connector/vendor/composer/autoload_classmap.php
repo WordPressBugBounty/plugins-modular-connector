@@ -28,6 +28,7 @@ return array(
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\ShieldUserManagementICWP' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/ShieldUserManagementICWP.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SidekickPlugin' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/SidekickPlugin.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SpamShield' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/SpamShield.php',
+    'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WPEngine' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WPEngine.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WPForms' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WPForms.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WPO365Login' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WPO365Login.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WpSimpleFirewall' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WpSimpleFirewall.php',

@@ -4,7 +4,6 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\Compatibilities;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
-use Modular\ConnectorDependencies\Symfony\Component\HttpFoundation\Cookie;
 class ScreenSimulation
 {
     /**
@@ -85,12 +84,14 @@ class ScreenSimulation
         if (!function_exists('add_meta_box')) {
             require_once \ABSPATH . 'wp-admin/includes/template.php';
         }
-        $this->loadAdmin();
-        $this->loadLogin();
+        if (!isset($GLOBALS['hook_suffix'])) {
+            $GLOBALS['hook_suffix'] = '';
+        }
+        if (HttpUtils::isMuPlugin()) {
+            $this->loadAdmin();
+        }
         $this->forceCompability();
         $this->includeUpgrader();
-        // Force login as admin.
-        ServerSetup::loginAs();
         \Modular\ConnectorDependencies\app()->terminating(function () {
             ServerSetup::logout();
         });
@@ -165,21 +166,23 @@ class ScreenSimulation
      */
     private function loadAdmin()
     {
+        #region Simulate admin mode
+        /**
+         * Only we want to simulate the admin if we are in a MU Plugin.
+         */
         if (!defined('WP_ADMIN')) {
             define('WP_ADMIN', \true);
         }
         if (!defined('WP_NETWORK_ADMIN')) {
             define('WP_NETWORK_ADMIN', HttpUtils::isMultisite());
         }
-        if (!defined('WP_USER_ADMIN')) {
-            define('WP_USER_ADMIN', \false);
-        }
         if (!defined('WP_BLOG_ADMIN')) {
             define('WP_BLOG_ADMIN', \true);
         }
-        if (!isset($GLOBALS['hook_suffix'])) {
-            $GLOBALS['hook_suffix'] = '';
+        if (!defined('WP_USER_ADMIN')) {
+            define('WP_USER_ADMIN', \false);
         }
+        #endregion
         add_action('wp_loaded', function () {
             // When we're in Direct Request (wp-load.php) or wp-cron.php, we need to load the main admin files.
             if (HttpUtils::isDirectRequest() || HttpUtils::isCron()) {
@@ -190,24 +193,11 @@ class ScreenSimulation
                 @ob_end_flush();
                 @ob_end_clean();
             }
+            // Force login as admin.
+            ServerSetup::loginAs();
             set_current_screen();
             do_action('load-update-core.php');
         }, \PHP_INT_MAX);
-    }
-    /**
-     * @return void
-     */
-    private function loadLogin()
-    {
-        add_filter('ares/login/match', function ($cookies, $userId, $isSecure) {
-            if (defined('WPE_APIKEY')) {
-                $value = hash('sha256', 'wpe_auth_salty_dog|' . \WPE_APIKEY);
-                $expires = 0;
-                // 0 means the cookie will expire when the browser is closed.
-                $cookies[] = new Cookie('wpe-auth', $value, $expires, '/', '', $isSecure, \true);
-            }
-            return $cookies;
-        }, 10, 3);
     }
     /**
      * @return void

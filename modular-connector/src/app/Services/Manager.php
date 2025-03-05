@@ -55,7 +55,6 @@ class Manager extends IlluminateManager
 
         return $response;
     }
-    
 
     /**
      * Deletes all pending jobs from the queue.
@@ -94,6 +93,12 @@ class Manager extends IlluminateManager
         // 3. Clean all pending jobs
         $this->clearQueue();
         $this->clearQueue('backups');
+
+        try {
+            Storage::disk('mu_plugins')->delete(MODULAR_CONNECTOR_MU_BASENAME);
+        } catch (\Throwable $e) {
+            // Silence is golden
+        }
     }
 
     /**
