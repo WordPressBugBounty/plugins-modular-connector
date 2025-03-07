@@ -94,24 +94,17 @@ class Bootloader
      */
     public function configRequest()
     {
+        // Ensure the script continues to run even if the user aborts the connection.
         if (function_exists('set_time_limit')) {
             @set_time_limit(600);
+        }
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(\true);
         }
         $maxMemoryLimit = HttpUtils::maxMemoryLimit();
         if (function_exists('ini_set')) {
             @ini_set('memory_limit', $maxMemoryLimit);
             @ini_set('display_errors', \false);
-        }
-        if (HttpUtils::isDirectRequest() || HttpUtils::isAjax()) {
-            // Ensure the script continues to run even if the user aborts the connection.
-            HttpUtils::configMaxLimit(\false);
-            if (HttpUtils::isDirectRequest() && !defined('DOING_AJAX')) {
-                define('DOING_AJAX', \true);
-            }
-            // When it's a modular request, we need to avoid the cron execution.
-            remove_action('init', 'wp_cron');
-            // We use Laravel Response to make our redirections.
-            add_filter('wp_redirect', '__return_false');
         }
         // We're just before the WordPress bootstrap, so we can load the admin files.
         ScreenSimulation::getInstance()->boot();
@@ -182,7 +175,6 @@ class Bootloader
         if (!HttpUtils::isAjax() && !HttpUtils::isCron()) {
             return;
         }
-        HttpUtils::configMaxLimit();
         // If the request is an AJAX request, we need to check the nonce.
         if (HttpUtils::isAjax()) {
             // Don't lock up other requests while processing.
@@ -199,8 +191,6 @@ class Bootloader
                     wp_die(sprintf('Invalid nonce for %s', $action), 403);
                 }
             }
-            // If this is an AJAX request, we need to force close the connection to avoid the server hanging.
-            add_action($action, fn() => HttpUtils::forceCloseConnection(), 1);
         }
         // When is a cron request, WP takes care of forcing the shutdown to proxy server (nginx, apache)
         remove_action('shutdown', 'wp_ob_end_flush_all', 1);

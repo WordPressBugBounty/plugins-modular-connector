@@ -75,6 +75,19 @@ class ScreenSimulation
         if (!isset($GLOBALS['pagenow'])) {
             $GLOBALS['pagenow'] = $path;
         }
+        if (HttpUtils::isDirectRequest() || HttpUtils::isAjax()) {
+            if (HttpUtils::isDirectRequest() && !defined('DOING_AJAX')) {
+                define('DOING_AJAX', \true);
+            }
+            // If this is an AJAX request, we need to force close the connection to avoid the server hanging.
+            if (HttpUtils::isAjax()) {
+                HttpUtils::forceCloseConnection();
+            }
+            // When it's a modular request, we need to avoid the cron execution.
+            remove_action('init', 'wp_cron');
+            // We use Laravel Response to make our redirections.
+            add_filter('wp_redirect', '__return_false');
+        }
         if (!class_exists('WP_Screen')) {
             require_once \ABSPATH . 'wp-admin/includes/class-wp-screen.php';
         }
@@ -87,11 +100,16 @@ class ScreenSimulation
         if (!isset($GLOBALS['hook_suffix'])) {
             $GLOBALS['hook_suffix'] = '';
         }
+        $this->forceCompability();
+        $this->includeUpgrader();
+        // Force login as admin.
+        add_action('plugins_loaded', function () {
+            // Many premium plugins require the user to be logged in as an admin to detect the license.
+            ServerSetup::loginAs();
+        });
         if (HttpUtils::isMuPlugin()) {
             $this->loadAdmin();
         }
-        $this->forceCompability();
-        $this->includeUpgrader();
         \Modular\ConnectorDependencies\app()->terminating(function () {
             ServerSetup::logout();
         });
@@ -193,8 +211,6 @@ class ScreenSimulation
                 @ob_end_flush();
                 @ob_end_clean();
             }
-            // Force login as admin.
-            ServerSetup::loginAs();
             set_current_screen();
             do_action('load-update-core.php');
         }, \PHP_INT_MAX);
