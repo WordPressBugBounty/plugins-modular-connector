@@ -3,11 +3,15 @@
 namespace Modular\Connector\Providers;
 
 use Modular\Connector\Backups\BackupManager;
+use Modular\Connector\Facades\Manager as ManagerFacade;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Services\Manager;
 use Modular\Connector\Services\Manager\ManagerWooCommerce;
 use Modular\Connector\Services\ManagerServer;
 use Modular\Connector\Services\ManagerWhiteLabel;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 use function Modular\ConnectorDependencies\base_path;
 
@@ -60,5 +64,49 @@ class ModularConnectorServiceProvider extends ServiceProvider
         $this->registerActionLinks();
 
         WhiteLabel::init();
+    }
+
+    /**
+     * @return void
+     */
+    public function boot()
+    {
+        $this->booted(function () {
+            try {
+                // Try to migrate the database in separate process, because in some hosts it executed right but throws an error
+                ManagerFacade::driver('database')->migrate();
+            } catch (\Throwable $e) {
+                // Silence is golden
+                Log::error($e);
+            }
+
+            try {
+                if (defined('MODULAR_CONNECTOR_CACHE_DRIVER')) {
+                    $driver = MODULAR_CONNECTOR_CACHE_DRIVER;
+                } elseif (Cache::driver('wordpress')->has('cache.default')) {
+                    $driver = Cache::driver('wordpress')->get('cache.default');
+                } else {
+                    $driver = Config::get('cache.default');
+                }
+
+                Config::set('cache.default', $driver);
+            } catch (\Throwable $e) {
+                // Silence is golden
+            }
+
+            try {
+                if (defined('MODULAR_CONNECTOR_QUEUE_DRIVER')) {
+                    $driver = MODULAR_CONNECTOR_QUEUE_DRIVER;
+                } elseif (Cache::driver('wordpress')->has('queue.default')) {
+                    $driver = Cache::driver('wordpress')->get('queue.default');
+                } else {
+                    $driver = Config::get('queue.default');
+                }
+
+                Config::set('queue.default', $driver);
+            } catch (\Throwable $e) {
+                // Silence is golden
+            }
+        });
     }
 }

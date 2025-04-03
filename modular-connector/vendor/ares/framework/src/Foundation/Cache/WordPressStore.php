@@ -4,6 +4,9 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache;
 
 use Modular\ConnectorDependencies\Illuminate\Contracts\Cache\LockProvider;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Cache\Store;
+/**
+ * @deprecated
+ */
 class WordPressStore implements Store, LockProvider
 {
     /**
@@ -18,7 +21,6 @@ class WordPressStore implements Store, LockProvider
     public function __construct($prefix = '')
     {
         $this->prefix = $prefix;
-        $GLOBALS['_wp_using_ext_object_cache'] = \false;
     }
     /**
      * Get a lock instance.
@@ -195,7 +197,7 @@ class WordPressStore implements Store, LockProvider
             $transientPrefix = '_transient_';
         }
         // Prepare the LIKE pattern
-        $likePattern = '%' . $transientPrefix . '%' . $wpdb->esc_like($this->prefix) . '%';
+        $likePattern = '%' . $wpdb->esc_like($transientPrefix) . '%' . $wpdb->esc_like($this->prefix) . '%';
         // Prepare the SQL query to delete the transients
         $sql = $wpdb->prepare("DELETE FROM {$table} WHERE {$nameColumn} LIKE %s", $likePattern);
         // Execute the query

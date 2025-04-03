@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => defined('MODULAR_CONNECTOR_QUEUE_SYNC') && MODULAR_CONNECTOR_QUEUE_SYNC ? 'sync' : 'modular',
+    'default' => defined('MODULAR_CONNECTOR_QUEUE_DRIVER') ? MODULAR_CONNECTOR_QUEUE_DRIVER : 'wordpress',
 
     /*
     |--------------------------------------------------------------------------
@@ -33,14 +33,24 @@ return [
             'driver' => 'sync',
         ],
 
-        'modular' => [
+        'wordpress' => [
             'prefix' => 'modular',
-            'driver' => 'database',
+            'driver' => 'wordpress',
             'table' => 'options',
+            'queue' => 'default',
+            'retry_after' => 10 * 60, // 10 minutes
+        ],
+
+        'database' => [
+            'driver' => 'database',
+            'connection' => 'modular',
+            'table' => 'jobs',
             'queue' => 'default',
             'retry_after' => 10 * 60, // 10 minutes
         ],
     ],
 
-    'names' => ['default', 'backups']
+    'failed' => [
+        'driver' => null,
+    ],
 ];

@@ -8,8 +8,10 @@ use Modular\Connector\Backups\Iron\Jobs\ProcessFilesJob;
 use Modular\Connector\Backups\Iron\Jobs\ProcessUploadJob;
 use Modular\Connector\Backups\Iron\Manifest\Manifest;
 use Modular\Connector\Facades\Manager;
+use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\LazyCollection;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
@@ -17,9 +19,6 @@ use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
 
-/**
- * Optimized BackupOptions class.
- */
 class BackupPart
 {
     /**
@@ -117,6 +116,11 @@ class BackupPart
      */
     public int $timestamp = 0;
 
+    /**
+     * @var int
+     */
+    public int $lastWebhookSent = 0;
+
     public const INCLUDE_DATABASE = 'database';
     public const INCLUDE_CORE = 'core';
     public const INCLUDE_PLUGINS = 'plugins';
@@ -164,12 +168,11 @@ class BackupPart
 
         $this->included = $included;
 
-        $this->excludedFiles = Collection::make($included)
-            ->filter(fn($type) => $type !== self::INCLUDE_DATABASE)
-            ->mapWithKeys(fn($type) => [$type => $this->getExcludedFiles($type, data_get($payload, 'excluded', []))])
-            ->toArray();
-
-        $this->excludedTables = $this->getExcludedTables(data_get($payload, 'excluded.tables', []));
+        if ($this->type !== self::INCLUDE_DATABASE) {
+            $this->excludedFiles = $this->getExcludedFiles($this->type, data_get($payload, 'excluded', []));
+        } else {
+            $this->excludedTables = $this->getExcludedTables(data_get($payload, 'excluded.database', []));
+        }
 
         if (isset($payload->batch->size)) {
             $size = $payload->batch->size;
@@ -245,9 +248,13 @@ class BackupPart
             $relativePath = File::getRelativeDiskToDisk($type, 'core');
 
             $files = Collection::make($files)
+                // If the type is core, we need to exclude all files but if the type is another directory,
+                // we need to exclude only the files from that directory
+                ->filter(fn($file) => $type === 'core' || Str::startsWith($file, $relativePath))
                 ->map(fn($file) => ltrim(Str::after($file, $relativePath), '/\\'))
                 ->toArray();
         } else {
+            // When we use a custom filesystem, we can get the excluded files directly
             $files = data_get($excluded, $type, []);
         }
 
@@ -281,7 +288,6 @@ class BackupPart
     public function setType(string $type): BackupPart
     {
         $this->type = $type;
-        $this->excludedFiles = data_get($this->excludedFiles, $type, []);
 
         return $this;
     }
@@ -308,7 +314,7 @@ class BackupPart
         if ($isIncluded === false) {
             $status = ManagerBackupPartUpdated::STATUS_EXCLUDED;
         } else {
-            $isExcluded = in_array('', data_get($this->excludedFiles, $this->type, []));
+            $isExcluded = in_array('', $this->excludedFiles);
 
             if ($isExcluded) {
                 $status = ManagerBackupPartUpdated::STATUS_EXCLUDED;
@@ -342,6 +348,41 @@ class BackupPart
     public function markAs($status, bool $emitEvent = true, array $extra = []): BackupPart
     {
         if ($this->status === $status) {
+            if (!empty($extra['force_redispatch']) && $this->type !== self::INCLUDE_DATABASE) {
+                if ($this->status === ManagerBackupPartUpdated::STATUS_IN_PROGRESS) {
+                    Log::debug('Re-dispatch $part', [
+                        'part' => $this->type,
+                        'batch' => $this->batch,
+                        'offset' => $this->offset,
+                        'totalItems' => $this->totalItems,
+                        'status' => $this->status,
+                        'batchSize' => $this->batchSize,
+                        'batchMaxFileSize' => $this->batchMaxFileSize,
+                    ]);
+
+                    dispatch(new ProcessFilesJob($this));
+                }
+
+                // In some hosting providers, the process of reading the manifest file is very slow,
+                // so we need to send the event to avoid the API marking it as failed.
+                if (
+                    $emitEvent &&
+                    $this->lastWebhookSent > 0 &&
+                    Carbon::createFromTimestamp($this->lastWebhookSent)->lt(Carbon::now()->subMinutes(10))
+                ) {
+                    Log::debug('Force send webhook', [
+                        'part' => $this->type,
+                        'batch' => $this->batch,
+                        'offset' => $this->offset,
+                        'status' => $this->status,
+                    ]);
+
+                    $this->lastWebhookSent = Carbon::now()->timestamp;
+
+                    event(new ManagerBackupPartUpdated($this, $status, $extra));
+                }
+            }
+
             return $this;
         }
 
@@ -349,6 +390,7 @@ class BackupPart
 
         // The excluded and pending statuses are not needed to be updated
         if ($emitEvent) {
+            $this->lastWebhookSent = Carbon::now()->timestamp;
             event(new ManagerBackupPartUpdated($this, $status, $extra));
         }
 

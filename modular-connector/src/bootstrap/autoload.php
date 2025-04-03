@@ -45,7 +45,7 @@ function modular_connector_register_storage(Application $app)
             }
         }
 
-        $subFolders = ['views', 'logs'];
+        $subFolders = ['views', 'logs', 'cache'];
 
         foreach ($subFolders as $subFolder) {
             $subPath = $storagePath . DIRECTORY_SEPARATOR . $subFolder;

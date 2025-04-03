@@ -4,6 +4,9 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache;
 
 use Modular\ConnectorDependencies\Illuminate\Cache\Events\KeyForgotten;
 use Modular\ConnectorDependencies\Illuminate\Cache\Repository;
+/**
+ * @deprecated
+ */
 class WordPressStoreRepository extends Repository
 {
     /**

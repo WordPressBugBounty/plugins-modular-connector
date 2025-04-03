@@ -12,8 +12,10 @@ use Modular\Connector\Backups\Phantom\Jobs\ManagerBackupCalculateManifestJob;
 use Modular\Connector\Backups\Phantom\Listeners\BackupRemoveEventListener;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Listeners\HookEventListener;
+use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\File as FileFacade;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
 
@@ -69,23 +71,29 @@ class BackupDriverPhantomDriver implements BackupDriver
     /**
      * Deletes the backup with the provided $backupName from the backups folder if existing.
      *
+     * @param string|null $name
+     * @param bool $removeAll
      * @return void
-     * @throws \Exception
      * @throws \Throwable
      */
     public function remove(?string $name, bool $removeAll = false)
     {
-        $blob = sprintf('%s*', $name);
-        $path = BackupFacade::path(sprintf('%s', $blob));
+        try {
+            $path = BackupFacade::path('*');
 
-        $files = array_filter(
-            FileFacade::glob($path),
-            fn($file) => !in_array(FileFacade::basename($file), ['index.html', 'index.php', '.htaccess', 'web.config'])
-        );
+            $files = Collection::make(FileFacade::glob($path))
+                ->filter(
+                    fn($file) => FileFacade::isFile($file) &&
+                        !in_array(FileFacade::basename($file), ['index.html', 'index.php', '.htaccess', 'web.config'])
+                )->toArray();
 
-        // delete the previous
-        if (!empty($files)) {
-            FileFacade::delete($files);
+            // delete the previous
+            if (!empty($files)) {
+                FileFacade::delete($files);
+            }
+        } catch (\Throwable $e) {
+            // Silence is golden
+            Log::error($e);
         }
 
         if ($removeAll) {

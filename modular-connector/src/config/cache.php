@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => defined('MODULAR_ARES_CACHE_DRIVER') ? MODULAR_ARES_CACHE_DRIVER : 'wordpress',
+    'default' => defined('MODULAR_CONNECTOR_CACHE_DRIVER') ? MODULAR_CONNECTOR_CACHE_DRIVER : 'file',
 
     /*
     |--------------------------------------------------------------------------
@@ -39,9 +39,22 @@ return [
             'serialize' => false,
         ],
 
+        'file' => [
+            'driver' => 'file',
+            'path' => \Modular\ConnectorDependencies\storage_path('cache'),
+        ],
+
         'wordpress' => [
             'driver' => 'wordpress',
-            'prefix' => defined('MODULAR_ARES_CACHE_PREFIX') ? MODULAR_ARES_CACHE_PREFIX : 'modular_connector_cache_',
+            'prefix' => 'modular_connector_cache_',
+        ],
+
+        'database' => [
+            'driver' => 'database',
+            'table' => 'cache',
+            'lock_table' => 'cache_locks',
+            'connection' => 'modular',
+            'lock_connection' => 'modular',
         ],
     ],
 

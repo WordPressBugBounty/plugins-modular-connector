@@ -17,7 +17,7 @@ class WorkCommand extends Command
      * @var string
      */
     protected $signature = 'queue:work
-                            {connection? : The name of the queue connection to work}
+                            {--connection= : The name of the queue connection to work}
                             {--name=default : The name of the worker}
                             {--queue= : The names of the queues to work}
                             {--daemon : Run the worker in daemon mode (Deprecated)}

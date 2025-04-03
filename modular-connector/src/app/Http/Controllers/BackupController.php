@@ -8,6 +8,7 @@ use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\SDK\Objects\SiteRequest;
@@ -96,7 +97,11 @@ class BackupController extends Controller
 
         Backup::cancel($name);
 
-        dispatch(fn() => Backup::remove($name, true));
+        try {
+            Backup::remove($name, true);
+        } catch (\Throwable $e) {
+            Log::error($e->getMessage());
+        }
 
         return Response::json([
             'success' => 'OK',

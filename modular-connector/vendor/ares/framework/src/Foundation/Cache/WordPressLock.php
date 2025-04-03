@@ -3,7 +3,9 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache;
 
 use Modular\ConnectorDependencies\Illuminate\Cache\Lock;
-use Random\RandomException;
+/**
+ * @deprecated
+ */
 class WordPressLock extends Lock
 {
     /**
@@ -71,7 +73,7 @@ class WordPressLock extends Lock
      * Get the current owner identifier.
      *
      * @return string
-     * @throws RandomException
+     * @throws \Random\RandomException
      */
     protected function generateOwner()
     {

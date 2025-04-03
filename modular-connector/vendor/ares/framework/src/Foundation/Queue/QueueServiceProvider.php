@@ -2,11 +2,26 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue\Database\DatabaseConnector;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue\WordPress\WordpressQueueConnector;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Debug\ExceptionHandler;
 use Modular\ConnectorDependencies\Illuminate\Queue\QueueServiceProvider as IlluminateQueueServiceProvider;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Facade;
 class QueueServiceProvider extends IlluminateQueueServiceProvider
 {
+    /**
+     * Register the service provider.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        parent::register();
+        $this->app['queue']->extend('wordpress', function () {
+            global $wpdb;
+            return new WordpressQueueConnector($wpdb);
+        });
+    }
     /**
      * Register the database queue connector.
      *
@@ -16,8 +31,7 @@ class QueueServiceProvider extends IlluminateQueueServiceProvider
     protected function registerDatabaseConnector($manager)
     {
         $manager->addConnector('database', function () {
-            global $wpdb;
-            return new DatabaseQueueConnector($wpdb);
+            return new DatabaseConnector($this->app['db']);
         });
     }
     /**

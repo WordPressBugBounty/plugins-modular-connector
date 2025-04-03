@@ -15,11 +15,10 @@ class HttpUtils
         if (function_exists('ini_get')) {
             $memoryLimit = ini_get('memory_limit');
         } else {
-            $memoryLimit = '128M';
+            $memoryLimit = '256M';
         }
-        if (!$memoryLimit || intval($memoryLimit) === -1) {
-            // Unlimited, set to 3GB.
-            $memoryLimit = '3200M';
+        if (!$memoryLimit) {
+            $memoryLimit = '256M';
         }
         return $memoryLimit !== -1 ? wp_convert_hr_to_bytes($memoryLimit) : $memoryLimit;
     }
@@ -92,17 +91,5 @@ class HttpUtils
     public static function isMuPlugin()
     {
         return \Modular\ConnectorDependencies\data_get($GLOBALS, 'modular_is_mu_plugin', \false);
-    }
-    /**
-     * @return void
-     */
-    public static function forceCloseConnection(): void
-    {
-        ignore_user_abort(\true);
-        if (\function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        } elseif (\function_exists('litespeed_finish_request')) {
-            litespeed_finish_request();
-        }
     }
 }

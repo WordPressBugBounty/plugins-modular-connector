@@ -2,7 +2,7 @@
 
 namespace Modular\Connector\Services;
 
-use Modular\Connector\Facades\Backup;
+use Modular\Connector\Backups\Iron\Helpers\File;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Helper\OauthClient;
 use Modular\Connector\Services\Manager\ManagerCore;
@@ -13,7 +13,6 @@ use Modular\Connector\Services\Manager\ManagerTranslation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\File as FileFacade;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Manager as IlluminateManager;
 use Modular\ConnectorDependencies\Psr\Container\ContainerExceptionInterface;
@@ -64,14 +63,16 @@ class Manager extends IlluminateManager
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
      */
-    public function clearQueue(string $queueName = 'default')
+    public function clearQueue(string $queueName)
     {
-        $connection = app('config')->get('queue.default');
+        $connections = array_keys(app('config')->get('queue.connections'));
 
-        $queue = app('queue')->connection($connection);
+        foreach ($connections as $connection) {
+            $queue = app('queue')->connection($connection);
 
-        if ($queue instanceof ClearableQueue) {
-            $queue->clear($queueName);
+            if ($queue instanceof ClearableQueue) {
+                $queue->clear($queueName);
+            }
         }
     }
 
@@ -87,17 +88,32 @@ class Manager extends IlluminateManager
         // 1. Clean schedules
         wp_unschedule_hook(app()->getScheduleHook());
 
-        // 2. Clean all cache
-        Cache::flush();
+        try {
+            // 2. Clean all cache
+            Cache::driver('wordpress')->flush();
+            Cache::driver('file')->flush();
+            Cache::driver('database')->flush();
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error flushing cache: %s', $e->getMessage()));
+        }
 
         // 3. Clean all pending jobs
-        $this->clearQueue();
+        $this->clearQueue('default');
         $this->clearQueue('backups');
 
         try {
             Storage::disk('mu_plugins')->delete(MODULAR_CONNECTOR_MU_BASENAME);
         } catch (\Throwable $e) {
             // Silence is golden
+            error_log(sprintf('Error deleting MU plugin: %s', $e->getMessage()));
+        }
+
+        try {
+            $this->driver('database')->rollback();
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error rolling back database: %s', $e->getMessage()));
         }
     }
 
@@ -110,8 +126,13 @@ class Manager extends IlluminateManager
     {
         OauthClient::uninstall();
 
-        $path = Storage::disk('backups')->path('');
-        FileFacade::deleteDirectory($path);
+        try {
+            File::deleteDirectory(MODULAR_CONNECTOR_STORAGE_PATH);
+            File::deleteDirectory(MODULAR_CONNECTOR_BACKUPS_PATH);
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error deleting storage: %s', $e->getMessage()));
+        }
     }
 
     /**

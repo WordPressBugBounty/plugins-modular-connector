@@ -3,6 +3,7 @@
 namespace Modular\Connector\Services\Manager;
 
 use Modular\Connector\Facades\Server;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
@@ -16,6 +17,8 @@ class ManagerCore extends AbstractManager
      */
     private function locale()
     {
+        ScreenSimulation::includeUpgrader();
+        
         $locale = @get_locale();
 
         return $locale ?: ($GLOBALS['wp_local_package'] ?? null);
@@ -26,6 +29,8 @@ class ManagerCore extends AbstractManager
      */
     private function version()
     {
+        ScreenSimulation::includeUpgrader();
+
         return $GLOBALS['wp_version'] ?? null;
     }
 
@@ -36,6 +41,8 @@ class ManagerCore extends AbstractManager
      */
     public function get()
     {
+        ScreenSimulation::includeUpgrader();
+
         $coreUpdate = $this->getLatestUpdate();
         $newVersion = $coreUpdate->version ?? null;
         $newVersionLocale = $coreUpdate->locale ?? null;
@@ -60,6 +67,8 @@ class ManagerCore extends AbstractManager
      */
     private function getLatestUpdate()
     {
+        ScreenSimulation::includeUpgrader();
+
         $checker = get_site_transient('update_core');
 
         if (!isset($checker->updates) || !is_array($checker->updates)) {
@@ -80,6 +89,8 @@ class ManagerCore extends AbstractManager
      */
     public function upgrade($items = [])
     {
+        ScreenSimulation::includeUpgrader();
+
         // Allow core updates
         add_filter('auto_update_core', '__return_true', PHP_INT_MAX);
         add_filter('allow_major_auto_core_updates', '__return_true', PHP_INT_MAX);

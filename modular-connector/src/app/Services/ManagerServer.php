@@ -7,6 +7,7 @@ use DateTimeZone;
 use Imagick;
 use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Modular\ConnectorDependencies\Symfony\Component\Console\SignalRegistry\SignalRegistry;
@@ -404,9 +405,8 @@ class ManagerServer
             'MODULAR_CONNECTOR_MU_BASENAME' => defined('MODULAR_CONNECTOR_MU_BASENAME') ? MODULAR_CONNECTOR_MU_BASENAME : null,
             'MODULAR_CONNECTOR_VERSION' => defined('MODULAR_CONNECTOR_VERSION') ? MODULAR_CONNECTOR_VERSION : null,
             'MODULAR_ARES_SCHEDULE_HOOK' => defined('MODULAR_ARES_SCHEDULE_HOOK') ? MODULAR_ARES_SCHEDULE_HOOK : null,
-            'MODULAR_CONNECTOR_QUEUE_SYNC' => defined('MODULAR_CONNECTOR_QUEUE_SYNC') ? MODULAR_CONNECTOR_QUEUE_SYNC : null,
-            'MODULAR_ARES_CACHE_DRIVER' => defined('MODULAR_ARES_CACHE_DRIVER') ? MODULAR_ARES_CACHE_DRIVER : null,
-            'MODULAR_ARES_CACHE_PREFIX' => defined('MODULAR_ARES_CACHE_PREFIX') ? MODULAR_ARES_CACHE_PREFIX : null,
+            'MODULAR_CONNECTOR_QUEUE_DRIVER' => defined('MODULAR_CONNECTOR_QUEUE_DRIVER') ? MODULAR_CONNECTOR_QUEUE_DRIVER : null,
+            'MODULAR_CONNECTOR_CACHE_DRIVER' => defined('MODULAR_CONNECTOR_CACHE_DRIVER') ? MODULAR_CONNECTOR_CACHE_DRIVER : null,
             'MODULAR_LOG_CHANNEL' => defined('MODULAR_LOG_CHANNEL') ? MODULAR_LOG_CHANNEL : null,
             'MODULAR_CONNECTOR_LOG_LEVEL' => defined('MODULAR_CONNECTOR_LOG_LEVEL') ? MODULAR_CONNECTOR_LOG_LEVEL : null,
         ];
@@ -476,6 +476,8 @@ class ManagerServer
                 'is_public' => $this->isPublic(),
                 'user_count' => count_users(), // TODO admin_user_count
                 'is_mu_plugin' => HttpUtils::isMuPlugin(),
+                'cache_driver' => Config::get('cache.default'),
+                'queue_driver' => Config::get('queue.default'),
             ],
             'server' => [
                 'uname' => function_exists('php_uname') ? php_uname() : null, // mode: a

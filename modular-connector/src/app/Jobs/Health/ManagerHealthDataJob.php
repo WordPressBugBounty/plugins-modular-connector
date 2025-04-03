@@ -104,7 +104,7 @@ class ManagerHealthDataJob implements ShouldQueue
         foreach ($this->tests as $test) {
             $testName = $allTests[$test]['test'];
 
-            if (!is_string($test) || in_array($testName, $availableTests)) {
+            if (!is_string($test) || in_array($testName, $availableTests) || !is_string($testName)) {
                 continue;
             }
 

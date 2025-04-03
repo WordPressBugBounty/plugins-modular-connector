@@ -3,6 +3,9 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache;
 
 use Modular\ConnectorDependencies\Illuminate\Cache\CacheServiceProvider as IlluminateCacheServiceProvider;
+/**
+ * @deprecated
+ */
 class CacheServiceProvider extends IlluminateCacheServiceProvider
 {
     /**

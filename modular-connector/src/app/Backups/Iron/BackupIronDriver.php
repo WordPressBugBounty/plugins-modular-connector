@@ -7,7 +7,7 @@ use Modular\Connector\Backups\Facades\Backup;
 use Modular\Connector\Backups\Facades\Backup as BackupFacade;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartsCalculated;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
-use Modular\Connector\Backups\Iron\Jobs\ProcessDatabaseJob;
+use Modular\Connector\Backups\Iron\Jobs\DatabaseDumpJob;
 use Modular\Connector\Backups\Iron\Manifest\CalculateManifestJob;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Listeners\HookEventListener;
@@ -87,7 +87,7 @@ class BackupIronDriver implements BackupDriver
 
                     dispatch(new CalculateManifestJob($part));
                 } else {
-                    dispatch(new ProcessDatabaseJob($part));
+                    dispatch(new DatabaseDumpJob($part));
                 }
             });
     }
@@ -101,8 +101,7 @@ class BackupIronDriver implements BackupDriver
      */
     public function remove(?string $name, bool $removeAll = false)
     {
-        $blob = sprintf('%s*', $name);
-        $path = BackupFacade::path(sprintf('%s', $blob));
+        $path = BackupFacade::path('*');
 
         $files = array_filter(
             FileFacade::glob($path),

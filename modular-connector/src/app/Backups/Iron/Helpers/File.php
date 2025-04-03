@@ -4,6 +4,7 @@ namespace Modular\Connector\Backups\Iron\Helpers;
 
 use Modular\Connector\Backups\Iron\BackupPart;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Modular\ConnectorDependencies\Symfony\Component\Finder\Finder;
@@ -110,11 +111,13 @@ class File
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs()
             ->ignoreVCS(true)
-            ->filter(
-                fn(\SplFileInfo $file) => file_exists($file->getRealPath()) &&
-                    $file->isReadable() &&
-                    !File::shouldExclude($disk, $file, $excluded)
-            )
+            // Note: Even though we use the ->exclude() method to filter out unwanted directories,
+            // the Symfony Finder component still traverses the entire directory tree from the root.
+            // This means that exclusions are applied only after scanning the complete folder structure.
+            // Consequently, in very large directories, this can lead to performance issues or timeouts,
+            // as scanning the entire tree is expensive in terms of time and memory.
+            ->exclude($excluded->toArray())
+            ->filter(fn(\SplFileInfo $file) => !self::shouldExclude($disk, $file, $excluded))
             ->in($path);
     }
 
@@ -141,10 +144,15 @@ class File
      */
     public static function shouldExclude(string $disk, \SplFileInfo $file, Collection $excluded): bool
     {
+        if (!file_exists($file->getRealPath()) || !$file->isReadable()) {
+            return true;
+        }
+
         $abspath = Storage::disk($disk)->path('');
         $path = Str::replaceFirst($abspath, '', $file->getPathname());
+        $dirname = dirname($path);
 
-        return $excluded->some(fn($excludeItem) => Str::startsWith($path, $excludeItem));
+        return $excluded->some(fn($excludeItem) => Str::startsWith($dirname, $excludeItem) || $path === $excludeItem);
     }
 
     /**
@@ -165,9 +173,8 @@ class File
         }
 
         $files = static::finder($disk, $path, Collection::make($excluded))
-            ->in($path)
-            ->sortByType()
-            ->depth('== 0');
+            ->depth('== 0')
+            ->sortByType();
 
         return Collection::make($files)
             ->map(fn($item) => static::mapItem($item, $disk, true))
@@ -281,6 +288,8 @@ class File
         try {
             $closed = $zip->close();
         } catch (\Throwable $e) {
+            Log::error($e);
+
             $closed = false;
         }
 
@@ -289,5 +298,32 @@ class File
         }
 
         return $closed;
+    }
+
+    /**
+     * @param $dir
+     * @return bool
+     */
+    public static function deleteDirectory($dir)
+    {
+        if (!file_exists($dir)) {
+            return true;
+        }
+
+        if (!is_dir($dir)) {
+            return unlink($dir);
+        }
+
+        foreach (scandir($dir) as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+
+            if (!self::deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
+                return false;
+            }
+        }
+
+        return rmdir($dir);
     }
 }

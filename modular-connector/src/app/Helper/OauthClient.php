@@ -87,45 +87,10 @@ class OauthClient
     }
 
     /**
-     * @param $dir
-     * @return bool
-     */
-    protected static function deleteDirectory($dir)
-    {
-        if (!file_exists($dir)) {
-            return true;
-        }
-
-        if (!is_dir($dir)) {
-            return unlink($dir);
-        }
-
-        foreach (scandir($dir) as $item) {
-            if ($item == '.' || $item == '..') {
-                continue;
-            }
-
-            if (!self::deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
-                return false;
-            }
-
-        }
-
-        return rmdir($dir);
-    }
-
-    /**
      * Deletes all stored clients
      */
     public static function uninstall()
     {
         delete_option('_modular_connection_clients');
-
-        try {
-            self::deleteDirectory(MODULAR_CONNECTOR_STORAGE_PATH);
-            self::deleteDirectory(MODULAR_CONNECTOR_BACKUPS_PATH);
-        } catch (\Throwable $e) {
-            // Silence is golden
-        }
     }
 }

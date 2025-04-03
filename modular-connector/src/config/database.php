@@ -1,6 +1,13 @@
 <?php
 
-global $table_prefix;
+global $wpdb;
+
+if (!defined('DB_HOST')) {
+    [$host, $port, $socket, $isIpv6] = ['localhost', 3306, null, false];
+} else {
+    [$host, $port, $socket, $isIpv6] = $wpdb->parse_db_host(DB_HOST);
+}
+
 
 return [
 
@@ -15,7 +22,7 @@ return [
     |
     */
 
-    'default' => 'mysql',
+    'default' => 'wordpress',
 
     /*
     |--------------------------------------------------------------------------
@@ -34,23 +41,36 @@ return [
     */
 
     'connections' => [
-        'mysql' => [
+        'wordpress' => [
             'driver' => 'mysql',
-            'host' => defined('DB_HOST') ? DB_HOST : null,
-            'port' => defined('DB_PORT') ? DB_PORT : 3306,
+            'host' => $host,
+            'port' => $port,
             'database' => defined('DB_NAME') ? DB_NAME : null,
             'username' => defined('DB_USER') ? DB_USER : null,
             'password' => defined('DB_PASSWORD') ? DB_PASSWORD : null,
-            'unix_socket' => defined('DB_HOST') ? DB_HOST : null,
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => !empty($table_prefix) ? $table_prefix : '',
+            'unix_socket' => $socket ?: null,
+            'charset' => $wpdb->charset,
+            'collation' => $wpdb->collate,
+            'prefix' => !empty($wpdb->prefix) ? $wpdb->prefix : '',
             'prefix_indexes' => true,
-            'strict' => true,
+            'strict' => false,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                \PDO::MYSQL_ATTR_SSL_CA => defined('DB_ATTR_SSL_CA') ? DB_ATTR_SSL_CA : null,
-            ]) : [],
+        ],
+
+        'modular' => [
+            'driver' => 'mysql',
+            'host' => $host,
+            'port' => $port,
+            'database' => defined('DB_NAME') ? DB_NAME : null,
+            'username' => defined('DB_USER') ? DB_USER : null,
+            'password' => defined('DB_PASSWORD') ? DB_PASSWORD : null,
+            'unix_socket' => $socket ?: null,
+            'charset' => $wpdb->charset,
+            'collation' => $wpdb->collate,
+            'prefix' => (!empty($wpdb->prefix) ? $wpdb->prefix : '') . 'modular_',
+            'prefix_indexes' => true,
+            'strict' => false,
+            'engine' => null,
         ],
     ],
 

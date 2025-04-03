@@ -4,6 +4,7 @@ namespace Modular\Connector\Services\Manager;
 
 use Modular\Connector\Facades\Server;
 use Modular\Connector\WordPress\ModularPluginUpgrader;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use function Modular\ConnectorDependencies\data_get;
@@ -23,6 +24,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function all(bool $checkUpdates = true)
     {
+        ScreenSimulation::includeUpgrader();
+
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
@@ -46,6 +49,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function install(string $downloadLink, bool $overwrite = true)
     {
+        ScreenSimulation::includeUpgrader();
+
         ServerSetup::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
@@ -123,6 +128,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function activate(\stdClass $items)
     {
+        ScreenSimulation::includeUpgrader();
+
         $response = [];
 
         foreach ($items as $plugin => $args) {
@@ -155,6 +162,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function deactivate(\stdClass $items)
     {
+        ScreenSimulation::includeUpgrader();
+
         $response = [];
 
         foreach ($items as $plugin => $args) {
@@ -185,6 +194,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function upgrade(array $items = [])
     {
+        ScreenSimulation::includeUpgrader();
+
         add_filter('auto_update_plugin', '__return_false', PHP_INT_MAX);
 
         ServerSetup::clean();
@@ -217,6 +228,8 @@ class ManagerPlugin extends AbstractManager
      */
     public function delete(array $items)
     {
+        ScreenSimulation::includeUpgrader();
+
         $response = [];
         $basenamesToDelete = [];
 

@@ -36,7 +36,7 @@ return [
         ],
         'backups' => [
             'driver' => 'local',
-            'root' => untrailingslashit(WP_CONTENT_DIR) . DIRECTORY_SEPARATOR . 'modular_backups',
+            'root' => MODULAR_CONNECTOR_BACKUPS_PATH,
             'visibility' => 'public',
         ],
         'plugins' => [

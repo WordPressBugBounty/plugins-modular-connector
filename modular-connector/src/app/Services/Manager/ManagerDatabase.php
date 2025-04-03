@@ -5,8 +5,13 @@ namespace Modular\Connector\Services\Manager;
 use Modular\Connector\Backups\Dumper\PHPDumper;
 use Modular\Connector\Backups\Dumper\ShellDumper;
 use Modular\Connector\Facades\Server;
+use Modular\Connector\Jobs\ConfigureDriversJob;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
+use function Modular\ConnectorDependencies\database_path;
+use function Modular\ConnectorDependencies\dispatch;
 
 /**
  * Handles all functionality related to WordPress database.
@@ -14,6 +19,8 @@ use Modular\ConnectorDependencies\Illuminate\Support\Str;
 class ManagerDatabase
 {
     public const NAME = 'database';
+
+    private const MODULAR_DB_VERSION = 'modular_db_version';
 
     /**
      * Get what is the current database extension used by WP
@@ -154,22 +161,6 @@ class ManagerDatabase
     }
 
     /**
-     * @param array $excludedTables
-     * @return array
-     */
-    public function getExcludedTables(array $excludedTables): array
-    {
-        $excludedTables = array_merge($excludedTables, $this->views());
-
-        return $this->tree()
-            ->filter(
-                fn($table) => in_array($table->path, $excludedTables) || in_array($table->name, $excludedTables)
-            )
-            ->values()
-            ->toArray();
-    }
-
-    /**
      * Get database tree
      *
      * @return Collection
@@ -243,15 +234,115 @@ class ManagerDatabase
 
         // TODO implement multi driver support
         if (Server::shellIsAvailable()) {
+            Log::debug('Using shell dumper for database dump');
+
             try {
                 ShellDumper::dump($path, $options->connection, $excluded);
                 return;
             } catch (\Throwable $e) {
                 // silence is golden
+                Log::debug($e);
             }
         }
 
+        Log::debug('Using PHP dumper for database dump');
+
         // If shell dumper failed, try PHP dumper
         PHPDumper::dump($path, $options->connection, $excluded);
+    }
+
+    /**
+     * Returns the current database version on the WordPress site
+     *
+     * @return string
+     */
+    public function getModularVersion()
+    {
+        // TODO Remove me after the next release
+        $version = get_option('_modular_connector_database_version', '0.0.0');
+
+        if ($version !== '0.0.0') {
+            $this->setModularVersion($version);
+        }
+
+        return Cache::driver('wordpress')->get(self::MODULAR_DB_VERSION, '0.0.0');
+    }
+
+    /**
+     * Sets up the database version on the WordPress site
+     *
+     * @param string $version The version to set
+     *
+     * @return void
+     */
+    public function setModularVersion(?string $version)
+    {
+        if (!is_null($version)) {
+            Cache::driver('wordpress')->put(self::MODULAR_DB_VERSION, $version);
+        } else {
+            Cache::driver('wordpress')->forget(self::MODULAR_DB_VERSION);
+        }
+
+        // TODO Remove me after the next release
+        if (get_option('_modular_connector_database_version', false)) {
+            delete_option('_modular_connector_database_version');
+        }
+    }
+
+    /**
+     * Loads the database migrations that need to be run
+     *
+     * @param string|null $newVersion all migrations will be returned if null
+     * @return Collection The migrations that need to be run
+     */
+    private function loadMigrations(?string $newVersion = null): Collection
+    {
+        $migrations = Collection::make(glob(database_path('migrations/*.php')))
+            ->map(fn($migration) => require_once $migration);
+
+        if (empty($newVersion)) {
+            return $migrations;
+        }
+
+        return $migrations->filter(fn($migration) => version_compare($migration->version, $this->getModularVersion(), '>'));
+    }
+
+    /**
+     * @return void
+     */
+    public function migrate()
+    {
+        $dbVersion = $this->getModularVersion();
+        $newDBVersion = MODULAR_CONNECTOR_VERSION;
+
+        // If the database is already up to date, avoid running the migrations
+        if ($dbVersion === $newDBVersion) {
+            return;
+        }
+
+        Log::debug('Migrating database from ' . $dbVersion . ' to ' . $newDBVersion);
+
+        try {
+            $migrations = $this->loadMigrations($newDBVersion);
+            $migrations->each(fn($migration) => $migration->up());
+        } finally {
+            // To avoid running the migrations again, we set the new version
+            $this->setModularVersion($newDBVersion);
+
+            // After each migration, we need to check if the cache and queue driver is working
+            dispatch(new ConfigureDriversJob());
+        }
+    }
+
+    /**
+     * Removes Modular Connector's database tables
+     *
+     * @return void
+     */
+    public function rollback()
+    {
+        $this->loadMigrations()->reverse()->each(fn($migration) => $migration->down());
+
+        $this->setModularVersion(null);
     }
 }

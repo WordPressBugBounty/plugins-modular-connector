@@ -5,12 +5,17 @@ namespace Modular\Connector\Backups\Iron\Manifest;
 use Modular\Connector\Backups\Iron\BackupPart;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
 use Modular\Connector\Backups\Iron\Helpers\File;
+use Modular\Connector\Backups\Iron\Helpers\HasMaxTime;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\dispatch;
 
 class Manifest
 {
+    use HasMaxTime;
+
     /**
      * @var BackupPart
      */
@@ -26,6 +31,16 @@ class Manifest
      */
     protected $disk;
 
+    /**
+     * The maximum number of seconds a worker may live.
+     *
+     * @var int
+     */
+    protected int $maxTime = 90;
+
+    /**
+     * @param BackupPart $part
+     */
     public function __construct(BackupPart $part)
     {
         $this->part = $part;
@@ -96,6 +111,8 @@ class Manifest
      */
     public function calculate(): void
     {
+        $startTime = $this->getCurrentTime();
+
         // We need to increment the offset to avoid processing the same files
         if ($this->part->status === ManagerBackupPartUpdated::STATUS_PENDING) {
             // We set the offset to 0 because the finder starts from 0
@@ -108,6 +125,13 @@ class Manifest
         $excluded = Collection::make($this->part->excludedFiles);
 
         $offset = $this->part->offset;
+
+        Log::debug('Try to Manifest', [
+            'type' => $this->part->type,
+            'status' => $this->part->status,
+            'offset' => $this->part->offset,
+            'limit' => $this->part->limit,
+        ]);
 
         /**
          * @var \SplFileInfo[] $files
@@ -122,15 +146,35 @@ class Manifest
             $hasFiles = true;
 
             $file = File::mapItem($file, $disk);
-            $file['path'] = sprintf('"%s"', $file['path']);
+            // Scape the path to protect the delimiter
+            $file['path'] = sprintf('"%s"', Str::replace('"', '""', $file['path']));
 
             $buffer[] = implode($this->delimiter, $file);
 
             // Increment the offset
             $offset++;
 
+            // In some hosting providers, the process is really slow to read the file tree, so we need to limit it.
+            if ($this->isTimeExceeded($startTime, $this->maxTime)) {
+                Log::debug('Manifest: Max time exceeded', [
+                    'type' => $this->part->type,
+                    'status' => $this->part->status,
+                    'offset' => $offset,
+                    'limit' => $limit,
+                ]);
+
+                break;
+            }
+
             // Append the buffer
             if (count($buffer) >= $chunkSize) {
+                Log::debug('Manifest: Buffer size exceeded', [
+                    'type' => $this->part->type,
+                    'status' => $this->part->status,
+                    'offset' => $offset,
+                    'limit' => $limit,
+                ]);
+
                 $this->writeManifest($buffer, $offset);
 
                 // Reset the buffer
@@ -148,10 +192,25 @@ class Manifest
 
         // We don't know how many files we have, so we need search for more while we have files
         if ($hasFiles) {
+            Log::debug('Manifest: Files found', [
+                'type' => $this->part->type,
+                'status' => $this->part->status,
+                'offset' => $offset,
+                'limit' => $limit,
+            ]);
+
             dispatch(new CalculateManifestJob($this->part));
         } else {
             // When we don't have files, we need to update the total items
             $totalItems = $this->count();
+
+            Log::debug('Manifest: Dispatch uploading job?', [
+                'type' => $this->part->type,
+                'status' => $this->part->status,
+                'offset' => $offset,
+                'limit' => $limit,
+                'totalItems' => $totalItems,
+            ]);
 
             if ($totalItems > 0) {
                 $this->part->totalItems = $totalItems;

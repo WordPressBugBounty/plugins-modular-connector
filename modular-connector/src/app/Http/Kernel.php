@@ -7,6 +7,7 @@ use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Scheduling\S
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Kernel as HttpKernel;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue\WorkCommand;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Queue;
 
 class Kernel extends HttpKernel
 {
@@ -38,6 +39,22 @@ class Kernel extends HttpKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command(WorkCommand::class, [
+            '--connection' => 'wordpress',
+            '--queue' => 'default',
+            '--stop-when-empty' => 1,
+            '--timeout' => 600,
+            '--memory' => HttpUtils::maxMemoryLimit(true),
+            '--max-time' => 30,
+            '--max-jobs' => 4,
+        ])
+            ->withoutOverlapping(10)
+            ->everyMinute()
+            ->skip(function () {
+                return $this->app->make('config')->get('queue.default') === 'wordpress' ||
+                    Queue::connection('wordpress')->size('default') === 0;
+            });
+
+        $schedule->command(WorkCommand::class, [
             '--queue' => 'default',
             '--stop-when-empty' => 1,
             '--timeout' => 600,
@@ -46,7 +63,8 @@ class Kernel extends HttpKernel
             '--max-jobs' => 4,
         ])
             ->withoutOverlapping(10) // 15 min
-            ->everyMinute();
+            ->everyMinute()
+            ->skip(fn() => Queue::connection()->size('default') === 0);
 
         $schedule->command(WorkCommand::class, [
             '--queue' => 'backups',
@@ -57,7 +75,8 @@ class Kernel extends HttpKernel
             '--max-jobs' => 4,
         ])
             ->withoutOverlapping(10) // 15 min
-            ->everyMinute();
+            ->everyMinute()
+            ->skip(fn() => Queue::connection()->size('backups') === 0);
 
         $schedule->command(AutoCleanUpCommand::class, [
             '--max-files' => 10,

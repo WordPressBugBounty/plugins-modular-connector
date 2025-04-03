@@ -79,10 +79,7 @@ class ScreenSimulation
             if (HttpUtils::isDirectRequest() && !defined('DOING_AJAX')) {
                 define('DOING_AJAX', \true);
             }
-            // If this is an AJAX request, we need to force close the connection to avoid the server hanging.
-            if (HttpUtils::isAjax()) {
-                HttpUtils::forceCloseConnection();
-            }
+            // We cannot close the connection because in some severs it causes the request not to be processed.
             // When it's a modular request, we need to avoid the cron execution.
             remove_action('init', 'wp_cron');
             // We use Laravel Response to make our redirections.
@@ -101,7 +98,6 @@ class ScreenSimulation
             $GLOBALS['hook_suffix'] = '';
         }
         $this->forceCompability();
-        $this->includeUpgrader();
         // Force login as admin.
         add_action('plugins_loaded', function () {
             // Many premium plugins require the user to be logged in as an admin to detect the license.
@@ -121,7 +117,7 @@ class ScreenSimulation
      *
      * @return void
      */
-    public function includeUpgrader(): void
+    public static function includeUpgrader(): void
     {
         if (!function_exists('wp_update_plugins') || !function_exists('wp_update_themes')) {
             ob_start();
@@ -209,10 +205,11 @@ class ScreenSimulation
                 require_once \ABSPATH . 'wp-admin/includes/admin.php';
                 do_action('admin_init');
                 @ob_end_flush();
-                @ob_end_clean();
+                if (@ob_get_length() > 0) {
+                    @ob_end_clean();
+                }
             }
             set_current_screen();
-            do_action('load-update-core.php');
         }, \PHP_INT_MAX);
     }
     /**

@@ -3,6 +3,7 @@
 namespace Modular\Connector\Services\Manager;
 
 use Modular\Connector\Facades\Server;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 
@@ -27,6 +28,8 @@ class ManagerTheme extends AbstractManager
      */
     public function all(bool $checkUpdates = true)
     {
+        ScreenSimulation::includeUpgrader();
+
         if (!function_exists('wp_get_themes')) {
             require_once ABSPATH . 'wp-admin/includes/theme.php';
         }
@@ -43,6 +46,8 @@ class ManagerTheme extends AbstractManager
 
     public function install(string $downloadLink, bool $overwrite = true)
     {
+        ScreenSimulation::includeUpgrader();
+
         ServerSetup::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
@@ -100,6 +105,8 @@ class ManagerTheme extends AbstractManager
      */
     public function activate(\stdClass $theme)
     {
+        ScreenSimulation::includeUpgrader();
+
         $items = array_keys(get_object_vars($theme));
 
         $basename = $items[0];
@@ -131,6 +138,8 @@ class ManagerTheme extends AbstractManager
      */
     public function upgrade(array $themes = [])
     {
+        ScreenSimulation::includeUpgrader();
+
         add_filter('auto_update_theme', '__return_false', PHP_INT_MAX);
 
         ServerSetup::clean();
@@ -155,6 +164,8 @@ class ManagerTheme extends AbstractManager
      */
     public function delete(array $items)
     {
+        ScreenSimulation::includeUpgrader();
+        
         $response = [];
         $basenamesToDelete = [];
 
