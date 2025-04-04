@@ -278,7 +278,7 @@ class ManagerDatabase
     public function setModularVersion(?string $version)
     {
         if (!is_null($version)) {
-            Cache::driver('wordpress')->put(self::MODULAR_DB_VERSION, $version);
+            Cache::driver('wordpress')->forever(self::MODULAR_DB_VERSION, $version);
         } else {
             Cache::driver('wordpress')->forget(self::MODULAR_DB_VERSION);
         }

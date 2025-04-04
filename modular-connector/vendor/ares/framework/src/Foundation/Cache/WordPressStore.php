@@ -65,9 +65,9 @@ class WordPressStore implements Store, LockProvider
     {
         $key = $this->getKey($key);
         if (is_multisite()) {
-            $value = get_site_transient($key);
+            $value = get_network_option(null, $key);
         } else {
-            $value = get_transient($key);
+            $value = get_option($key);
         }
         return $value !== \false ? $value : null;
     }
@@ -99,9 +99,9 @@ class WordPressStore implements Store, LockProvider
     {
         $key = $this->getKey($key);
         if (is_multisite()) {
-            $stored = set_site_transient($key, $value, $seconds);
+            $stored = update_site_option($key, $value);
         } else {
-            $stored = set_transient($key, $value, $seconds);
+            $stored = update_option($key, $value);
         }
         return $stored;
     }
