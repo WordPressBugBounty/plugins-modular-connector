@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
@@ -18,6 +17,8 @@ class ManagerTheme extends AbstractManager
      */
     public function getActive()
     {
+        ScreenSimulation::includeUpgrader();
+
         return wp_get_theme()->get_template();
     }
 
@@ -94,7 +95,7 @@ class ManagerTheme extends AbstractManager
         } catch (\Throwable $e) {
             return $this->parseActionResponse($downloadLink, $e, 'install', ManagerTheme::THEMES);
         } finally {
-            Server::logout();
+            ServerSetup::logout();
         }
     }
 
@@ -151,7 +152,7 @@ class ManagerTheme extends AbstractManager
             $response = @$upgrader->bulk_upgrade($themes);
         } finally {
             ServerSetup::clean();
-            Server::logout();
+            ServerSetup::logout();
         }
 
         return $this->parseBulkActionResponse($themes, $response, 'upgrade', ManagerTheme::THEMES);
@@ -165,7 +166,7 @@ class ManagerTheme extends AbstractManager
     public function delete(array $items)
     {
         ScreenSimulation::includeUpgrader();
-        
+
         $response = [];
         $basenamesToDelete = [];
 

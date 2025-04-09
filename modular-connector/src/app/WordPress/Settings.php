@@ -4,13 +4,21 @@ namespace Modular\Connector\WordPress;
 
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Helper\OauthClient;
+use Modular\Connector\Jobs\ConfigureDriversJob;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\File;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Request;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\View;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
+use function Modular\ConnectorDependencies\app;
+use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\request;
+use function Modular\ConnectorDependencies\storage_path;
 
 class Settings
 {
@@ -83,13 +91,18 @@ class Settings
         $isWhiteLabelActive = $this->isWhiteLabelActive();
         $isConnected = $this->isConnected();
 
-        $connections = OauthClient::getClients();
         $connection = OauthClient::getClient();
 
         $method = Str::lower(Request::method());
+        $tab = sanitize_text_field(Request::get('tab', 'default'));
+
+        $logs = [];
 
         if ($method === 'get') {
-            if ($isConnected) {
+            if ($tab === 'logs') {
+                $view = 'settings.logs';
+                $logs = $this->getStoredLogs();
+            } elseif ($isConnected) {
                 $view = 'settings.connected';
             } elseif (!empty($connection->getClientId()) && empty($connection->getConnectedAt())) {
                 $view = 'settings.pending';
@@ -98,24 +111,173 @@ class Settings
             }
 
             // TODO Move styles to a separate file
-            echo View::make($view, compact('title', 'theme', 'isWhiteLabelActive', 'connections', 'connection', 'isConnected'))
+            echo View::make($view, compact('title', 'theme', 'isWhiteLabelActive', 'connection', 'isConnected', 'tab', 'logs'))
                 ->render();
         } elseif ($method === 'post') {
+            if ($tab === 'logs') {
+                $action = Request::get('action');
+
+                if (in_array($action, ['queue', 'cache'])) {
+                    $this->clear();
+
+                    $this->redirect(true, 'logs');
+                    return;
+                }
+
+                $this->downloadLogs();
+                return;
+            }
+
             $this->store();
         }
     }
 
     /**
      * @param bool $success
+     * @param string $tab
      * @return void
      */
-    protected function redirect(bool $success): void
+    protected function redirect(bool $success, string $tab = ''): void
     {
         ob_start();
-        $response = Response::redirectTo(menu_page_url('modular-connector', false) . '&success=' . intval($success));
+        $response = Response::redirectTo(menu_page_url('modular-connector', false) . '&success=' . intval($success) . ($tab ? '&tab=' . $tab : ''));
         $response->send();
         ob_end_flush();
         die();
+    }
+
+    /**
+     * The function used to get all stored modular logs
+     *
+     * @return array
+     */
+    public function getStoredLogs(): array
+    {
+        $path = storage_path('logs/*');
+
+        $logs = [];
+
+        foreach (File::glob($path) as $logFile) {
+            if (Str::endsWith($logFile, '.log')) {
+                $logs[] = basename($logFile);
+            }
+        }
+
+        return $logs;
+    }
+
+    /**
+     * The function used to download the Modular logs
+     *
+     * @return void
+     */
+    public function downloadLogs()
+    {
+        $request = request();
+
+        // Verify nonce for security
+        $nonce = sanitize_key(wp_unslash($request->get('_wpnonce')));
+
+        if (!wp_verify_nonce($nonce, '_modular_connector_logs')) {
+            wp_nonce_ays('_modular_connector_logs');
+        }
+
+        // Get the selected log file from the request
+        $log = sanitize_text_field($request->get('log_file'));
+
+        if (empty($log)) {
+            wp_die(esc_html__('No log file selected for download.', 'modular-connector'));
+        }
+
+        // Build the file path
+        $path = storage_path(sprintf('/logs/%s', $log));
+
+        // Check if the file exists
+        if (!file_exists($path)) {
+            wp_die(esc_html__('The selected log file does not exist.', 'modular-connector'));
+        }
+
+        // Get the file content
+        $fileContent = File::get($path);
+
+        // Clear output buffer if necessary
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        // Set headers for file download
+        header('Content-Description: File Transfer');
+        header('Content-Type: text/plain');
+        header('Content-Disposition: attachment; filename="' . basename($path) . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . strlen($fileContent));
+
+        // Output the file content
+        echo $fileContent;
+
+        exit;
+    }
+
+    /**
+     * The function used to clear the compiled views
+     *
+     * @return void
+     */
+    public function clearCompiledViews(): void
+    {
+        $path = Config::get('view.compiled');
+
+        if (!$path) {
+            return;
+        }
+
+        $bladeResolver = app('view.engine.resolver')->resolve('blade');
+
+        if (method_exists($bladeResolver, 'forgetCompiledOrNotExpired')) {
+            $bladeResolver->forgetCompiledOrNotExpired();
+        }
+
+        foreach (glob("{$path}/*") as $view) {
+            unlink($view);
+        }
+
+        echo 'Compiled views cleared successfully.';
+    }
+
+    /**
+     * The function used to clear the cache
+     *
+     * @return void
+     */
+    public function clear(): void
+    {
+        $request = request();
+
+        $nonce = sanitize_key(wp_unslash($request->get('_wpnonce')));
+
+        if (!wp_verify_nonce($nonce, '_modular_connector_clear')) {
+            wp_nonce_ays('_modular_connector_clear');
+        }
+
+        if ($request->get('action') === 'queue') {
+            $queueName = $request->get('queue');
+            $connection = $request->get('driver');
+
+            $queue = app('queue')->connection($connection);
+
+            if ($queue instanceof ClearableQueue) {
+                $queue->clear($queueName);
+            }
+        } elseif ($request->get('action') === 'cache') {
+            Cache::driver('file')->flush();
+            Cache::driver('database')->flush();
+
+            $this->clearCompiledViews();
+
+            dispatch(new ConfigureDriversJob());
+        }
     }
 
     /**

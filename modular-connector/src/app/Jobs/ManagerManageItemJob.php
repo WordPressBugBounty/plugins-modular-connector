@@ -81,17 +81,13 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                     $type = 'translation';
                     $items = data_get($payload, 'translations');
                     break;
-                case !empty(data_get($payload, 'database')):
-                    $type = 'database';
-                    $items = data_get($payload, 'database');
-                    break;
             }
         }
 
         // Check action by type
         if ($type === 'theme' && in_array($action, ['deactivate'])) {
             return;
-        } elseif (in_array($type, ['core', 'translation', 'database']) && !in_array($action, ['upgrade'])) {
+        } elseif (in_array($type, ['core', 'translation']) && !in_array($action, ['upgrade'])) {
             return;
         } elseif (empty($type)) {
             return;

@@ -2,6 +2,8 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Models\User;
+use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 class ServerSetup
 {
     /**
@@ -103,5 +105,28 @@ class ServerSetup
         } catch (\Throwable $e) {
             // Silence is golden
         }
+    }
+    /**
+     * @return array|false|mixed
+     */
+    public static function getAllAdminUsers()
+    {
+        if (!function_exists('get_user_by')) {
+            require_once \ABSPATH . \WPINC . '/pluggable.php';
+        }
+        if (!function_exists('get_super_admins')) {
+            require_once \ABSPATH . \WPINC . '/capabilities.php';
+        }
+        if (is_multisite()) {
+            return User::whereIn('user_login', get_super_admins())->get();
+        }
+        $users = User::whereHas('meta', function ($q) {
+            $q->where('meta_key', 'LIKE', '%capabilities%');
+            $q->where('meta_value', 'LIKE', '%administrator%');
+        })->get();
+        if (!empty($users)) {
+            return $users;
+        }
+        return Collection::make(get_users(['role' => 'administrator']))->map(fn(\WP_User $user) => (new User())->forceFill(get_object_vars($user->data)));
     }
 }

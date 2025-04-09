@@ -11,7 +11,7 @@ use Modular\Connector\Events\ManagerItemsInstalled;
 use Modular\Connector\Events\ManagerItemsUpdated;
 use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Listeners\HookEventListener;
-use Modular\Connector\Listeners\UpgradeTranslationsEventListener;
+use Modular\Connector\Listeners\PostUpgradeEventListener;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 
@@ -27,7 +27,7 @@ class EventServiceProvider extends ServiceProvider
         Event::listen(ManagerItemsUpdated::class, HookEventListener::class);
 
         Event::listen(ManagerItemsUpgraded::class, HookEventListener::class);
-        Event::listen(ManagerItemsUpgraded::class, UpgradeTranslationsEventListener::class);
+        Event::listen(ManagerItemsUpgraded::class, PostUpgradeEventListener::class);
 
         Event::listen(ManagerItemsActivated::class, HookEventListener::class);
         Event::listen(ManagerItemsDeactivated::class, HookEventListener::class);

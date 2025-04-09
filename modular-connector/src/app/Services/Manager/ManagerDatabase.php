@@ -221,6 +221,74 @@ class ManagerDatabase
     }
 
     /**
+     * Upgrade WooCommerce database
+     *
+     * @return void
+     */
+    public function upgradeWooCommerce()
+    {
+        $fileName = WP_PLUGIN_DIR . '/woocommerce/includes/class-wc-install.php';
+
+        if (!file_exists($fileName)) {
+            Log::debug("FILENAME $fileName doesn't exist");
+            return;
+        }
+
+        include_once $fileName;
+
+        if (!class_exists('WC_Install')) {
+            return;
+        }
+
+        \WC_Install::run_manual_database_update();
+    }
+
+    /**
+     * Upgrade Elementor database
+     *
+     * @return string|void
+     */
+    public function upgradeElementor()
+    {
+        $managerClass = Collection::make([
+            \ElementorPro\Core\Upgrade\Manager::class,
+            \Elementor\Core\Upgrade\Manager::class,
+        ])
+            ->filter(fn($class) => class_exists($class))
+            ->first();
+
+        if (!$managerClass) {
+            return;
+        }
+
+        /** @var \Elementor\Core\Upgrade\Manager $manager */
+        $manager = new $managerClass();
+        $updater = $manager->get_task_runner();
+
+        try {
+            if ($updater->is_process_locked() && empty($assoc_args['force'])) {
+                return 'already_running';
+            }
+
+            if (!$manager->should_upgrade()) {
+                return 'already_upgraded';
+            }
+
+            $callbacks = $manager->get_upgrade_callbacks();
+            $didTasks = false;
+
+            if (!empty($callbacks)) {
+                $updater->handle_immediately($callbacks);
+                $didTasks = true;
+            }
+
+            $manager->on_runner_complete($didTasks);
+        } catch (\Throwable $e) {
+            Log::error($e);
+        }
+    }
+
+    /**
      * Create database dump
      *
      * @param string $path

@@ -3,7 +3,6 @@
 namespace Modular\Connector\Services;
 
 use Modular\Connector\Backups\Iron\Helpers\File;
-use Modular\Connector\Facades\Server;
 use Modular\Connector\Helper\OauthClient;
 use Modular\Connector\Services\Manager\ManagerCore;
 use Modular\Connector\Services\Manager\ManagerDatabase;
@@ -50,7 +49,7 @@ class Manager extends IlluminateManager
             'translations' => $this->driver('translation')->get(),
         ];
 
-        Server::logout();
+        ServerSetup::logout();
 
         return $response;
     }

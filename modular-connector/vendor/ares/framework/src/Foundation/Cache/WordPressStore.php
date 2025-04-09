@@ -64,11 +64,7 @@ class WordPressStore implements Store, LockProvider
     public function get($key)
     {
         $key = $this->getKey($key);
-        if (is_multisite()) {
-            $value = get_network_option(null, $key);
-        } else {
-            $value = get_option($key);
-        }
+        $value = get_option($key);
         return $value !== \false ? $value : null;
     }
     /**
@@ -98,12 +94,7 @@ class WordPressStore implements Store, LockProvider
     public function put($key, $value, $seconds)
     {
         $key = $this->getKey($key);
-        if (is_multisite()) {
-            $stored = update_site_option($key, $value);
-        } else {
-            $stored = update_option($key, $value);
-        }
-        return $stored;
+        return update_option($key, $value);
     }
     /**
      * Store multiple items in the cache for a given number of seconds.
@@ -169,12 +160,7 @@ class WordPressStore implements Store, LockProvider
     public function forget($key)
     {
         $key = $this->getKey($key);
-        if (is_multisite()) {
-            $deleted = delete_site_transient($key);
-        } else {
-            $deleted = delete_transient($key);
-        }
-        return $deleted;
+        return delete_option($key);
     }
     /**
      * Remove all items from the cache.
@@ -184,20 +170,11 @@ class WordPressStore implements Store, LockProvider
     public function flush()
     {
         global $wpdb;
-        // Determine if we're in multisite
-        $isMultisite = is_multisite();
         // Get the appropriate table and option name column
-        if ($isMultisite) {
-            $table = $wpdb->sitemeta;
-            $nameColumn = 'meta_key';
-            $transientPrefix = '_site_transient_';
-        } else {
-            $table = $wpdb->options;
-            $nameColumn = 'option_name';
-            $transientPrefix = '_transient_';
-        }
+        $table = $wpdb->options;
+        $nameColumn = 'option_name';
         // Prepare the LIKE pattern
-        $likePattern = '%' . $wpdb->esc_like($transientPrefix) . '%' . $wpdb->esc_like($this->prefix) . '%';
+        $likePattern = '%' . $wpdb->esc_like($this->prefix) . '%';
         // Prepare the SQL query to delete the transients
         $sql = $wpdb->prepare("DELETE FROM {$table} WHERE {$nameColumn} LIKE %s", $likePattern);
         // Execute the query

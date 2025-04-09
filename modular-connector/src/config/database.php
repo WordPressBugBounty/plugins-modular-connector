@@ -8,7 +8,6 @@ if (!defined('DB_HOST')) {
     [$host, $port, $socket, $isIpv6] = $wpdb->parse_db_host(DB_HOST);
 }
 
-
 return [
 
     /*

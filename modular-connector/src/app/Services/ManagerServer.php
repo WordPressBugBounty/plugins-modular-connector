@@ -468,6 +468,7 @@ class ManagerServer
             'site' => [
                 'is_ssl' => $this->useSsl(),
                 'is_multisite' => is_multisite(),
+                'is_main_site' => is_main_site(),
                 'base_url' => site_url(),
                 'rest_url' => rest_url(),
                 'home_url' => home_url(),
@@ -495,6 +496,24 @@ class ManagerServer
             'directories' => $this->getDirectoriesData(),
             'constants' => $this->getConstantsData(),
         ];
+    }
+
+    /**
+     * @return void
+     * @deprecated Since 1.15.0. We need to remove this method when the minimum version of Modular is 1.15
+     */
+    public function logout()
+    {
+        if (!function_exists('wp_logout')) {
+            include_once ABSPATH . '/wp-includes/pluggable.php';
+        }
+
+        try {
+            // Emulate the logout process without do_action( 'wp_logout', $user_id );
+            wp_set_current_user(0);
+        } catch (\Throwable $e) {
+            // Silence is golden
+        }
     }
 
     /**
@@ -527,23 +546,6 @@ class ManagerServer
             $wp_filesystem->put_contents($file, $maintenanceString, FS_CHMOD_FILE);
         } elseif (!$enable && $wp_filesystem->exists($file)) {
             $wp_filesystem->delete($file);
-        }
-    }
-
-    /**
-     * @return void
-     */
-    public function logout()
-    {
-        if (!function_exists('wp_logout')) {
-            include_once ABSPATH . '/wp-includes/pluggable.php';
-        }
-
-        try {
-            // Emulate the logout process without do_action( 'wp_logout', $user_id );
-            wp_set_current_user(0);
-        } catch (\Throwable $e) {
-            // Silence is golden
         }
     }
 }

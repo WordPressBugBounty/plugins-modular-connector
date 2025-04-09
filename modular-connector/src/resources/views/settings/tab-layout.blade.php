@@ -18,21 +18,11 @@
                 <a href="?page=modular-connector&tab=logs" class="ds-tab {{ isset($_GET['tab']) && $_GET['tab'] === 'logs' ? 'ds-tab-active' : '' }}">{{ esc_html__('Logs', 'modular') }}</a>
             </div>
         @endif
+
         <div class="ds-box">
-            <div class="ds-left {{ $isWhiteLabelActive || $isConnected ? 'ds-left-flat' : '' }}">
-                @include('parts.form')
-
-                @if($isConnected)
-                    @include('parts.connection_info', ['class' => 'ds-connection-list-flat'])
-                @endif
+            <div class="ds-center">
+                @yield('content')
             </div>
-
-            @if(!$isWhiteLabelActive && !$isConnected)
-                <div class="ds-separator ds-separator-vertical"></div>
-                <div class="ds-right">
-                    @yield('content')
-                </div>
-            @endif
         </div>
 
         @if(!$isWhiteLabelActive)

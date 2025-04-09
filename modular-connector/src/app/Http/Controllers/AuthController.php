@@ -63,7 +63,15 @@ class AuthController
      */
     public function getLogin(SiteRequest $modularRequest)
     {
-        $user = data_get($modularRequest->body, 'user', ServerSetup::getAdminUser());
+        $user = data_get($modularRequest->body, 'id');
+
+        if (!empty($user)) {
+            $user = get_user_by('id', $user);
+        }
+
+        if (empty($user)) {
+            $user = ServerSetup::getAdminUser();
+        }
 
         if (empty($user)) {
             // TODO Make a custom exception
@@ -74,5 +82,17 @@ class AuthController
 
         return Response::redirectTo(admin_url('index.php'))
             ->withCookies($cookies);
+    }
+
+    /**
+     * @param SiteRequest $modularRequest
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUsers(SiteRequest $modularRequest)
+    {
+        $users = ServerSetup::getAllAdminUsers();
+
+        return Response::json($users);
     }
 }

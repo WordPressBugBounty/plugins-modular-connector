@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
@@ -18,7 +17,7 @@ class ManagerCore extends AbstractManager
     private function locale()
     {
         ScreenSimulation::includeUpgrader();
-        
+
         $locale = @get_locale();
 
         return $locale ?: ($GLOBALS['wp_local_package'] ?? null);
@@ -106,7 +105,7 @@ class ManagerCore extends AbstractManager
             $result = @$core->upgrade($this->getLatestUpdate());
         } finally {
             ServerSetup::clean();
-            Server::logout();
+            ServerSetup::logout();
         }
 
         return $this->parseActionResponse('core', $result, 'upgrade', 'core');

@@ -64,17 +64,10 @@ class WordpressQueue extends Queue implements QueueContract, ClearableQueue
     public function getTableDefinition()
     {
         // Determine table and column names based on multisite or single site
-        if (is_multisite()) {
-            $table = $this->database->sitemeta;
-            $keyColumn = 'meta_id';
-            $nameColumn = 'meta_key';
-            $valueColumn = 'meta_value';
-        } else {
-            $table = $this->database->options;
-            $keyColumn = 'option_id';
-            $nameColumn = 'option_name';
-            $valueColumn = 'option_value';
-        }
+        $table = $this->database->options;
+        $keyColumn = 'option_id';
+        $nameColumn = 'option_name';
+        $valueColumn = 'option_value';
         return [$table, $keyColumn, $nameColumn, $valueColumn];
     }
     public function getJobLikeQuery(string $queue)
@@ -172,13 +165,13 @@ class WordpressQueue extends Queue implements QueueContract, ClearableQueue
     {
         $key = $this->getKey($queue);
         $KeyAttempts = $key . '_attempts';
-        $key = update_site_option($key, $payload);
+        $key = update_option($key, $payload);
         if ($key) {
-            update_site_option($KeyAttempts, $attempts);
+            update_option($KeyAttempts, $attempts);
             if ($delay) {
                 $availableAt = $this->availableAt($delay);
                 $keyAvailableAt = $key . '_available_at';
-                update_site_option($keyAvailableAt, $availableAt);
+                update_option($keyAvailableAt, $availableAt);
             }
         }
     }

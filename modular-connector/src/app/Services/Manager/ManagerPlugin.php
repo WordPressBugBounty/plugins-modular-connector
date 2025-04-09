@@ -59,6 +59,12 @@ class ManagerPlugin extends AbstractManager
             return $options;
         });
 
+        if (is_multisite() && !is_main_site()) {
+            $error = new \WP_Error('trying_plugin_installation_from_child_site', 'No plugins can be installed from a child site on a multisite.');
+
+            return $this->parseActionResponse($downloadLink, $error, 'install', ManagerPlugin::PLUGINS);
+        }
+
         try {
             $skin = new \WP_Ajax_Upgrader_Skin();
             $upgrader = new ModularPluginUpgrader($skin);
@@ -87,7 +93,8 @@ class ManagerPlugin extends AbstractManager
 
             // Some sites may have the same plugin installed with different versions or paths.
             foreach ($allPlugins as $key => $value) {
-                if ($value['Name'] === $data['Name'] &&
+                if (
+                    $value['Name'] === $data['Name'] &&
                     $value['Version'] === $data['Version'] &&
                     $value['RequiresWP'] === $data['RequiresWP'] &&
                     $value['RequiresPHP'] === $data['RequiresPHP'] &&
@@ -117,7 +124,7 @@ class ManagerPlugin extends AbstractManager
         } catch (\Throwable $e) {
             return $this->parseActionResponse($downloadLink, $e, 'install', ManagerPlugin::PLUGINS);
         } finally {
-            Server::logout();
+            ServerSetup::logout();
         }
     }
 
@@ -140,7 +147,7 @@ class ManagerPlugin extends AbstractManager
                 $result = activate_plugin(
                     $plugin,
                     '',
-                    $networkWide,
+                    $networkWide && is_main_site(),
                     $silent
                 );
 
@@ -171,7 +178,7 @@ class ManagerPlugin extends AbstractManager
             $networkWide = is_bool($args->network_wide) ? $args->network_wide : is_plugin_active_for_network($plugin);
 
             try {
-                deactivate_plugins($plugin, $silent, $networkWide);
+                deactivate_plugins($plugin, $silent, $networkWide && is_main_site());
 
                 $response[$plugin] = [
                     'status' => is_plugin_inactive($plugin) ? 'success' : 'error',
@@ -196,6 +203,12 @@ class ManagerPlugin extends AbstractManager
     {
         ScreenSimulation::includeUpgrader();
 
+        if (is_multisite() && !is_main_site()) {
+            $error = new \WP_Error('trying_plugin_update_from_child_site', 'No plugins can be updated from a child site on a multisite.');
+
+            return $this->parseBulkActionResponse($items, $error, 'upgrade', ManagerPlugin::PLUGINS);
+        }
+
         add_filter('auto_update_plugin', '__return_false', PHP_INT_MAX);
 
         ServerSetup::clean();
@@ -213,9 +226,10 @@ class ManagerPlugin extends AbstractManager
             $upgrader = new ModularPluginUpgrader($skin);
 
             $response = $upgrader->bulk_upgrade($items);
+
         } finally {
             ServerSetup::clean();
-            Server::logout();
+            ServerSetup::logout();
         }
 
         return $this->parseBulkActionResponse($items, $response, 'upgrade', ManagerPlugin::PLUGINS);
@@ -232,6 +246,12 @@ class ManagerPlugin extends AbstractManager
 
         $response = [];
         $basenamesToDelete = [];
+
+        if (is_multisite() && !is_main_site()) {
+            $error = new \WP_Error('trying_plugin_uninstall_from_child_site', 'No plugins can be uninstalled from a child site on a multisite.');
+
+            return $this->parseBulkActionResponse($items, $error, 'delete', ManagerPlugin::PLUGINS);
+        }
 
         foreach ($items as $plugin) {
             $result = validate_plugin($plugin);

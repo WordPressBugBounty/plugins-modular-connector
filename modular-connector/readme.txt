@@ -2,8 +2,8 @@
 Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, maintenance, Manage Multiple Sites, monitoring, update, security
 Requires at least: 5.6
-Tested up to: 6.7
-Stable tag: 1.14.2
+Tested up to: 6.8
+Stable tag: 1.15.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -105,6 +105,14 @@ Modular Connector bridges the gap between your WordPress and Modular DS. Somethi
 9. Client report overview page
 
 == Changelog ==
+= v1.15.0 =
+Release date: 2025-04-09
+
+* Allow to connect multisite installations
+* WordPress 1-click login user management
+* Elementor and WooCommerce automatic database update
+* New tab to download logs and clear own caches
+
 = v1.14.2 =
 Release date: 2025-04-04
 

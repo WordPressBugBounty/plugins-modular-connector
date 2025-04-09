@@ -144,7 +144,9 @@ class ModularClient implements ModularClientInterface
      */
     public function getExpiresIn()
     {
-        return Carbon::createFromTimestamp($this->oauthToken['expires_in'], 'utc');
+        $expires_in = intval($this->oauthToken['expires_in']);
+
+        return Carbon::createFromTimestamp($expires_in, 'utc');
     }
 
     /**
@@ -153,7 +155,7 @@ class ModularClient implements ModularClientInterface
     public function getConnectedAt()
     {
         $tz = wp_date('T');
-        $connectedAt = $this->oauthClient['connected_at'];
+        $connectedAt = intval($this->oauthClient['connected_at']);
 
         return $connectedAt ? Carbon::parse($connectedAt)->setTimezone($tz) : null;
     }
@@ -164,7 +166,7 @@ class ModularClient implements ModularClientInterface
     public function getUsedAt()
     {
         $tz = wp_date('T');
-        $usedAt = $this->oauthClient['used_at'];
+        $usedAt = intval($this->oauthClient['used_at']);
 
         return $usedAt ? Carbon::parse($usedAt)->setTimezone($tz) : null;
     }
@@ -248,18 +250,15 @@ class ModularClient implements ModularClientInterface
     {
         $connectedAt = $this->getConnectedAt();
 
-        $client = [
-            'client_id' => $this->getClientId(),
-            'client_secret' => $this->getClientSecret(),
-            'access_token' => $this->getAccessToken(),
-            'refresh_token' => $this->getRefreshToken(),
-            'expires_in' => $this->getExpiresIn()->timestamp,
-            'connected_at' => $connectedAt ? $connectedAt->timestamp : null,
-            'used_at' => !empty($connectedAt) ? Carbon::now()->timestamp : null,
-        ];
+        update_option('_modular_connection_client_id', $this->getClientId());
+        update_option('_modular_connection_client_secret', $this->getClientSecret());
 
-        // TODO allow multiple connection
-        return update_option('_modular_connection_clients', serialize([$client]));
+        update_option('_modular_connection_access_token', $this->getAccessToken());
+        update_option('_modular_connection_refresh_token', $this->getRefreshToken());
+        update_option('_modular_connection_expires_in', $this->getExpiresIn()->timestamp);
+
+        update_option('_modular_connection_connected_at', $connectedAt ? $connectedAt->timestamp : null);
+        update_option('_modular_connection_used_at', !empty($connectedAt) ? Carbon::now()->timestamp : null);
     }
 
     /**

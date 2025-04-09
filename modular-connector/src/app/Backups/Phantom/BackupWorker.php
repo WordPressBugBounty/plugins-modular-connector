@@ -262,13 +262,6 @@ class BackupWorker
             $keyColumn = 'option_id';
             $valueColumn = 'option_value';
 
-            if (\is_multisite()) {
-                $table = $wpdb->sitemeta;
-                $column = 'meta_key';
-                $keyColumn = 'meta_id';
-                $valueColumn = 'meta_value';
-            }
-
             $key = $wpdb->esc_like($this->identifier) . '%';
 
             $sql = '
@@ -441,7 +434,7 @@ class BackupWorker
             $this->setParts($parts);
         }
 
-        delete_site_option($key);
+        delete_option($key);
 
         return $this;
     }
@@ -462,6 +455,6 @@ class BackupWorker
             $this->delete($dbKey);
         }
 
-        delete_site_option($this->getUpdatedAtKey());
+        delete_option($this->getUpdatedAtKey());
     }
 }

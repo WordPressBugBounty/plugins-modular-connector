@@ -15,6 +15,9 @@ Route::middleware('auth')
         Route::get('/login/{modular_request}', [AuthController::class, 'getLogin'])
             ->name('login');
 
+        Route::get('/users/{modular_request}', [AuthController::class, 'getUsers'])
+            ->name('manager.users.index');
+
         Route::get('/server-information', [ServerController::class, 'getInformation'])
             ->name('manager.server.information');
 

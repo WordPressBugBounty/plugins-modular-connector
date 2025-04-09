@@ -2,8 +2,6 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Facades\Manager;
-use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 
@@ -20,7 +18,7 @@ class ManagerTranslation extends AbstractManager
     public function get()
     {
         ScreenSimulation::includeUpgrader();
-        
+
         $transients = ['update_core', 'update_plugins', 'update_themes'];
 
         $translations = false;
@@ -53,7 +51,7 @@ class ManagerTranslation extends AbstractManager
     public function upgrade(array $items = [])
     {
         ScreenSimulation::includeUpgrader();
-        
+
         ServerSetup::clean();
 
         try {
@@ -63,7 +61,7 @@ class ManagerTranslation extends AbstractManager
             $result = @$upgrader->bulk_upgrade();
         } finally {
             ServerSetup::clean();
-            Server::logout();
+            ServerSetup::logout();
         }
 
         return $this->parseActionResponse('translations', $result, 'upgrade', 'translations');

@@ -17,7 +17,7 @@ class HookEventListener
      * @param AbstractEvent $event
      * @return void
      */
-    public static function handle(AbstractEvent $event)
+    public function handle(AbstractEvent $event)
     {
         if ($event instanceof ShouldQueue) {
             app('log')->debug('Dispatching event to queue', ['event' => get_class($event)]);
