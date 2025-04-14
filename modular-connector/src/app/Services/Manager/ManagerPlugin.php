@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Services\Manager;
 
-use Modular\Connector\Facades\Server;
 use Modular\Connector\WordPress\ModularPluginUpgrader;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
@@ -226,7 +225,14 @@ class ManagerPlugin extends AbstractManager
             $upgrader = new ModularPluginUpgrader($skin);
 
             $response = $upgrader->bulk_upgrade($items);
-
+        } catch (\Throwable $e) {
+            $response = Collection::make($items)
+                ->mapWithKeys(function ($item) use ($e) {
+                    return [
+                        $item => $e,
+                    ];
+                })
+                ->toArray();
         } finally {
             ServerSetup::clean();
             ServerSetup::logout();

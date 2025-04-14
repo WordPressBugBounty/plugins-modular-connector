@@ -75,7 +75,7 @@ class BackupController extends Controller
 
         $driver = $payload->driver ?? Config::get('backup.default');
 
-        Cache::forever('backup.driver', $driver);
+        Cache::driver('wordpress')->forever('backup.driver', $driver);
 
         dispatch(fn() => Backup::options($requestId, $payload)->make())
             ->onQueue('backups');

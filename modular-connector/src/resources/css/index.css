@@ -150,6 +150,10 @@
         padding: 0 24px 48px;
     }
 
+    .ds-box.ds-box-white {
+        padding: 48px 24px;
+    }
+
     h2,
     h3 {
         margin-top: 0;

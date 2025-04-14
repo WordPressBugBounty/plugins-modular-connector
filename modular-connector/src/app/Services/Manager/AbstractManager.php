@@ -41,7 +41,7 @@ abstract class AbstractManager implements ManagerContract
     final protected function parseActionResponse(string $item, $result, $action, $type)
     {
         if (!in_array($item, ['core', 'translations'])) {
-            $isSuccess = !is_wp_error($result) && !($result instanceof \Throwable);
+            $isSuccess = !is_wp_error($result) && !$result instanceof \Throwable;
 
             if ($action === 'upgrade') {
                 $isSuccess = $isSuccess && !empty($result['source']) || $result === true;
@@ -60,7 +60,7 @@ abstract class AbstractManager implements ManagerContract
                 unset($result['source_files']);
             }
         } else {
-            $isSuccess = !is_wp_error($result) || $result instanceof \Throwable || $result === true;
+            $isSuccess = !is_wp_error($result) && !$result instanceof \Throwable || $result === true;
         }
 
         return [

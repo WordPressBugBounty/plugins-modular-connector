@@ -35,7 +35,13 @@ class ManagerWhiteLabel
      */
     public function getWhiteLabeledData()
     {
-        $client = OauthClient::getClient();
+        try {
+            $client = OauthClient::getClient();
+        } catch (\Throwable $e) {
+            return [
+                'status' => 'disabled',
+            ];
+        }
 
         if (empty($client->getUsedAt())) {
             return [

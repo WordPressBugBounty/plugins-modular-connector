@@ -23,6 +23,7 @@ return array(
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Cache\\WordPressStoreRepository' => $vendorDir . '/ares/framework/src/Foundation/Cache/WordPressStoreRepository.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\AllInOneSecurity' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/AllInOneSecurity.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\Compatibilities' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/Compatibilities.php',
+    'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\ConstantContactForms' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/ConstantContactForms.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\DuoFactor' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/DuoFactor.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\JetPlugins' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/JetPlugins.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\LoginLockdown' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/LoginLockdown.php',

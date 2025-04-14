@@ -12,6 +12,7 @@ use Modular\Connector\Services\ManagerWhiteLabel;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Queue;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 use function Modular\ConnectorDependencies\base_path;
 
@@ -89,6 +90,10 @@ class ModularConnectorServiceProvider extends ServiceProvider
                     $driver = Config::get('cache.default');
                 }
 
+                if ($driver !== 'file') {
+                    Cache::driver($driver)->has('test');
+                }
+
                 Config::set('cache.default', $driver);
             } catch (\Throwable $e) {
                 // Silence is golden
@@ -101,6 +106,10 @@ class ModularConnectorServiceProvider extends ServiceProvider
                     $driver = Cache::driver('wordpress')->get('queue.default');
                 } else {
                     $driver = Config::get('queue.default');
+                }
+
+                if ($driver !== 'wordpress') {
+                    Queue::connection($driver)->size('default');
                 }
 
                 Config::set('queue.default', $driver);

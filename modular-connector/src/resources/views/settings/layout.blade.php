@@ -18,7 +18,7 @@
                 <a href="?page=modular-connector&tab=logs" class="ds-tab {{ isset($_GET['tab']) && $_GET['tab'] === 'logs' ? 'ds-tab-active' : '' }}">{{ esc_html__('Logs', 'modular') }}</a>
             </div>
         @endif
-        <div class="ds-box">
+        <div class="ds-box {{ $isWhiteLabelActive ? 'ds-box-white' : '' }}">
             <div class="ds-left {{ $isWhiteLabelActive || $isConnected ? 'ds-left-flat' : '' }}">
                 @include('parts.form')
 

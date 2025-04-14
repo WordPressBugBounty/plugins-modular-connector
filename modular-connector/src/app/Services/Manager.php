@@ -98,8 +98,19 @@ class Manager extends IlluminateManager
         }
 
         // 3. Clean all pending jobs
-        $this->clearQueue('default');
-        $this->clearQueue('backups');
+        try {
+            $this->clearQueue('default');
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error clearing queue: %s', $e->getMessage()));
+        }
+
+        try {
+            $this->clearQueue('backups');
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error clearing queue: %s', $e->getMessage()));
+        }
 
         try {
             Storage::disk('mu_plugins')->delete(MODULAR_CONNECTOR_MU_BASENAME);

@@ -271,8 +271,17 @@ class Settings
                 $queue->clear($queueName);
             }
         } elseif ($request->get('action') === 'cache') {
-            Cache::driver('file')->flush();
-            Cache::driver('database')->flush();
+            try {
+                Cache::driver('file')->flush();
+            } catch (\Throwable $e) {
+                // Silence is golden
+            }
+
+            try {
+                Cache::driver('database')->flush();
+            } catch (\Throwable $e) {
+                // Silence is golden
+            }
 
             $this->clearCompiledViews();
 

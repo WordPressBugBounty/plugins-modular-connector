@@ -18,7 +18,7 @@ class BackupManager extends Manager
      */
     public function getDefaultDriver()
     {
-        return Cache::get('backup.driver') ?: $this->config->get('backup.default');
+        return Cache::driver('wordpress')->get('backup.driver') ?: $this->config->get('backup.default');
     }
 
     /**

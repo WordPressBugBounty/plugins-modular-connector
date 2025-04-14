@@ -8,6 +8,9 @@ if (!defined('DB_HOST')) {
     [$host, $port, $socket, $isIpv6] = $wpdb->parse_db_host(DB_HOST);
 }
 
+$charset = $wpdb->charset;
+$collate = $wpdb->collate ?: sprintf('%s_general_ci', $charset);
+
 return [
 
     /*
@@ -48,9 +51,8 @@ return [
             'username' => defined('DB_USER') ? DB_USER : null,
             'password' => defined('DB_PASSWORD') ? DB_PASSWORD : null,
             'unix_socket' => $socket ?: null,
-            'charset' => $wpdb->charset,
-            'collation' => $wpdb->collate,
-            'prefix' => !empty($wpdb->prefix) ? $wpdb->prefix : '',
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix_indexes' => true,
             'strict' => false,
             'engine' => null,
@@ -64,8 +66,8 @@ return [
             'username' => defined('DB_USER') ? DB_USER : null,
             'password' => defined('DB_PASSWORD') ? DB_PASSWORD : null,
             'unix_socket' => $socket ?: null,
-            'charset' => $wpdb->charset,
-            'collation' => $wpdb->collate,
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix' => (!empty($wpdb->prefix) ? $wpdb->prefix : '') . 'modular_',
             'prefix_indexes' => true,
             'strict' => false,

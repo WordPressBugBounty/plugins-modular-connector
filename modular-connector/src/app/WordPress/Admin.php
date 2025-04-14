@@ -48,9 +48,9 @@ class Admin
     {
         $connection = OauthClient::getClient();
 
-        if (empty($connection->getClientId())) {
+        if ((!is_multisite() || is_main_site()) && empty($connection->getClientId())) {
             echo View::make('notices.disconnected');
-        } elseif (empty($connection->getConnectedAt())) {
+        } elseif (!empty($connection->getClientId()) && empty($connection->getConnectedAt())) {
             echo View::make('notices.pending');
         }
     }
