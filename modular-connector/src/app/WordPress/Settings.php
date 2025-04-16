@@ -2,12 +2,10 @@
 
 namespace Modular\Connector\WordPress;
 
+use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Helper\OauthClient;
-use Modular\Connector\Jobs\ConfigureDriversJob;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\File;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Request;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
@@ -16,7 +14,6 @@ use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use function Modular\ConnectorDependencies\app;
-use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\request;
 use function Modular\ConnectorDependencies\storage_path;
 
@@ -102,6 +99,8 @@ class Settings
             if ($tab === 'logs') {
                 $view = 'settings.logs';
                 $logs = $this->getStoredLogs();
+            } elseif ($tab === 'health') {
+                $view = 'settings.health';
             } elseif ($isConnected) {
                 $view = 'settings.connected';
             } elseif (!empty($connection->getClientId()) && empty($connection->getConnectedAt())) {
@@ -115,17 +114,17 @@ class Settings
                 ->render();
         } elseif ($method === 'post') {
             if ($tab === 'logs') {
-                $action = Request::get('action');
-
-                if (in_array($action, ['queue', 'cache'])) {
-                    $this->clear();
-
-                    $this->redirect(true, 'logs');
-                    return;
-                }
-
                 $this->downloadLogs();
                 return;
+            } elseif ($tab === 'health') {
+                $action = Request::get('action');
+
+                if (in_array($action, ['queue', 'cache', 'reset'])) {
+                    $this->clear();
+
+                    $this->redirect(true, 'health');
+                    return;
+                }
             }
 
             $this->store();
@@ -221,32 +220,6 @@ class Settings
     }
 
     /**
-     * The function used to clear the compiled views
-     *
-     * @return void
-     */
-    public function clearCompiledViews(): void
-    {
-        $path = Config::get('view.compiled');
-
-        if (!$path) {
-            return;
-        }
-
-        $bladeResolver = app('view.engine.resolver')->resolve('blade');
-
-        if (method_exists($bladeResolver, 'forgetCompiledOrNotExpired')) {
-            $bladeResolver->forgetCompiledOrNotExpired();
-        }
-
-        foreach (glob("{$path}/*") as $view) {
-            unlink($view);
-        }
-
-        echo 'Compiled views cleared successfully.';
-    }
-
-    /**
      * The function used to clear the cache
      *
      * @return void
@@ -271,21 +244,11 @@ class Settings
                 $queue->clear($queueName);
             }
         } elseif ($request->get('action') === 'cache') {
-            try {
-                Cache::driver('file')->flush();
-            } catch (\Throwable $e) {
-                // Silence is golden
-            }
+            $driver = $request->get('driver');
 
-            try {
-                Cache::driver('database')->flush();
-            } catch (\Throwable $e) {
-                // Silence is golden
-            }
-
-            $this->clearCompiledViews();
-
-            dispatch(new ConfigureDriversJob());
+            app('cache')->driver($driver)->flush();
+        } elseif ($request->get('action') === 'reset') {
+            Manager::deactivate();
         }
     }
 

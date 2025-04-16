@@ -8,8 +8,9 @@ if (!defined('DB_HOST')) {
     [$host, $port, $socket, $isIpv6] = $wpdb->parse_db_host(DB_HOST);
 }
 
-$charset = $wpdb->charset;
-$collate = $wpdb->collate ?: sprintf('%s_general_ci', $charset);
+if ($isIpv6 && extension_loaded('mysqlnd')) {
+    $host = "[$host]";
+}
 
 return [
 
@@ -53,9 +54,13 @@ return [
             'unix_socket' => $socket ?: null,
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => !empty($wpdb->prefix) ? $wpdb->prefix : '',
             'prefix_indexes' => true,
             'strict' => false,
             'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? [
+                \PDO::ATTR_PERSISTENT => false,
+            ] : [],
         ],
 
         'modular' => [
@@ -72,6 +77,9 @@ return [
             'prefix_indexes' => true,
             'strict' => false,
             'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? [
+                \PDO::ATTR_PERSISTENT => false,
+            ] : [],
         ],
     ],
 

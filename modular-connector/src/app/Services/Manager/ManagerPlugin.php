@@ -6,8 +6,6 @@ use Modular\Connector\WordPress\ModularPluginUpgrader;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use function Modular\ConnectorDependencies\data_get;
-use function Modular\ConnectorDependencies\data_set;
 
 /**
  * Handles all functionality related to WordPress Plugins.
@@ -213,14 +211,6 @@ class ManagerPlugin extends AbstractManager
         ServerSetup::clean();
 
         try {
-            add_filter('upgrader_package_options', function ($options) {
-                if (data_get($options, 'hook_extra.plugin', '') === MODULAR_CONNECTOR_BASENAME) {
-                    data_set($options, 'hook_extra.temp_backup', []);
-                }
-
-                return $options;
-            });
-
             $skin = new \WP_Ajax_Upgrader_Skin();
             $upgrader = new ModularPluginUpgrader($skin);
 

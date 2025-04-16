@@ -6,6 +6,7 @@ use Modular\ConnectorDependencies\Illuminate\Console\Application as ConsoleAppli
 use Modular\ConnectorDependencies\Illuminate\Filesystem\Filesystem;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Application as FoundationApplication;
 use Modular\ConnectorDependencies\Illuminate\Foundation\PackageManifest as FoundationPackageManifest;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 class Application extends FoundationApplication
 {
     /**
@@ -82,6 +83,7 @@ class Application extends FoundationApplication
     public function forceDispatchScheduleRun(bool $force = \true)
     {
         $this->forceDispatchScheduleRun = $force;
+        Cache::driver('array')->forever('ares.forceDispatchScheduleRun', $force);
         return $this;
     }
     /**

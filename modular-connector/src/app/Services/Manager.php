@@ -12,6 +12,7 @@ use Modular\Connector\Services\Manager\ManagerTranslation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Manager as IlluminateManager;
 use Modular\ConnectorDependencies\Psr\Container\ContainerExceptionInterface;
@@ -90,7 +91,21 @@ class Manager extends IlluminateManager
         try {
             // 2. Clean all cache
             Cache::driver('wordpress')->flush();
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error flushing cache: %s', $e->getMessage()));
+        }
+
+        try {
+            // 2. Clean all cache
             Cache::driver('file')->flush();
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error flushing cache: %s', $e->getMessage()));
+        }
+
+        try {
+            // 2. Clean all cache
             Cache::driver('database')->flush();
         } catch (\Throwable $e) {
             // Silence is golden
@@ -124,6 +139,37 @@ class Manager extends IlluminateManager
         } catch (\Throwable $e) {
             // Silence is golden
             error_log(sprintf('Error rolling back database: %s', $e->getMessage()));
+        }
+
+        $this->clearCompiledViews();
+    }
+
+    /**
+     * The function used to clear the compiled views
+     *
+     * @return void
+     */
+    public function clearCompiledViews(): void
+    {
+        $path = Config::get('view.compiled');
+
+        if (!$path) {
+            return;
+        }
+
+        $bladeResolver = app('view.engine.resolver')->resolve('blade');
+
+        try {
+            if (method_exists($bladeResolver, 'forgetCompiledOrNotExpired')) {
+                $bladeResolver->forgetCompiledOrNotExpired();
+            }
+
+            foreach (glob("{$path}/*") as $view) {
+                unlink($view);
+            }
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error clear views', $e->getMessage()));
         }
     }
 

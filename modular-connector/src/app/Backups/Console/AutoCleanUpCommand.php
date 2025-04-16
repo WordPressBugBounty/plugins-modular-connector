@@ -8,6 +8,7 @@ use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\File as FileFacade;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 
 class AutoCleanUpCommand extends Command
 {
@@ -43,6 +44,25 @@ class AutoCleanUpCommand extends Command
             if (!empty($files)) {
                 FileFacade::delete($files);
             }
+        } catch (\Throwable $e) {
+            // Silence is golden
+            Log::error($e);
+        }
+
+        try {
+            $path = Storage::disk('content')->path('upgrade-temp-backup/plugins/*');
+
+            $dirs = Collection::make(FileFacade::glob($path))
+                ->filter(function ($file) {
+                    return FileFacade::isDirectory($file) &&
+                        in_array(FileFacade::basename($file), [FileFacade::dirname(MODULAR_CONNECTOR_BASENAME)]) &&
+                        FileFacade::lastModified($file) < Carbon::now()->subDays($this->option('max-age'))->timestamp;
+                });
+
+            $maxFilesToClean = $this->option('max-files');
+
+            $dirs->slice(0, $maxFilesToClean)
+                ->each(fn($dir) => FileFacade::deleteDirectory($dir));
         } catch (\Throwable $e) {
             // Silence is golden
             Log::error($e);

@@ -11,6 +11,7 @@ use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\LazyCollection;
@@ -92,6 +93,11 @@ class BackupPart
     public array $excludedTables = [];
 
     /**
+     * @var bool
+     */
+    public bool $onlyWithTheSamePrefix = false;
+
+    /**
      * @var int
      */
     public int $limit = 5000;
@@ -167,6 +173,7 @@ class BackupPart
         }
 
         $this->included = $included;
+        $this->onlyWithTheSamePrefix = data_get($payload, 'batch.database_same_prefix', false);
 
         if ($this->type !== self::INCLUDE_DATABASE) {
             $this->excludedFiles = $this->getExcludedFiles($this->type, data_get($payload, 'excluded', []));
@@ -195,23 +202,13 @@ class BackupPart
         }
 
         $this->connection = [
-            'host' => $payload->db->host ?? DB_HOST,
-            'database' => $payload->db->database ?? DB_NAME,
-            'username' => $payload->db->username ?? DB_USER,
-            'password' => $payload->db->password ?? DB_PASSWORD,
-            'port' => null,
-            'socket' => null,
+            'host' => Config::get('database.connections.wordpress.host'),
+            'port' => Config::get('database.connections.wordpress.host'),
+            'database' => Config::get('database.connections.wordpress.database'),
+            'username' => Config::get('database.connections.wordpress.username'),
+            'password' => Config::get('database.connections.wordpress.password'),
+            'socket' => Config::get('database.connections.wordpress.unix_socket'),
         ];
-
-        [$host, $port, $socket, $isIpv6] = $this->parseDbHost($this->connection['host']);
-
-        if ($isIpv6 && extension_loaded('mysqlnd')) {
-            $host = "[$host]";
-        }
-
-        $this->connection['host'] = $host;
-        $this->connection['port'] = $port;
-        $this->connection['socket'] = $socket;
 
         $this->timestamp = data_get($payload, 'timestamp', 0);
 
@@ -274,8 +271,12 @@ class BackupPart
     {
         $excludedTables = array_merge($excludedTables, Manager::driver('database')->views());
 
+        $prefix = Config::get('database.connections.wordpress.prefix');
+
         return Manager::driver('database')->tree()
-            ->filter(fn($table) => in_array($table->path, $excludedTables) || in_array($table->name, $excludedTables))
+            ->filter(
+                fn($table) => $this->onlyWithTheSamePrefix && $table->prefix !== $prefix || in_array($table->path, $excludedTables) || in_array($table->name, $excludedTables)
+            )
             ->values()
             ->map(fn($table) => $table->name)
             ->toArray();

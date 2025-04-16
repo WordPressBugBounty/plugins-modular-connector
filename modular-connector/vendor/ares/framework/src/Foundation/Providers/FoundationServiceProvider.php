@@ -5,6 +5,7 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
 use Modular\ConnectorDependencies\Illuminate\Console\Scheduling\Schedule;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 class FoundationServiceProvider extends ServiceProvider
 {
@@ -40,7 +41,8 @@ class FoundationServiceProvider extends ServiceProvider
     public function registerForceCallSchedule()
     {
         $this->app->terminating(function () {
-            if (!$this->app->forceDispatchScheduleRun) {
+            $forceDispatch = $this->app->forceDispatchScheduleRun || Cache::driver('array')->get('ares.forceDispatchScheduleRun', \false);
+            if (!$forceDispatch) {
                 return;
             }
             $debugSchedule = $this->app->make('config')->get('app.debug_schedule', \false);
