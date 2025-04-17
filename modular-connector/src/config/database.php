@@ -47,7 +47,7 @@ return [
         'wordpress' => [
             'driver' => 'mysql',
             'host' => $host,
-            'port' => $port,
+            'port' => $port ?: 3306,
             'database' => defined('DB_NAME') ? DB_NAME : null,
             'username' => defined('DB_USER') ? DB_USER : null,
             'password' => defined('DB_PASSWORD') ? DB_PASSWORD : null,
@@ -66,7 +66,7 @@ return [
         'modular' => [
             'driver' => 'mysql',
             'host' => $host,
-            'port' => $port,
+            'port' => $port ?: 3306,
             'database' => defined('DB_NAME') ? DB_NAME : null,
             'username' => defined('DB_USER') ? DB_USER : null,
             'password' => defined('DB_PASSWORD') ? DB_PASSWORD : null,

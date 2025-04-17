@@ -203,7 +203,7 @@ class BackupPart
 
         $this->connection = [
             'host' => Config::get('database.connections.wordpress.host'),
-            'port' => Config::get('database.connections.wordpress.host'),
+            'port' => Config::get('database.connections.wordpress.port'),
             'database' => Config::get('database.connections.wordpress.database'),
             'username' => Config::get('database.connections.wordpress.username'),
             'password' => Config::get('database.connections.wordpress.password'),
