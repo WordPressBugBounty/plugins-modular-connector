@@ -79,7 +79,10 @@ class ScreenSimulation
             if (HttpUtils::isDirectRequest() && !defined('DOING_AJAX')) {
                 define('DOING_AJAX', \true);
             }
-            // We cannot close the connection because in some severs it causes the request not to be processed.
+            // If this is an AJAX request, we need to force close the connection to avoid the server hanging.
+            if (HttpUtils::isAjax()) {
+                HttpUtils::forceCloseConnection();
+            }
             // When it's a modular request, we need to avoid the cron execution.
             remove_action('init', 'wp_cron');
             // We use Laravel Response to make our redirections.

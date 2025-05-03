@@ -42,7 +42,8 @@ class FoundationServiceProvider extends ServiceProvider
     {
         $this->app->terminating(function () {
             $forceDispatch = $this->app->forceDispatchScheduleRun || Cache::driver('array')->get('ares.forceDispatchScheduleRun', \false);
-            if (!$forceDispatch) {
+            $dontForceDispatch = Cache::driver('array')->get('ares.dontDispatchScheduleRun', \false);
+            if (!$forceDispatch || $dontForceDispatch) {
                 return;
             }
             $debugSchedule = $this->app->make('config')->get('app.debug_schedule', \false);

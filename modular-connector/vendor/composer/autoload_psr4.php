@@ -50,7 +50,7 @@ return array(
     'Modular\\ConnectorDependencies\\League\\Flysystem\\' => array($vendorDir . '/league/flysystem/src'),
     'Modular\\ConnectorDependencies\\Laravel\\SerializableClosure\\' => array($vendorDir . '/laravel/serializable-closure/src'),
     'Modular\\ConnectorDependencies\\Illuminate\\View\\' => array($vendorDir . '/illuminate/view'),
-    'Modular\\ConnectorDependencies\\Illuminate\\Support\\' => array($vendorDir . '/illuminate/collections', $vendorDir . '/illuminate/macroable', $vendorDir . '/illuminate/support'),
+    'Modular\\ConnectorDependencies\\Illuminate\\Support\\' => array($vendorDir . '/illuminate/support', $vendorDir . '/illuminate/collections', $vendorDir . '/illuminate/macroable'),
     'Modular\\ConnectorDependencies\\Illuminate\\Session\\' => array($vendorDir . '/illuminate/session'),
     'Modular\\ConnectorDependencies\\Illuminate\\Routing\\' => array($vendorDir . '/illuminate/routing'),
     'Modular\\ConnectorDependencies\\Illuminate\\Queue\\' => array($vendorDir . '/illuminate/queue'),

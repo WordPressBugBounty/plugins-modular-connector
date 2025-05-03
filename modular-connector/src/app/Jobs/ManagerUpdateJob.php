@@ -10,7 +10,7 @@ use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
 use function Modular\ConnectorDependencies\event;
 
-class ManagerUpdateJob implements ShouldQueue, ShouldBeUnique
+class ManagerUpdateJob implements ShouldQueue
 {
     use Dispatchable;
     use Queueable;

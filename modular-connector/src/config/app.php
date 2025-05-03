@@ -64,7 +64,7 @@ return [
         Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\AuthServiceProvider::class,
         Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers\BusServiceProvider::class,
         Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache\CacheServiceProvider::class,
-        Modular\ConnectorDependencies\Illuminate\Database\DatabaseServiceProvider::class,
+        Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\DatabaseServiceProvider::class,
         Modular\ConnectorDependencies\Illuminate\Database\MigrationServiceProvider::class,
         Modular\ConnectorDependencies\Illuminate\Filesystem\FilesystemServiceProvider::class,
         Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers\FoundationServiceProvider::class,

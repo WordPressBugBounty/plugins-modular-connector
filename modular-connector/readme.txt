@@ -105,6 +105,15 @@ Modular Connector bridges the gap between your WordPress and Modular DS. Somethi
 9. Client report overview page
 
 == Changelog ==
+= v1.15.4 =
+Release date: 2025-05-03
+
+* FIXED: Improved compatibility with MySQL/MariaDB connections
+* FIXED: Check if autoload file exists
+* FIXED: Restore closed connection in AJAX requests
+* FIXED: Maintenance mode disabled when worker was stopped
+* FIXED: Attempt to upgrade plugins using cron only
+
 = v1.15.3 =
 Release date: 2025-04-17
 

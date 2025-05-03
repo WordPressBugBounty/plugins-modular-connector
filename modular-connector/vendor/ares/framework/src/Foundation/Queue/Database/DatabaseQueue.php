@@ -6,6 +6,51 @@ use Modular\ConnectorDependencies\Illuminate\Queue\DatabaseQueue as IlluminateDa
 class DatabaseQueue extends IlluminateDatabaseQueue
 {
     /**
+     * Pop the next job off of the queue.
+     *
+     * @param string|null $queue
+     * @return \Illuminate\Contracts\Queue\Job|null
+     *
+     * @throws \Throwable
+     */
+    public function pop($queue = null)
+    {
+        $queue = $this->getQueue($queue);
+        if ($job = $this->getNextAvailableJob($queue)) {
+            return $this->marshalJob($queue, $job);
+        }
+    }
+    /**
+     * Delete a reserved job from the queue.
+     *
+     * @param string $queue
+     * @param string $id
+     * @return void
+     *
+     * @throws \Throwable
+     */
+    public function deleteReserved($queue, $id)
+    {
+        if ($this->database->table($this->table)->lockForUpdate()->find($id)) {
+            $this->database->table($this->table)->where('id', $id)->delete();
+        }
+    }
+    /**
+     * Delete a reserved job from the reserved queue and release it.
+     *
+     * @param string $queue
+     * @param \Illuminate\Queue\Jobs\DatabaseJob $job
+     * @param int $delay
+     * @return void
+     */
+    public function deleteAndRelease($queue, $job, $delay)
+    {
+        if ($this->database->table($this->table)->lockForUpdate()->find($job->getJobId())) {
+            $this->database->table($this->table)->where('id', $job->getJobId())->delete();
+        }
+        $this->release($queue, $job->getJobRecord(), $delay);
+    }
+    /**
      * @param $job
      * @param $data
      * @param $queue

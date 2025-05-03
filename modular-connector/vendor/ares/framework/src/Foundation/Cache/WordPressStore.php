@@ -4,9 +4,6 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache;
 
 use Modular\ConnectorDependencies\Illuminate\Contracts\Cache\LockProvider;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Cache\Store;
-/**
- * @deprecated
- */
 class WordPressStore implements Store, LockProvider
 {
     /**

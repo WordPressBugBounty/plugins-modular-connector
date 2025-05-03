@@ -10,8 +10,10 @@ use Modular\Connector\Events\ManagerItemsDeleted;
 use Modular\Connector\Events\ManagerItemsInstalled;
 use Modular\Connector\Events\ManagerItemsUpdated;
 use Modular\Connector\Events\ManagerItemsUpgraded;
+use Modular\Connector\Facades\Server;
 use Modular\Connector\Listeners\HookEventListener;
 use Modular\Connector\Listeners\PostUpgradeEventListener;
+use Modular\ConnectorDependencies\Illuminate\Queue\Events\WorkerStopping;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 
@@ -34,6 +36,10 @@ class EventServiceProvider extends ServiceProvider
         Event::listen(ManagerItemsInstalled::class, HookEventListener::class);
         Event::listen(ManagerItemsDeleted::class, HookEventListener::class);
         Event::listen(ManagerHealthUpdated::class, HookEventListener::class);
+
+        Event::listen(WorkerStopping::class, function (WorkerStopping $event) {
+            Server::maintenanceMode(false);
+        });
 
         Backup::listeners();
     }

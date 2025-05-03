@@ -4,9 +4,8 @@ namespace Modular\Connector\Listeners;
 
 use Modular\Connector\Jobs\ManagerManageItemJob;
 use Modular\Connector\Jobs\ManagerUpgradeDatabaseJob;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\InteractsWithTime;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
@@ -47,23 +46,14 @@ class PostUpgradeEventListener
                 ->each(function ($basename) use ($event) {
                     dispatch(new ManagerUpgradeDatabaseJob($event->mrid, $basename, 'upgrade'));
 
-                    $this->restartQueue();
+                    HttpUtils::restartQueue($this->currentTime());
                 });
         }
 
         if (data_get($event->payload, 'core.success', false)) {
             dispatch(new ManagerUpgradeDatabaseJob($event->mrid, 'core', 'upgrade'));
-            $this->restartQueue();
+
+            HttpUtils::restartQueue($this->currentTime());
         }
-    }
-
-    /**
-     * @return void
-     */
-    protected function restartQueue()
-    {
-        Cache::forever('illuminate:queue:restart', $this->currentTime());
-
-        Log::info('Broadcasting queue restart signal.');
     }
 }

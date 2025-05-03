@@ -8,18 +8,25 @@ use Modular\Connector\Events\ManagerItemsDeleted;
 use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
+use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
+use Modular\ConnectorDependencies\Illuminate\Support\InteractsWithTime;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
+use function Modular\ConnectorDependencies\app;
 use function Modular\ConnectorDependencies\data_get;
+use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
 
 class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable;
     use Queueable;
+    use InteractsWithTime;
 
     /**
      * @var string
@@ -37,6 +44,11 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
     protected string $action;
 
     /**
+     * @var int
+     */
+    protected int $tries;
+
+    /**
      * The number of seconds after which the job's unique lock will be released.
      *
      * @var int
@@ -47,12 +59,14 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
      * @param string $mrid
      * @param $payload
      * @param string $action
+     * @param int $tries
      */
-    public function __construct(string $mrid, $payload, string $action)
+    public function __construct(string $mrid, $payload, string $action, int $tries = 1)
     {
         $this->mrid = $mrid;
         $this->payload = $payload;
         $this->action = $action;
+        $this->tries = $tries;
     }
 
     public function handle(): void
@@ -107,6 +121,32 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 
         // FIXME Remove 'type' wrapper
         if ($action === 'upgrade') {
+            // If we use HTTP Ajax request, it doesn't work updates, so we must try to use the CRON.
+            // FIXME Remove after not using wp-admin/admin-ajax.php
+            if (!HttpUtils::isCron() && $this->tries === 1) {
+                $tmpResult = $type === 'core' ? [$result] : $result;
+
+                $allIsFailedByFilePermissions = Collection::make($tmpResult)
+                    ->some(fn($item) => !boolval(data_get($item, 'success')) && data_get($item, 'response.error.code') === 'copy_failed_pclzip');
+
+                if ($allIsFailedByFilePermissions) {
+                    Log::debug('Retrying the job because of file permissions.', [
+                        'mrid' => $this->mrid,
+                        'action' => $action,
+                        'payload' => $payload,
+                    ]);
+
+                    dispatch(new ManagerManageItemJob($this->mrid, $payload, $action, ++$this->tries));
+
+                    // Don't run our AJAX loopback
+                    app()->dontDispatchScheduleRun();
+
+                    HttpUtils::restartQueue($this->currentTime());
+
+                    return;
+                }
+            }
+
             $type = $type !== 'core' ? Str::plural($type) : $type;
 
             $result = [$type => $result];

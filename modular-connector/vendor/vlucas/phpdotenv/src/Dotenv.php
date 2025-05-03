@@ -168,7 +168,7 @@ class Dotenv
      *
      * @throws \Dotenv\Exception\InvalidFileException
      *
-     * @return array<string,string|null>
+     * @return array<string, string|null>
      */
     public static function parse(string $content)
     {
@@ -181,7 +181,7 @@ class Dotenv
      *
      * @throws \Dotenv\Exception\InvalidPathException|\Dotenv\Exception\InvalidEncodingException|\Dotenv\Exception\InvalidFileException
      *
-     * @return array<string,string|null>
+     * @return array<string, string|null>
      */
     public function load()
     {
@@ -193,7 +193,7 @@ class Dotenv
      *
      * @throws \Dotenv\Exception\InvalidEncodingException|\Dotenv\Exception\InvalidFileException
      *
-     * @return array<string,string|null>
+     * @return array<string, string|null>
      */
     public function safeLoad()
     {

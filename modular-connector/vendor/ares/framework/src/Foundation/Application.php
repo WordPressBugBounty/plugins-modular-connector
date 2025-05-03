@@ -87,6 +87,16 @@ class Application extends FoundationApplication
         return $this;
     }
     /**
+     * Force to not dispatch the schedule run.
+     *
+     * @return $this
+     */
+    public function dontDispatchScheduleRun()
+    {
+        Cache::driver('array')->forever('ares.dontDispatchScheduleRun', \true);
+        return $this;
+    }
+    /**
      * Format the given command as a fully-qualified executable command.
      *
      * @param string $string

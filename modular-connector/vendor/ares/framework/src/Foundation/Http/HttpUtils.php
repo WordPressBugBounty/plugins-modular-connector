@@ -2,6 +2,8 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Http;
 
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 class HttpUtils
 {
@@ -91,5 +93,25 @@ class HttpUtils
     public static function isMuPlugin()
     {
         return \Modular\ConnectorDependencies\data_get($GLOBALS, 'modular_is_mu_plugin', \false);
+    }
+    /**
+     * @return void
+     */
+    public static function forceCloseConnection(): void
+    {
+        ignore_user_abort(\true);
+        if (\function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } elseif (\function_exists('litespeed_finish_request')) {
+            litespeed_finish_request();
+        }
+    }
+    /**
+     * @return void
+     */
+    public static function restartQueue(int $timestamp)
+    {
+        Cache::forever('illuminate:queue:restart', $timestamp);
+        Log::info('Broadcasting queue restart signal.');
     }
 }

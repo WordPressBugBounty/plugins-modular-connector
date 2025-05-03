@@ -100,7 +100,7 @@ class BackupController extends Controller
         try {
             Backup::remove($name, true);
         } catch (\Throwable $e) {
-            Log::error($e->getMessage());
+            Log::error($e);
         }
 
         return Response::json([

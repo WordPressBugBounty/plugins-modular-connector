@@ -3,9 +3,6 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache;
 
 use Modular\ConnectorDependencies\Illuminate\Cache\Lock;
-/**
- * @deprecated
- */
 class WordPressLock extends Lock
 {
     /**
