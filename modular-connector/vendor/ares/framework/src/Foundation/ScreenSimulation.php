@@ -105,7 +105,7 @@ class ScreenSimulation
         add_action('plugins_loaded', function () {
             // Many premium plugins require the user to be logged in as an admin to detect the license.
             ServerSetup::loginAs();
-        });
+        }, 1);
         if (HttpUtils::isMuPlugin()) {
             $this->loadAdmin();
         }

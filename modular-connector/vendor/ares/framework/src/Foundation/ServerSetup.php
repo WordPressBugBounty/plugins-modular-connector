@@ -4,6 +4,8 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Models\User;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 class ServerSetup
 {
     /**
@@ -50,6 +52,7 @@ class ServerSetup
         if (!$user) {
             return;
         }
+        Log::debug('Login as user', ['user' => $user->ID, 'login' => $user->user_login]);
         // Authenticated user
         wp_cookie_constants();
         $id = intval(\Modular\ConnectorDependencies\data_get($user, 'ID'));
@@ -74,6 +77,13 @@ class ServerSetup
         }
         if (!function_exists('get_super_admins')) {
             require_once \ABSPATH . \WPINC . '/capabilities.php';
+        }
+        $userId = Cache::driver('wordpress')->get('user.login');
+        if ($userId) {
+            $user = get_user_by('id', $userId);
+            if ($user) {
+                return $user;
+            }
         }
         if (is_multisite()) {
             $users = get_super_admins();

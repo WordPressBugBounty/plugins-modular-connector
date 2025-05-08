@@ -14,7 +14,7 @@ class Worker extends IlluminateWorker
      */
     protected function supportsAsyncSignals()
     {
-        $functions = ['pcntl_signal', 'pcntl_alarm', 'pcntl_async_signals'];
+        $functions = ['pcntl_signal', 'pcntl_alarm', 'pcntl_async_signals', 'posix_kill'];
         foreach ($functions as $function) {
             if (!function_exists($function)) {
                 return \false;

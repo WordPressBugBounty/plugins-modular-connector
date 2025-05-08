@@ -7,6 +7,7 @@ use Modular\Connector\Helper\OauthClient;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\SDK\Objects\SiteRequest;
@@ -70,7 +71,11 @@ class AuthController
         }
 
         if (empty($user)) {
+            Cache::driver('wordpress')->forget('user.login');
+
             $user = ServerSetup::getAdminUser();
+        } else {
+            Cache::driver('wordpress')->forever('user.login', $user->ID);
         }
 
         if (empty($user)) {

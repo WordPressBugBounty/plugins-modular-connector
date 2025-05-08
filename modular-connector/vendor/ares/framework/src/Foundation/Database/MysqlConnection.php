@@ -7,6 +7,7 @@ use Modular\ConnectorDependencies\Illuminate\Database\QueryException;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 class MysqlConnection extends IlluminateMysqlConnection
 {
+    use DetectsLostConnections;
     /**
      * How many retries to do (same as wpdb)
      *
@@ -20,14 +21,6 @@ class MysqlConnection extends IlluminateMysqlConnection
      */
     protected $reconnectSleep = 1;
     /**
-     * @param \Throwable $e
-     * @return bool
-     */
-    public function isLostConnection(\Throwable $e)
-    {
-        return $this->causedByLostConnection($e->getPrevious()) || $this->causedByLostConnection($e);
-    }
-    /**
      * Handle a query exception that occurred during query execution.
      *
      * @param \Illuminate\Database\QueryException $e
@@ -40,8 +33,7 @@ class MysqlConnection extends IlluminateMysqlConnection
      */
     protected function tryAgainIfCausedByLostConnection(QueryException $e, $query, $bindings, \Closure $callback)
     {
-        Log::debug('Check tryAgainIfCausedByLostConnection...');
-        if (!$this->isLostConnection($e)) {
+        if (!$this->causedByLostConnection($e->getPrevious())) {
             throw $e;
         }
         Log::debug('Reconnecting to MySQL database after causedByLostConnection...');
@@ -54,7 +46,7 @@ class MysqlConnection extends IlluminateMysqlConnection
                 return $this->runQueryCallback($query, $bindings, $callback);
             } catch (QueryException $e) {
                 // If the error is not caused by "gone away" or we have exhausted the retries, rethrow the exception
-                if ($i === $this->reconnectRetries || !$this->isLostConnection($e)) {
+                if ($i === $this->reconnectRetries || !$this->causedByLostConnection($e->getPrevious())) {
                     throw $e;
                 }
                 sleep($this->reconnectSleep);

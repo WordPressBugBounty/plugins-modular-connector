@@ -44,6 +44,7 @@ return array(
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\MetaFields' => $vendorDir . '/ares/framework/src/Foundation/Database/Concerns/MetaFields.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\OrderScopes' => $vendorDir . '/ares/framework/src/Foundation/Database/Concerns/OrderScopes.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DatabaseServiceProvider' => $vendorDir . '/ares/framework/src/Foundation/Database/DatabaseServiceProvider.php',
+    'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DetectsLostConnections' => $vendorDir . '/ares/framework/src/Foundation/Database/DetectsLostConnections.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Meta\\Meta' => $vendorDir . '/ares/framework/src/Foundation/Database/Meta/Meta.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Models\\User' => $vendorDir . '/ares/framework/src/Foundation/Database/Models/User.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Models\\UserMeta' => $vendorDir . '/ares/framework/src/Foundation/Database/Models/UserMeta.php',

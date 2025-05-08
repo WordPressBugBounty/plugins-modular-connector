@@ -14,6 +14,8 @@ class DatabaseServiceProvider extends IlluminateDatabaseServiceProvider
     public function register()
     {
         parent::register();
-        Connection::resolverFor('mysql', fn($connection, $database, $prefix, $config) => new MysqlConnection($connection, $database, $prefix, $config));
+        if (class_exists('PDO')) {
+            Connection::resolverFor('mysql', fn($connection, $database, $prefix, $config) => new MysqlConnection($connection, $database, $prefix, $config));
+        }
     }
 }
