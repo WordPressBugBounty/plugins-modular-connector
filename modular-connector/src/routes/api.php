@@ -3,6 +3,7 @@
 use Modular\Connector\Http\Controllers\AuthController;
 use Modular\Connector\Http\Controllers\BackupController;
 use Modular\Connector\Http\Controllers\ManagerController;
+use Modular\Connector\Http\Controllers\OptimizationController;
 use Modular\Connector\Http\Controllers\ServerController;
 use Modular\Connector\Http\Controllers\WooCommerceController;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Route;
@@ -27,6 +28,17 @@ Route::middleware('auth')
         Route::get('/white-label', [ServerController::class, 'getWhiteLabel'])
             ->name('manager.whiteLabel.update');
 
+        Route::get('/manager/maintenance/{modular_request}', [ServerController::class, 'maintenance'])
+            ->name('manager.maintenance.update');
+
+        #region Database
+        Route::get('/manager/optimization/{modular_request}', [OptimizationController::class, 'index'])
+            ->name('manager.optimization.information');
+
+        Route::get('/database/optimize/{modular_request}', [OptimizationController::class, 'optimizeDatabase'])
+            ->name('manager.optimization.process');
+        #endregion
+
         #region Manager
         Route::get('/manager/{modular_request}', [ManagerController::class, 'index'])
             ->name('manager.update');
@@ -45,9 +57,6 @@ Route::middleware('auth')
 
         Route::get('/manager/{modular_request}/delete', [ManagerController::class, 'update'])
             ->name('manager.delete');
-
-        Route::get('/manager/{modular_request}/maintenance', [ManagerController::class, 'maintenance'])
-            ->name('manager.maintenance.toggle');
         #endregion
 
         #region Backup

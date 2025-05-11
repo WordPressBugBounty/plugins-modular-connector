@@ -3,7 +3,10 @@
 namespace Modular\Connector\WordPress;
 
 use Modular\Connector\Helper\OauthClient;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\View;
+use function Modular\ConnectorDependencies\data_get;
 
 class Admin
 {
@@ -15,6 +18,8 @@ class Admin
         add_action('admin_enqueue_scripts', [self::class, 'addStyles']);
         add_action('admin_menu', [self::class, 'addMenu']);
         add_action('admin_notices', [self::class, 'addAdminNotice']);
+        add_action('template_redirect', [self::class, 'addMaintenanceMode'], 99);
+
     }
 
     /**
@@ -53,5 +58,35 @@ class Admin
         } elseif (!empty($connection->getClientId()) && empty($connection->getConnectedAt())) {
             echo View::make('notices.pending');
         }
+    }
+
+    /**
+     * Adds a ModularDS maintenance page if the corresponding option is enabled
+     */
+    public static function addMaintenanceMode($template)
+    {
+        $data = Cache::driver('wordpress')->get('maintenance_mode');
+        $enabled = data_get($data, 'enabled', false) ?: false;
+        $enabled = $enabled && !current_user_can('manage_options') && !empty(OauthClient::getClient()->getConnectedAt());
+
+        if ($enabled && !HttpUtils::isAjax() && !HttpUtils::isCron() && !HttpUtils::isDirectRequest()) {
+            if (!headers_sent()) {
+                header('Retry-After: 600');
+                header("Content-Type: text/html; charset=utf-8");
+                status_header(503);
+                nocache_headers();
+            }
+
+            $title = data_get($data, 'title') ?: esc_html__('Website Under Maintenance', 'modular-connector');
+            $description = data_get($data, 'description') ?: esc_html__('We are performing scheduled maintenance work. We should be back online shortly.', 'modular-connector');
+            $withBranding = data_get($data, 'withBranding', true);
+            $background = data_get($data, 'background') ?: '#6308F7';
+            $noindex = data_get($data, 'noindex') ?: false;
+
+            echo View::make('parts.maintenance', compact('title', 'description', 'withBranding', 'background', 'noindex'));
+            die();
+        }
+
+        return $template;
     }
 }

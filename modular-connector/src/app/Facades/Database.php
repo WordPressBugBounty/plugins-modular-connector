@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Facades;
 
+use Modular\Connector\Services\ServiceDatabase;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Facade;
 
 class Database extends Facade
@@ -15,6 +16,6 @@ class Database extends Facade
      */
     protected static function getFacadeAccessor()
     {
-        return 'manager-connector-database';
+        return ServiceDatabase::class;
     }
 }

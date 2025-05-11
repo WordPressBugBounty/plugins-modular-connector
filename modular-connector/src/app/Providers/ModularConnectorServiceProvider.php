@@ -9,6 +9,7 @@ use Modular\Connector\Services\Manager;
 use Modular\Connector\Services\Manager\ManagerWooCommerce;
 use Modular\Connector\Services\ManagerServer;
 use Modular\Connector\Services\ManagerWhiteLabel;
+use Modular\Connector\Services\ServiceDatabase;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -29,6 +30,7 @@ class ModularConnectorServiceProvider extends ServiceProvider
         $this->app->singleton(ManagerServer::class, fn() => new ManagerServer());
         $this->app->singleton(ManagerWhiteLabel::class, fn() => new ManagerWhiteLabel());
         $this->app->singleton(ManagerWooCommerce::class, fn() => new ManagerWooCommerce());
+        $this->app->singleton(ServiceDatabase::class, fn() => new ServiceDatabase());
     }
 
     /**

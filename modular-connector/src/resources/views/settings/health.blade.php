@@ -5,7 +5,7 @@
         <h2>{{ esc_html__('Queues', 'modular-connector') }}</h2>
 
         <ul class="ds-logs-list">
-            @foreach(['default', 'backups'] as $queue)
+            @foreach(['default', 'backups', 'optimizations'] as $queue)
                 @foreach(['wordpress', 'database'] as $driver)
                     @php
                         try {

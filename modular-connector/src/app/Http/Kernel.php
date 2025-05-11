@@ -74,9 +74,21 @@ class Kernel extends HttpKernel
             '--max-time' => 30,
             '--max-jobs' => 4,
         ])
-            ->withoutOverlapping(10) // 15 min
+            ->withoutOverlapping(10) // 10 min
             ->everyMinute()
             ->skip(fn() => Queue::connection()->size('backups') === 0);
+
+        $schedule->command(WorkCommand::class, [
+            '--queue' => 'optimizations',
+            '--stop-when-empty' => 1,
+            '--timeout' => 600,
+            '--memory' => HttpUtils::maxMemoryLimit(true),
+            '--max-time' => 30,
+            '--max-jobs' => 4,
+        ])
+            ->withoutOverlapping(10) // 10 min
+            ->everyMinute()
+            ->skip(fn() => Queue::connection()->size('optimizations') === 0);
 
         $schedule->command(AutoCleanUpCommand::class, [
             '--max-files' => 10,

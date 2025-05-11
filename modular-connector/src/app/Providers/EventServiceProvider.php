@@ -13,7 +13,9 @@ use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Listeners\HookEventListener;
 use Modular\Connector\Listeners\PostUpgradeEventListener;
+use Modular\Connector\Optimizer\Events\ManagerOptimizationInformation;
 use Modular\ConnectorDependencies\Illuminate\Queue\Events\WorkerStopping;
+use Modular\Connector\Optimizer\Events\ManagerOptimizationUpdated;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
 
@@ -40,6 +42,9 @@ class EventServiceProvider extends ServiceProvider
         Event::listen(WorkerStopping::class, function (WorkerStopping $event) {
             Server::maintenanceMode(false);
         });
+
+        Event::listen(ManagerOptimizationInformation::class, HookEventListener::class);
+        Event::listen(ManagerOptimizationUpdated::class, HookEventListener::class);
 
         Backup::listeners();
     }
