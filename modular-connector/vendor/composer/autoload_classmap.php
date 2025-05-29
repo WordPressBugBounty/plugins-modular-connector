@@ -34,6 +34,7 @@ return array(
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WPEngine' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WPEngine.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WPForms' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WPForms.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WPO365Login' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WPO365Login.php',
+    'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\Wp2Fa' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/Wp2Fa.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\WpSimpleFirewall' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/WpSimpleFirewall.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Console\\Command' => $vendorDir . '/ares/framework/src/Foundation/Console/Command.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Console\\Scheduling\\Event' => $vendorDir . '/ares/framework/src/Foundation/Console/Scheduling/Event.php',

@@ -6,7 +6,7 @@ class Compatibilities
 {
     public static function getCompatibilityFixes()
     {
-        return [WPForms::class, AllInOneSecurity::class, WpSimpleFirewall::class, DuoFactor::class, ShieldUserManagementICWP::class, SidekickPlugin::class, SpamShield::class, WPO365Login::class, JetPlugins::class, WPEngine::class, LoginLockdown::class, Office365forPostSMTPExtension::class, ConstantContactForms::class];
+        return [WPForms::class, AllInOneSecurity::class, WpSimpleFirewall::class, DuoFactor::class, ShieldUserManagementICWP::class, SidekickPlugin::class, SpamShield::class, WPO365Login::class, JetPlugins::class, WPEngine::class, LoginLockdown::class, Office365forPostSMTPExtension::class, ConstantContactForms::class, Wp2Fa::class];
     }
     /**
      * @param string $hookName
@@ -40,7 +40,8 @@ class Compatibilities
             // Extract the object and method
             $object = $filter['function'][0] ?? null;
             $method = $filter['function'][1] ?? null;
-            if (!is_object($object) || get_class($object) !== $className || $method !== $methodName) {
+            $isClassMatch = is_object($object) && get_class($object) === $className || is_string($object) && $object === $className;
+            if (!$isClassMatch || $method !== $methodName) {
                 continue;
             }
             // Remove the filter

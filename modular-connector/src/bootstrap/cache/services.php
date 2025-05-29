@@ -4,7 +4,7 @@
     0 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Auth\\AuthServiceProvider',
     1 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Providers\\BusServiceProvider',
     2 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Cache\\CacheServiceProvider',
-    3 => 'Modular\\ConnectorDependencies\\Illuminate\\Database\\DatabaseServiceProvider',
+    3 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DatabaseServiceProvider',
     4 => 'Modular\\ConnectorDependencies\\Illuminate\\Database\\MigrationServiceProvider',
     5 => 'Modular\\ConnectorDependencies\\Illuminate\\Filesystem\\FilesystemServiceProvider',
     6 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Providers\\FoundationServiceProvider',
@@ -17,7 +17,7 @@
   'eager' => 
   array (
     0 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Auth\\AuthServiceProvider',
-    1 => 'Modular\\ConnectorDependencies\\Illuminate\\Database\\DatabaseServiceProvider',
+    1 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DatabaseServiceProvider',
     2 => 'Modular\\ConnectorDependencies\\Illuminate\\Filesystem\\FilesystemServiceProvider',
     3 => 'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Providers\\FoundationServiceProvider',
     4 => 'Modular\\ConnectorDependencies\\Illuminate\\View\\ViewServiceProvider',

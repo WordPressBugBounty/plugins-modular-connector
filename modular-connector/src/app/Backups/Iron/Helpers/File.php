@@ -111,12 +111,6 @@ class File
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs()
             ->ignoreVCS(true)
-            // Note: Even though we use the ->exclude() method to filter out unwanted directories,
-            // the Symfony Finder component still traverses the entire directory tree from the root.
-            // This means that exclusions are applied only after scanning the complete folder structure.
-            // Consequently, in very large directories, this can lead to performance issues or timeouts,
-            // as scanning the entire tree is expensive in terms of time and memory.
-            ->exclude($excluded->toArray())
             ->filter(fn(\SplFileInfo $file) => !self::shouldExclude($disk, $file, $excluded))
             ->in($path);
     }
