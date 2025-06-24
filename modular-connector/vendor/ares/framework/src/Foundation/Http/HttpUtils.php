@@ -44,8 +44,7 @@ class HttpUtils
     }
     /**
      * @return bool
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
+     * @deprecated Use isCron() & isAjax() instead.
      */
     public static function isAjax(): bool
     {

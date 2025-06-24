@@ -3,7 +3,6 @@
 namespace Modular\Connector\Models;
 
 use Modular\Connector\Models\Meta\Meta;
-use Modular\Connector\Models\User;
 
 class UserMeta extends Meta
 {

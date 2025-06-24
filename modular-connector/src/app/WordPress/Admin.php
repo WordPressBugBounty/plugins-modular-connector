@@ -3,10 +3,13 @@
 namespace Modular\Connector\WordPress;
 
 use Modular\Connector\Helper\OauthClient;
+use Modular\Connector\Services\JobsCleanupService;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\View;
 use function Modular\ConnectorDependencies\data_get;
+use function Modular\ConnectorDependencies\request;
 
 class Admin
 {
@@ -19,7 +22,7 @@ class Admin
         add_action('admin_menu', [self::class, 'addMenu']);
         add_action('admin_notices', [self::class, 'addAdminNotice']);
         add_action('template_redirect', [self::class, 'addMaintenanceMode'], 99);
-
+        add_action('admin_init', [self::class, 'addJobsCleanup']);
     }
 
     /**
@@ -69,7 +72,7 @@ class Admin
         $enabled = data_get($data, 'enabled', false) ?: false;
         $enabled = $enabled && !current_user_can('manage_options') && !empty(OauthClient::getClient()->getConnectedAt());
 
-        if ($enabled && !HttpUtils::isAjax() && !HttpUtils::isCron() && !HttpUtils::isDirectRequest()) {
+        if ($enabled && !HttpUtils::isCron() && !HttpUtils::isDirectRequest()) {
             if (!headers_sent()) {
                 header('Retry-After: 600');
                 header("Content-Type: text/html; charset=utf-8");
@@ -88,5 +91,33 @@ class Admin
         }
 
         return $template;
+    }
+
+    /**
+     * Adds a job cleanup action to the admin panel
+     */
+    public static function addJobsCleanup()
+    {
+        try {
+            // Check if the user is logged in
+            if (!is_user_logged_in()) {
+                return;
+            }
+
+            if (HttpUtils::isCron() || HttpUtils::isDirectRequest() || defined('DOING_AJAX') && DOING_AJAX) {
+                return;
+            }
+
+            if (!request()->isMethod('get')) {
+                // If it's a POST request, we don't want to run the cleanup
+                return;
+            }
+
+            $cleanupService = new JobsCleanupService();
+            $cleanupService->attemptCleanup();
+        } catch (\Throwable $e) {
+            // Log the error if needed
+            Log::error('Error in Modular Connector Admin: ' . $e->getMessage());
+        }
     }
 }

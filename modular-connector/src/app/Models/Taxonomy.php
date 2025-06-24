@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Models;
 
-use Modular\Connector\Models\TermMeta;
 use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 
 class Taxonomy extends Model

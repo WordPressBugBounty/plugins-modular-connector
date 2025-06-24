@@ -2,14 +2,19 @@
 
 namespace Modular\Connector\Http\Controllers;
 
+use Modular\Connector\Cache\Jobs\CacheClearJob;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Jobs\Health\ManagerHealthDataJob;
 use Modular\Connector\Optimizer\Jobs\ManagerOptimizationInformationUpdateJob;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
+use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\SDK\Objects\SiteRequest;
+use function Modular\ConnectorDependencies\app;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
 
@@ -81,9 +86,58 @@ class ServerController extends Controller
         $data = compact('enabled', 'title', 'description', 'withBranding', 'background', 'noindex');
 
         Cache::driver('wordpress')->forever('maintenance_mode', $data);
+        dispatch(new CacheClearJob());
 
         return Response::json([
             'success' => 'OK',
+        ]);
+    }
+
+    /**
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     * @throws \Exception
+     */
+    public function getLoopback(Request $request)
+    {
+        // Don't lock up other requests while processing.
+        session_write_close();
+
+        $action = app()->getScheduleHook();
+
+        if ($request->hasHeader('Authentication')) {
+            $authHeader = $request->header('Authentication', '');
+
+            if (!JWT::verify($authHeader, $action)) {
+                Log::debug('Invalid JWT for schedule hook', [
+                    'hook' => $action,
+                    'header' => $authHeader,
+                ]);
+
+                return Response::json(['error' => sprintf('Invalid JWT for %s', $action)], 403);
+            }
+        } else {
+            $isValid = check_ajax_referer($action, 'nonce', false);
+
+            if (!$isValid) {
+                Log::debug('Invalid nonce for schedule hook', [
+                    'hook' => $action,
+                    'nonce' => $request->input('nonce'),
+                ]);
+
+                return Response::json(['error' => sprintf('Invalid nonce for %s', $action)], 403);
+            }
+        }
+
+        dispatch(function () use ($action) {
+            Log::debug('Running schedule hook', ['hook' => $action]);
+
+            do_action($action);
+        })->afterResponse(); // For AJAX request, we need to force close the connection to avoid the server hanging.
+
+        return Response::json([
+            'message' => 'Schedule hook is being processed',
+            'hook' => $action,
         ]);
     }
 }

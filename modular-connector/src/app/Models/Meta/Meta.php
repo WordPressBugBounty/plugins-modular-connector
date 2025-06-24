@@ -2,9 +2,9 @@
 
 namespace Modular\Connector\Models\Meta;
 
-use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
-use Modular\Connector\Models\Collection\MetaCollection;
 use Exception;
+use Modular\Connector\Models\Collection\MetaCollection;
+use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 
 abstract class Meta extends Model
 {

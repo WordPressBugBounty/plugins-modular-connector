@@ -41,6 +41,13 @@ class ModularConnectorServiceProvider extends ServiceProvider
     public function registerActionLinks()
     {
         add_filter('plugin_action_links', function ($links = null, $plugin = null) {
+
+            $isEnabled = WhiteLabel::isEnabled();
+
+            if ($isEnabled) {
+                return $links;
+            }
+
             // if you use this action hook inside main plugin file, use basename(__FILE__) to check
             $path = str_replace('\\', '/', realpath(base_path('../init.php')));
             $path = preg_replace('|(?<=.)/+|', '/', $path);
@@ -65,8 +72,6 @@ class ModularConnectorServiceProvider extends ServiceProvider
     {
         $this->registerFacades();
         $this->registerActionLinks();
-
-        WhiteLabel::init();
     }
 
     /**
@@ -118,6 +123,10 @@ class ModularConnectorServiceProvider extends ServiceProvider
             } catch (\Throwable $e) {
                 // Silence is golden
             }
+        });
+
+        $this->booted(function () {
+            WhiteLabel::init();
         });
     }
 }

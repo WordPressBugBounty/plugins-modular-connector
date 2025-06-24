@@ -75,18 +75,21 @@ class ScreenSimulation
         if (!isset($GLOBALS['pagenow'])) {
             $GLOBALS['pagenow'] = $path;
         }
-        if (HttpUtils::isDirectRequest() || HttpUtils::isAjax()) {
-            if (HttpUtils::isDirectRequest() && !defined('DOING_AJAX')) {
+        if (HttpUtils::isDirectRequest()) {
+            if (!defined('DOING_AJAX')) {
                 define('DOING_AJAX', \true);
             }
-            // If this is an AJAX request, we need to force close the connection to avoid the server hanging.
-            if (HttpUtils::isAjax()) {
-                HttpUtils::forceCloseConnection();
-            }
-            // When it's a modular request, we need to avoid the cron execution.
-            remove_action('init', 'wp_cron');
             // We use Laravel Response to make our redirections.
             add_filter('wp_redirect', '__return_false');
+            // When it's a modular request, we need to avoid the cron execution.
+            remove_action('init', 'wp_cron');
+            // Disable auto updates for core, themes, plugins and translations.
+            add_filter('auto_update_core', '__return_false', \PHP_INT_MAX);
+            add_filter('auto_update_translation', '__return_false', \PHP_INT_MAX);
+            add_filter('auto_update_theme', '__return_false', \PHP_INT_MAX);
+            add_filter('auto_update_plugin', '__return_false', \PHP_INT_MAX);
+            // Disable Automatic updates.
+            add_filter('automatic_updater_disabled', '__return_true');
         }
         if (!class_exists('WP_Screen')) {
             require_once \ABSPATH . 'wp-admin/includes/class-wp-screen.php';

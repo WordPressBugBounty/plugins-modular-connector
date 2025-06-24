@@ -28,6 +28,7 @@ return array(
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\JetPlugins' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/JetPlugins.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\LoginLockdown' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/LoginLockdown.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\Office365forPostSMTPExtension' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/Office365forPostSMTPExtension.php',
+    'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\ShieldSecurity' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/ShieldSecurity.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\ShieldUserManagementICWP' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/ShieldUserManagementICWP.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SidekickPlugin' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/SidekickPlugin.php',
     'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SpamShield' => $vendorDir . '/ares/framework/src/Foundation/Compatibilities/SpamShield.php',

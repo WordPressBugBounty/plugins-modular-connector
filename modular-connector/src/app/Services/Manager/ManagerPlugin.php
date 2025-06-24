@@ -206,8 +206,6 @@ class ManagerPlugin extends AbstractManager
             return $this->parseBulkActionResponse($items, $error, 'upgrade', ManagerPlugin::PLUGINS);
         }
 
-        add_filter('auto_update_plugin', '__return_false', PHP_INT_MAX);
-
         ServerSetup::clean();
 
         try {

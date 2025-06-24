@@ -89,13 +89,6 @@ class ManagerCore extends AbstractManager
     public function upgrade($items = [])
     {
         ScreenSimulation::includeUpgrader();
-
-        // Allow core updates
-        add_filter('auto_update_core', '__return_true', PHP_INT_MAX);
-        add_filter('allow_major_auto_core_updates', '__return_true', PHP_INT_MAX);
-        add_filter('allow_minor_auto_core_updates', '__return_true', PHP_INT_MAX);
-        add_filter('auto_core_update_send_email', '__return_false', PHP_INT_MAX);
-
         ServerSetup::clean();
 
         try {

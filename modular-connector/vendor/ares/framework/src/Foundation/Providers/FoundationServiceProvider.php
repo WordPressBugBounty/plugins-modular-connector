@@ -48,8 +48,8 @@ class FoundationServiceProvider extends ServiceProvider
             }
             $debugSchedule = $this->app->make('config')->get('app.debug_schedule', \false);
             $hook = $this->app->getScheduleHook();
-            $url = apply_filters(sprintf('%s_query_url', $hook), admin_url('admin-ajax.php'));
-            $query = apply_filters(sprintf('%s_query_args', $hook), ['action' => $hook, 'nonce' => wp_create_nonce($hook)]);
+            $url = apply_filters(sprintf('%s_query_url', $hook), site_url('wp-load.php'));
+            $query = apply_filters(sprintf('%s_query_args', $hook), ['origin' => 'mo', 'type' => 'lb', 'nonce' => wp_create_nonce($hook)]);
             $url = add_query_arg($query, $url);
             $args = [
                 'timeout' => 10,

@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Jobs;
 
+use Modular\Connector\Cache\Jobs\CacheClearJob;
 use Modular\Connector\Events\ManagerItemsActivated;
 use Modular\Connector\Events\ManagerItemsDeactivated;
 use Modular\Connector\Events\ManagerItemsDeleted;
@@ -150,6 +151,12 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
             $type = $type !== 'core' ? Str::plural($type) : $type;
 
             $result = [$type => $result];
+        }
+
+        $cleanCache = data_get($payload, 'extra.clean_cache', false);
+
+        if ($cleanCache) {
+            dispatch(new CacheClearJob());
         }
 
         switch ($action) {

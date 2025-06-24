@@ -5,9 +5,9 @@ namespace Modular\Connector\Models;
 use Modular\Connector\Models\Concerns\Aliases;
 use Modular\Connector\Models\Concerns\MetaFields;
 use Modular\Connector\Models\Concerns\OrderScopes;
-use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Auth\Authenticatable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Auth\CanResetPassword;
+use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 
 class User extends Model implements Authenticatable, CanResetPassword
 {

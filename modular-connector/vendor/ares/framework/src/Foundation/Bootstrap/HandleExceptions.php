@@ -18,7 +18,7 @@ class HandleExceptions extends FoundationHandleExceptions
     {
         self::$reservedMemory = \str_repeat('x', 10240);
         $this->app = $app;
-        if (!(HttpUtils::isDirectRequest() || HttpUtils::isCron() || HttpUtils::isAjax())) {
+        if (!(HttpUtils::isDirectRequest() || HttpUtils::isCron())) {
             return;
         }
         set_error_handler([$this, 'handleError']);

@@ -2,6 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue\WordPress;
 
+use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\Queue as QueueContract;
 use Modular\ConnectorDependencies\Illuminate\Queue\Jobs\DatabaseJobRecord;
@@ -165,9 +166,11 @@ class WordpressQueue extends Queue implements QueueContract, ClearableQueue
     {
         $key = $this->getKey($queue);
         $KeyAttempts = $key . '_attempts';
+        $KeyCreatedAt = $key . '_created_at';
         $key = update_option($key, $payload);
         if ($key) {
             update_option($KeyAttempts, $attempts);
+            update_option($KeyCreatedAt, Carbon::now()->timestamp);
             if ($delay) {
                 $availableAt = $this->availableAt($delay);
                 $keyAvailableAt = $key . '_available_at';
@@ -214,7 +217,7 @@ class WordpressQueue extends Queue implements QueueContract, ClearableQueue
         [$table, $keyColumn, $nameColumn, $valueColumn] = $this->getTableDefinition();
         [$whereClause, $excludePatterns] = $this->getJobLikeQuery($queue);
         // Current time and expiration time
-        $currentTime = time();
+        $currentTime = Carbon::now()->timestamp;
         $expirationTime = $currentTime - $this->retryAfter;
         // Prepare the SQL query to find the next available job
         $sql = $this->database->prepare("\n        SELECT job.{$keyColumn}, job.{$nameColumn}, job.{$valueColumn}, reserved.{$valueColumn} AS reserved_at, availabled.{$valueColumn} AS available_at, attempts.{$valueColumn} AS attempts\n        FROM {$table} AS job\n        LEFT JOIN {$table} AS availabled ON availabled.{$nameColumn} = CONCAT(job.{$nameColumn}, '_available_at')\n        LEFT JOIN {$table} AS reserved ON reserved.{$nameColumn} = CONCAT(job.{$nameColumn}, '_reserved_at')\n        LEFT JOIN {$table} AS attempts ON attempts.{$nameColumn} = CONCAT(job.{$nameColumn}, '_attempts')\n        WHERE {$whereClause}\n        AND (\n            -- isAvailable\n            (\n                reserved.{$valueColumn} IS NULL\n                AND\n                (availabled.{$valueColumn} IS NULL OR CAST(availabled.{$valueColumn} AS UNSIGNED) <= %d)\n            )\n            -- isReservedButExpired\n            OR reserved.{$valueColumn} IS NOT NULL AND CAST(reserved.{$valueColumn} AS UNSIGNED) <= %d\n        )\n        ORDER BY job.{$keyColumn} ASC\n        LIMIT 1\n        ", array_merge($excludePatterns, [$currentTime, $expirationTime]));
@@ -259,6 +262,7 @@ class WordpressQueue extends Queue implements QueueContract, ClearableQueue
         delete_option($id . '_reserved_at');
         delete_option($id . '_attempts');
         delete_option($id . '_available_at');
+        delete_option($id . '_created_at');
     }
     /**
      * Delete a reserved job from the reserved queue and release it.
@@ -292,6 +296,20 @@ class WordpressQueue extends Queue implements QueueContract, ClearableQueue
         $sql = $this->database->prepare("DELETE FROM {$table} WHERE {$nameColumn} LIKE %s", $likePattern);
         // Execute the query
         return $this->database->query($sql);
+    }
+    /**
+     * Delete old pending jobs from the queue.
+     *
+     * @param string $queue
+     * @param int $maxAge
+     * @return void
+     */
+    public function clearOldPendingJobs($queue, $maxAge = 60 * 60 * 24)
+    {
+        // Get the table definition
+        [$table, $keyColumn, $nameColumn, $valueColumn] = $this->getTableDefinition();
+        $identifier = $this->getIdentifier($queue);
+        $this->database->query($this->database->prepare("\n                    DELETE job FROM {$table} AS job\n                    INNER JOIN (\n                        SELECT job.option_name AS prefix\n                        FROM {$table} AS job\n                        INNER JOIN {$table} AS created\n                            ON created.option_name = CONCAT(job.option_name, '_created_at')\n                        WHERE CAST(created.option_value AS UNSIGNED) <= %d\n                    ) AS expired\n                     ON job.option_name = CONCAT(expired.prefix, '_created_at')\n                        OR job.option_name = CONCAT(expired.prefix, '_reserved_at')\n                        OR job.option_name = CONCAT(expired.prefix, '_attempts')\n                        OR job.option_name = CONCAT(expired.prefix, '_available_at')\n                        OR job.option_name = expired.prefix\n                    WHERE job.{$nameColumn} LIKE %s\n                ", Carbon::now()->timestamp - $maxAge, $this->database->esc_like($identifier) . '%'));
     }
     /**
      * Get identifier for queue

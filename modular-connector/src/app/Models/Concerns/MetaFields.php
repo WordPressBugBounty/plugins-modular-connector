@@ -11,7 +11,6 @@ use Modular\Connector\Models\TermMeta;
 use Modular\connector\Models\User;
 use Modular\connector\Models\UserMeta;
 use UnexpectedValueException;
-
 use function Modular\ConnectorDependencies\class_basename;
 
 trait MetaFields

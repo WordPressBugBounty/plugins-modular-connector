@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Models;
 
-use Modular\Connector\Models\Comment;
 use Modular\Connector\Models\Meta\Meta;
 
 class CommentMeta extends Meta

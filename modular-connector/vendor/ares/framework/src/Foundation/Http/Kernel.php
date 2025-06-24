@@ -78,16 +78,10 @@ class Kernel extends FoundationKernel
         add_filter('cron_schedules', function ($schedules) {
             $schedules['ares_every_minute'] = ['interval' => \MINUTE_IN_SECONDS, 'display' => __('Every minute')];
             return $schedules;
-        });
+        }, \PHP_INT_MAX);
         if (!wp_next_scheduled($hook)) {
             wp_schedule_event(time(), 'ares_every_minute', $hook);
         }
-        $ajaxAction = function () use ($hook) {
-            $this->app->make('log')->debug('Running schedule hook: ' . $hook . ' via AJAX');
-            do_action($hook);
-        };
-        add_action('wp_ajax_' . $hook, $ajaxAction);
-        add_action('wp_ajax_nopriv_' . $hook, $ajaxAction);
     }
     /**
      * Define the application's command schedule.

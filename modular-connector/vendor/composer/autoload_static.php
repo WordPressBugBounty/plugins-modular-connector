@@ -4,30 +4,30 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitc0caee64b6f350780a2215818537da6e
+class ComposerStaticInit3f089fcf4d3c64c6ae12d32c25327b4a
 {
     public static $files = array (
-        '15e022aae170c92bee7d83a6855d5bf5' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
-        '55d15933d9fc4ed3eb2481678c838db2' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        '79f859b08eff28e18107304ab449d944' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
-        'b3cd0b1d6424b374684b2015dc9d0ab7' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
-        '4c5c0001682581d2edeb252546cc5c20' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        '0ca41eba16d7b0cbbc1d628c4e5254d9' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
-        'a270affd1d3d5ac520405330069658e3' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        'b9885a182b2691b3444d08b40b98fbf9' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
-        '21adb40e0f66af709fc2756f353f6e28' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
-        'a51c8b1be71a276560d3a949b8257943' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        'cc767b94ad536b9440906a3de605f4fa' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        '639128c33d8618d354b3f25ab4780b3f' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        'ffebea4941e2fa52821d748206be46a3' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
-        '5e30f7d90f457ec10103b6d80e43ffd7' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-        '40f1e225e2e671532601da1fd62494b9' => __DIR__ . '/..' . '/illuminate/events/functions.php',
-        '3bc088259c4b33a3085eff27c329da47' => __DIR__ . '/..' . '/opis/closure/functions.php',
-        '2caae66faac0ab09dcb13b79a9c28501' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        'd39596a32bcac3a22323bd48474375c0' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        'd1f1f766ea5e6da023f525ef74916f27' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
-        'bafa636f26b71f333dbf9704cf0a4175' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
-        '49df6cf57b6e87ff589622c5c4dc43b2' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        '2a7ae82a0fa055d0c359db0567f8045b' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        '2bd03b7320d3d954b4a6106b944dedcd' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+        '8ad58f98ab3728e912b1aa646bcd6f5d' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        '05b6843b0f719280f2b7ca96bf073bce' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
+        '0ac09c85f1386b383e2d770eddc4a8ba' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
+        'f476c0f9d269513aeb59fe39926292f2' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        '4ca979599649fb802a3460ef76a5868c' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
+        'a16160c5ae5bfcf58020972907145891' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
+        '803cf3746f46f25833f45ab2bec4de03' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
+        '78c4d8dc2c65d79cf80e9f4b509696a4' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        '5ea2b0ebb02fc8e7fae2fbae0244fa04' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
+        '172e7c58c3b184b7c154dad6866932cb' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
+        '83ab369dc6a854aa26fbf1237e38cbed' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        '6cedf4cf4c1f6c2a22ef8862997a86d1' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
+        'a871684b1e03bc971f75eb85d9754541' => __DIR__ . '/..' . '/illuminate/events/functions.php',
+        'aeedc8cb7ffe72a4d8cc74f4574b7622' => __DIR__ . '/..' . '/opis/closure/functions.php',
+        'c4bb2579b93aaba645ce203d4ad6559d' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        '4d26d21f6bf69d36a06a9c49d9af439e' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        '40954e2053dad20852460f0240b2b4fb' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
+        'd4b489ead93017b5e3a43e185e0129c9' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
+        '73af85160eb142caf628c1945c41f948' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -433,6 +433,7 @@ class ComposerStaticInitc0caee64b6f350780a2215818537da6e
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\JetPlugins' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/JetPlugins.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\LoginLockdown' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/LoginLockdown.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\Office365forPostSMTPExtension' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/Office365forPostSMTPExtension.php',
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\ShieldSecurity' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/ShieldSecurity.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\ShieldUserManagementICWP' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/ShieldUserManagementICWP.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SidekickPlugin' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/SidekickPlugin.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SpamShield' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/SpamShield.php',
@@ -2633,9 +2634,9 @@ class ComposerStaticInitc0caee64b6f350780a2215818537da6e
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitc0caee64b6f350780a2215818537da6e::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitc0caee64b6f350780a2215818537da6e::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInitc0caee64b6f350780a2215818537da6e::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit3f089fcf4d3c64c6ae12d32c25327b4a::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit3f089fcf4d3c64c6ae12d32c25327b4a::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit3f089fcf4d3c64c6ae12d32c25327b4a::$classMap;
 
         }, null, ClassLoader::class);
     }

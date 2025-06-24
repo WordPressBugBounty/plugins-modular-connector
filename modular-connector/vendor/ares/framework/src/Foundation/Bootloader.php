@@ -2,7 +2,6 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation;
 
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Routing\Router;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Foundation\Application as ApplicationContract;
@@ -63,14 +62,6 @@ class Bootloader
         return Str::endsWith($path, 'wp-load.php');
     }
     /**
-     * @param string $path
-     * @return bool
-     */
-    protected function isAjax(string $path)
-    {
-        return Str::endsWith($path, 'admin-ajax.php');
-    }
-    /**
      * @param Request $request
      * @return bool
      */
@@ -78,7 +69,7 @@ class Bootloader
     {
         $except = Collection::make([admin_url(), wp_login_url(), wp_registration_url()])->map(fn($url) => parse_url($url, \PHP_URL_PATH))->unique()->filter();
         $path = $this->getPath($request);
-        return !HttpUtils::isAjax() && !$this->isWpLoad($path) && (Str::startsWith($path, $except->all()) || Str::endsWith($path, '.php'));
+        return !$this->isWpLoad($path) && (Str::startsWith($path, $except->all()) || Str::endsWith($path, '.php'));
     }
     /**
      * Initialize and retrieve the Application instance.
@@ -170,27 +161,10 @@ class Bootloader
      * @return void
      * @link https://github.com/deliciousbrains/wp-background-processing/blob/master/classes/wp-async-request.php Method inspired by wp-background-processing
      */
-    protected function bootAjax(IlluminateHttpKernel $kernel, Request $request): void
+    protected function bootCron(IlluminateHttpKernel $kernel, Request $request): void
     {
-        if (!HttpUtils::isAjax() && !HttpUtils::isCron()) {
+        if (!HttpUtils::isCron()) {
             return;
-        }
-        // If the request is an AJAX request, we need to check the nonce.
-        if (HttpUtils::isAjax()) {
-            // Don't lock up other requests while processing.
-            session_write_close();
-            $action = $kernel->getApplication()->getScheduleHook();
-            if ($request->hasHeader('Authentication')) {
-                $authHeader = $request->header('Authentication', '');
-                if (!JWT::verify($authHeader, $action)) {
-                    wp_die(sprintf('Invalid token for %s', $action), 403);
-                }
-            } else {
-                $isValid = check_ajax_referer($action, 'nonce', \false);
-                if (!$isValid) {
-                    wp_die(sprintf('Invalid nonce for %s', $action), 403);
-                }
-            }
         }
         // When is a cron request, WP takes care of forcing the shutdown to proxy server (nginx, apache)
         remove_action('shutdown', 'wp_ob_end_flush_all', 1);
@@ -205,10 +179,10 @@ class Bootloader
      */
     protected function bootHttp(IlluminateHttpKernel $kernel, Request $request): void
     {
-        if (!HttpUtils::isCron() && ($this->isExcluded($request) || !HttpUtils::isDirectRequest() && !HttpUtils::isAjax())) {
+        if (!HttpUtils::isCron() && ($this->isExcluded($request) || !HttpUtils::isDirectRequest())) {
             return;
         }
-        Log::debug('Booting the Application for HTTP requests', ['is_direct_request' => HttpUtils::isDirectRequest(), 'is_ajax' => HttpUtils::isAjax(), 'is_cron' => HttpUtils::isCron()]);
+        Log::debug('Booting the Application for HTTP requests', ['is_direct_request' => HttpUtils::isDirectRequest(), 'is_cron' => HttpUtils::isCron(), 'uri' => $request->fullUrl()]);
         $this->configRequest();
         $this->registerDefaultRoute();
         add_action('plugins_loaded', function () use ($kernel, $request) {
@@ -222,8 +196,8 @@ class Bootloader
                         \Modular\ConnectorDependencies\abort(404);
                     }
                     add_action('after_setup_theme', fn() => $this->registerRequestHandler($kernel, $request), 0);
-                } elseif (HttpUtils::isAjax() || HttpUtils::isCron()) {
-                    $this->bootAjax($kernel, $request);
+                } elseif (HttpUtils::isCron()) {
+                    $this->bootCron($kernel, $request);
                 }
             } catch (\Throwable $e) {
                 throw $e;

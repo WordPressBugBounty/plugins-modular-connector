@@ -5,7 +5,6 @@ namespace Modular\Connector\Jobs;
 use Modular\Connector\Events\ManagerItemsUpdated;
 use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
-use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
 use function Modular\ConnectorDependencies\event;

@@ -2,8 +2,8 @@
 
 namespace Modular\Connector\Models;
 
-use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 use Exception;
+use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 
 class Option extends Model
 {

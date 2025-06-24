@@ -110,6 +110,20 @@ class RouteServiceProvider extends ServiceProvider
             $route = $route->bind($request);
         }
 
+        if ($request->get('type') === 'lb') {
+            /**
+             * @var \Illuminate\Routing\Route $route
+             */
+            $route = $routes->getByName('schedule.run');
+
+            if ($removeQuery) {
+                $request->query->remove('origin');
+                $request->query->remove('type');
+            }
+
+            $route = $route->bind($request);
+        }
+
         return $route;
     }
 

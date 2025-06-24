@@ -62,4 +62,14 @@ class DatabaseQueue extends IlluminateDatabaseQueue
         \Modular\ConnectorDependencies\app()->forceDispatchScheduleRun();
         return parent::push($job, $data, $queue);
     }
+    /**
+     * Delete old pending jobs from the queue.
+     *
+     * @param int $maxAge
+     * @return int
+     */
+    public function clearOldPendingJobs($queue, $maxAge = 60 * 60 * 24)
+    {
+        return $this->database->table($this->table)->where('created_at', '<', time() - $maxAge)->whereNull('reserved_at')->delete();
+    }
 }

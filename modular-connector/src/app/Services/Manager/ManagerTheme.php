@@ -140,9 +140,6 @@ class ManagerTheme extends AbstractManager
     public function upgrade(array $themes = [])
     {
         ScreenSimulation::includeUpgrader();
-
-        add_filter('auto_update_theme', '__return_false', PHP_INT_MAX);
-
         ServerSetup::clean();
 
         try {

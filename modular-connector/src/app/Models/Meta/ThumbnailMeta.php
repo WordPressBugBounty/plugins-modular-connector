@@ -2,8 +2,8 @@
 
 namespace Modular\Connector\Models\Meta;
 
-use Modular\ConnectorDependencies\Illuminate\Support\Arr;
 use Modular\Connector\Models\Attachment;
+use Modular\ConnectorDependencies\Illuminate\Support\Arr;
 
 class ThumbnailMeta extends PostMeta
 {

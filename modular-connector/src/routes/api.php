@@ -2,6 +2,7 @@
 
 use Modular\Connector\Http\Controllers\AuthController;
 use Modular\Connector\Http\Controllers\BackupController;
+use Modular\Connector\Http\Controllers\CacheController;
 use Modular\Connector\Http\Controllers\ManagerController;
 use Modular\Connector\Http\Controllers\OptimizationController;
 use Modular\Connector\Http\Controllers\ServerController;
@@ -10,6 +11,9 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Route;
 
 Route::get('/oauth', [AuthController::class, 'postConfirmOauth'])
     ->name('modular-connector.oauth');
+
+Route::get('/schedule/run', [ServerController::class, 'getLoopback'])
+    ->name('schedule.run');
 
 Route::middleware('auth')
     ->group(function () {
@@ -37,6 +41,11 @@ Route::middleware('auth')
 
         Route::get('/database/optimize/{modular_request}', [OptimizationController::class, 'optimizeDatabase'])
             ->name('manager.optimization.process');
+        #endregion
+
+        #region Cache
+        Route::get('/cache/clear', [CacheController::class, 'clear'])
+            ->name('manager.cache.clear');
         #endregion
 
         #region Manager

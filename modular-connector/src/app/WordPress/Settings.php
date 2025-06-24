@@ -39,7 +39,11 @@ class Settings
         $data = WhiteLabel::getWhiteLabeledData();
         $isEnabled = WhiteLabel::isEnabled();
 
-        return sprintf(esc_attr__('%s - Connection manager', 'modular-connector'), $isEnabled ? $data['Name'] : 'Modular DS');
+        if ($isEnabled) {
+            return $data['Name'];
+        }
+
+        return sprintf(esc_attr__('%s - Connection manager', 'modular-connector'), 'Modular DS');
     }
 
     /**
