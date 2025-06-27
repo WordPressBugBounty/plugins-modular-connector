@@ -7,6 +7,7 @@ use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Scheduling\S
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Kernel as HttpKernel;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue\WorkCommand;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Queue;
 
 class Kernel extends HttpKernel
@@ -38,6 +39,8 @@ class Kernel extends HttpKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        Log::debug('Scheduling commands for Modular Connector');
+
         $schedule->command(WorkCommand::class, [
             '--connection' => 'wordpress',
             '--queue' => 'default',

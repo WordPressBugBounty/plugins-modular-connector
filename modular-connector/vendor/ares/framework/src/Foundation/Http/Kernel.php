@@ -70,6 +70,7 @@ class Kernel extends FoundationKernel
     {
         $hook = $this->app->getScheduleHook();
         add_action($hook, function () {
+            \Modular\ConnectorDependencies\app()->make('log')->debug('Running scheduled tasks with hook...');
             $schedule = \Modular\ConnectorDependencies\app()->make(Schedule::class);
             $dispatcher = \Modular\ConnectorDependencies\app()->make('events');
             $exceptionHandler = \Modular\ConnectorDependencies\app()->make(ExceptionHandler::class);

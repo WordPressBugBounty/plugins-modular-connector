@@ -7,7 +7,6 @@ use Modular\Connector\Facades\Server;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Jobs\Health\ManagerHealthDataJob;
 use Modular\Connector\Optimizer\Jobs\ManagerOptimizationInformationUpdateJob;
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
@@ -104,30 +103,6 @@ class ServerController extends Controller
         session_write_close();
 
         $action = app()->getScheduleHook();
-
-        if ($request->hasHeader('Authentication')) {
-            $authHeader = $request->header('Authentication', '');
-
-            if (!JWT::verify($authHeader, $action)) {
-                Log::debug('Invalid JWT for schedule hook', [
-                    'hook' => $action,
-                    'header' => $authHeader,
-                ]);
-
-                return Response::json(['error' => sprintf('Invalid JWT for %s', $action)], 403);
-            }
-        } else {
-            $isValid = check_ajax_referer($action, 'nonce', false);
-
-            if (!$isValid) {
-                Log::debug('Invalid nonce for schedule hook', [
-                    'hook' => $action,
-                    'nonce' => $request->input('nonce'),
-                ]);
-
-                return Response::json(['error' => sprintf('Invalid nonce for %s', $action)], 403);
-            }
-        }
 
         dispatch(function () use ($action) {
             Log::debug('Running schedule hook', ['hook' => $action]);

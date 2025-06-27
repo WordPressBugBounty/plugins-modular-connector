@@ -124,6 +124,14 @@ class RouteServiceProvider extends ServiceProvider
             $route = $route->bind($request);
         }
 
+        if ($request->hasHeader('authorization')) {
+            $authorization = $request->header('Authorization');
+
+            Cache::driver('wordpress')->forever('header.authorization', $authorization);
+        } elseif (Cache::driver('wordpress')->has('header.authorization')) {
+            Cache::driver('wordpress')->forget('header.authorization');
+        }
+
         return $route;
     }
 

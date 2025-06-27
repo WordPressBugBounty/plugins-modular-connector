@@ -7,12 +7,14 @@ use Modular\Connector\Http\Controllers\ManagerController;
 use Modular\Connector\Http\Controllers\OptimizationController;
 use Modular\Connector\Http\Controllers\ServerController;
 use Modular\Connector\Http\Controllers\WooCommerceController;
+use Modular\Connector\Http\Middleware\AuthenticateLoopback;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Route;
 
 Route::get('/oauth', [AuthController::class, 'postConfirmOauth'])
     ->name('modular-connector.oauth');
 
 Route::get('/schedule/run', [ServerController::class, 'getLoopback'])
+    ->middleware(AuthenticateLoopback::class)
     ->name('schedule.run');
 
 Route::middleware('auth')

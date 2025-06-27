@@ -39,6 +39,18 @@ return [
     'debug_schedule' => defined('MODULAR_CONNECTOR_DEBUG_SCHEDULE') && MODULAR_CONNECTOR_DEBUG_SCHEDULE,
 
     /*
+     * --------------------------------------------------------------------------
+     * Loopback Requests
+     * --------------------------------------------------------------------------
+     *
+     * This option determines whether the application should allow loopback
+     * requests. Loopback requests are used by the application to
+     * simulate HTTP requests to itself.
+     */
+
+    'loopback' => defined('MODULAR_CONNECTOR_LOOPBACK') ? MODULAR_CONNECTOR_LOOPBACK : true,
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

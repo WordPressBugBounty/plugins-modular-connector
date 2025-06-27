@@ -22,6 +22,12 @@ class Application extends FoundationApplication
      */
     public bool $forceDispatchScheduleRun = \false;
     /**
+     * The array of terminating callbacks.
+     *
+     * @var callable[]
+     */
+    public array $afterTerminatingCallbacks = [];
+    /**
      * @return string
      */
     public function getScheduleHook()
@@ -51,15 +57,27 @@ class Application extends FoundationApplication
         $this->alias('app', self::class);
     }
     /**
+     * Register a after terminating callback with the application.
+     *
+     * @param callable|string $callback
+     * @return $this
+     */
+    public function afterTerminating($callback)
+    {
+        $this->afterTerminatingCallbacks[] = $callback;
+        return $this;
+    }
+    /**
      * Terminate the application.
      *
      * @return void
      */
     public function terminate()
     {
+        parent::terminate();
         $index = 0;
-        while ($index < count($this->terminatingCallbacks)) {
-            $this->call($this->terminatingCallbacks[$index]);
+        while ($index < count($this->afterTerminatingCallbacks)) {
+            $this->call($this->afterTerminatingCallbacks[$index]);
             $index++;
         }
     }
@@ -111,5 +129,15 @@ class Application extends FoundationApplication
               $binary = 'php';
           }*/
         return sprintf('%s %s %s', 'php', ConsoleApplication::artisanBinary(), $string);
+    }
+    /**
+     * Flush the container of all bindings and resolved instances.
+     *
+     * @return void
+     */
+    public function flush()
+    {
+        parent::flush();
+        $this->afterTerminatingCallbacks = [];
     }
 }

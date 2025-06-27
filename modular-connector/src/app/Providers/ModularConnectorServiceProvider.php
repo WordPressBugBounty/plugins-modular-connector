@@ -10,6 +10,7 @@ use Modular\Connector\Services\Manager\ManagerWooCommerce;
 use Modular\Connector\Services\ManagerServer;
 use Modular\Connector\Services\ManagerWhiteLabel;
 use Modular\Connector\Services\ServiceDatabase;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -41,7 +42,6 @@ class ModularConnectorServiceProvider extends ServiceProvider
     public function registerActionLinks()
     {
         add_filter('plugin_action_links', function ($links = null, $plugin = null) {
-
             $isEnabled = WhiteLabel::isEnabled();
 
             if ($isEnabled) {
@@ -64,6 +64,84 @@ class ModularConnectorServiceProvider extends ServiceProvider
     }
 
     /**
+     * Many sites have problems with the WP Cron system, so we need to force the schedule run.
+     * This method will be called when the application is terminating and will force
+     * the schedule run by calling an AJAX action.
+     *
+     * @return void
+     */
+    public function registerForceCallSchedule()
+    {
+        $this->app->afterTerminating(function () {
+            // If the loopback is disabled, we don't need to force the schedule run.
+            if (!$this->app->make('config')->get('app.loopback')) {
+                Log::debug('Loopback is disabled, skipping force dispatch schedule run.');
+
+                return;
+            }
+
+            $forceDispatch = $this->app->forceDispatchScheduleRun || Cache::driver('array')->get('ares.forceDispatchScheduleRun', false);
+
+            $dontForceDispatch = Cache::driver('array')->get('ares.dontDispatchScheduleRun', false);
+
+            if (!$forceDispatch || $dontForceDispatch) {
+                return;
+            }
+
+            $debugSchedule = $this->app->make('config')->get('app.debug_schedule', false);
+
+            $hook = $this->app->getScheduleHook();
+            $url = apply_filters(sprintf('%s_query_url', $hook), site_url('wp-load.php'));
+
+            $query = apply_filters(
+                sprintf('%s_query_args', $hook),
+                [
+                    'origin' => 'mo',
+                    'type' => 'lb',
+                    'nonce' => wp_create_nonce($hook),
+                ]
+            );
+
+            $url = add_query_arg($query, $url);
+
+            $args = [
+                'timeout' => 10, // In some websites, the default value of 5 seconds is too short.
+                'sslverify' => false,
+                'blocking' => $debugSchedule,
+                'headers' => [],
+            ];
+
+            try {
+                $token = JWT::generate($hook);
+                $args['headers']['Authentication'] = 'Bearer ' . $token;
+            } catch (\Throwable $e) {
+                // Silence is golden
+            }
+
+            if (Cache::driver('wordpress')->has('header.authorization')) {
+                $args['headers']['Authorization'] = Cache::driver('wordpress')->get('header.authorization');
+            }
+
+            $args = apply_filters(sprintf('%s_post_args', $hook), $args);
+            $response = wp_remote_get(esc_url_raw($url), $args);
+
+            if ($debugSchedule) {
+                $context = [
+                    'url' => $url,
+                    'args' => $args,
+                    'response' => $response,
+                    'request' => $this->app->make('request')->all(),
+                ];
+
+                $this->app->make('log')
+                    ->debug('Force dispatch queue', $context);
+            } else {
+                unset($response);
+            }
+        });
+    }
+
+    /**
      * Register services.
      *
      * @return void
@@ -72,6 +150,7 @@ class ModularConnectorServiceProvider extends ServiceProvider
     {
         $this->registerFacades();
         $this->registerActionLinks();
+        $this->registerForceCallSchedule();
     }
 
     /**

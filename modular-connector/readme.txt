@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, update, monitoring, security, maintenance
 Requires at least: 5.6
 Tested up to: 6.8
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -126,11 +126,18 @@ The Modular Connector plugin links your WordPress installation with Modular DS, 
 9. Client report overview page
 
 == Changelog ==
+= v2.1.1 =
+Release date: 2025-06-27
+
+* Allow connection of websites under HTTP Basic Authentication
+* Option to disable custom loopback requests
+* Improved loopback requests
+
 = v2.1.0 =
 Release date: 2025-06-24
 
-* Clean cache after any manager action
-* FIXED: Improved loopback requests
+* Clear cache after any manager action
+* Improved loopback requests
 * FIXED: Cleaning up orphaned jobs in database
 
 = v2.0.2 =
