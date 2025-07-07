@@ -77,6 +77,12 @@ class BackupController extends Controller
 
         Cache::driver('wordpress')->forever('backup.driver', $driver);
 
+        $previousBackupName = data_get($payload, 'site_backup_cancel');
+
+        if (!empty($previousBackupName)) {
+            Backup::cancel($previousBackupName);
+        }
+
         dispatch(fn() => Backup::options($requestId, $payload)->make())
             ->onQueue('backups');
 

@@ -116,10 +116,11 @@ class ModularConnectorServiceProvider extends ServiceProvider
                 $args['headers']['Authentication'] = 'Bearer ' . $token;
             } catch (\Throwable $e) {
                 // Silence is golden
+                Log::debug($e);
             }
 
-            if (Cache::driver('wordpress')->has('header.authorization')) {
-                $args['headers']['Authorization'] = Cache::driver('wordpress')->get('header.authorization');
+            if ($authorization = Cache::driver('wordpress')->get('header.authorization')) {
+                $args['headers']['Authorization'] = $authorization;
             }
 
             $args = apply_filters(sprintf('%s_post_args', $hook), $args);
