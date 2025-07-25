@@ -14,7 +14,6 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
-use Modular\ConnectorDependencies\Illuminate\Support\LazyCollection;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
@@ -255,8 +254,9 @@ class BackupPart
             $files = data_get($excluded, $type, []);
         }
 
-        $defaultExclusions = File::getDefaultExclusions($type);
-        $excluded = array_merge($defaultExclusions, $files);
+        $defaultFileExclusions = File::getDefaultFileExclusions($type);
+        $defaultDirectoryExclusions = File::getDefaultDirectoriesExclusions($type);
+        $excluded = array_merge($defaultFileExclusions, $defaultDirectoryExclusions, $files);
 
         return array_values(array_unique($excluded));
     }
@@ -444,42 +444,34 @@ class BackupPart
 
     /**
      * @param int $start
-     * @param int|null $end
-     * @return array
+     * @param int $limit
+     * @return \Generator
      */
-    public function nextFiles(int $start, int $end = null): array
+    public function nextFiles(int $start, int $limit = 1): \Generator
     {
         $path = Storage::disk('backups')->path($this->manifestPath);
-        $headers = [
-            'checksum',
-            'type',
-            'size',
-            'timestamp',
-            'path',
-        ];
+        $headers = ['checksum', 'type', 'size', 'timestamp', 'path'];
 
-        $lines = LazyCollection::make(function () use ($path) {
-            $file = new \SplFileObject($path);
-            $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
-            $file->setCsvControl(File::$delimiter, File::$enclosure, File::$escape);
+        $file = new \SplFileObject($path);
+        $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY | \SplFileObject::DROP_NEW_LINE);
+        $file->setCsvControl(File::$delimiter, File::$enclosure, File::$escape);
 
-            while (!$file->eof()) {
-                yield $file->fgetcsv();
+        // Move pointer directly to $start
+        $file->seek($start);
+
+        $count = 0;
+
+        while (!$file->eof() && $count < $limit) {
+            $row = $file->current();
+
+            // Only yield if it's a valid row with exactly the expected columns
+            if (is_array($row) && count($row) === count($headers)) {
+                yield array_combine($headers, $row);
+                $count++;
             }
-        })->skip($start);
 
-        // If no end is provided, return the first row
-        if ($end === null) {
-            $row = $lines->first();
-
-            return ($row && count($row) > 1) ? array_combine($headers, $row) : [];
+            $file->next();
         }
-
-        return $lines->take($end - $start + 1)
-            ->filter(fn($row) => is_array($row) && count($row) > 1)
-            ->map(fn($row) => array_combine($headers, $row))
-            ->values()
-            ->all();
     }
 
     /**
@@ -487,7 +479,24 @@ class BackupPart
      */
     public function isDone(): bool
     {
-        return $this->offset >= $this->totalItems && ($this->type === self::INCLUDE_DATABASE || empty($this->nextFiles($this->offset + 1)));
+        // If we haven't reached the total number of lines yet, we are not done
+        if ($this->offset < $this->totalItems) {
+            return false;
+        }
+
+        // If we only include the database, reaching the total is enough
+        if ($this->type === self::INCLUDE_DATABASE) {
+            return true;
+        }
+
+        // For other types, we check if there is at least ONE more line
+        foreach ($this->nextFiles($this->offset + 1) as $notImportant) {
+            // If we find at least one more line, we are not done
+            return false;
+        }
+
+        // If we reach here, it means there are no more lines to process
+        return true;
     }
 
     /**

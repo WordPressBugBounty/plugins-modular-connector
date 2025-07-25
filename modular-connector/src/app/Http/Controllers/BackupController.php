@@ -31,6 +31,11 @@ class BackupController extends Controller
     {
         $filesystem = data_get($modularRequest->body, 'filesystem', 'default');
         $path = data_get($modularRequest->body, 'path', is_string($modularRequest->body) ? $modularRequest->body : '');
+
+        if (preg_match('/\.\./', $path)) {
+            abort(403, 'Invalid path');
+        }
+
         $disk = data_get($modularRequest->body, 'disk', 'core');
 
         $path = Storage::disk($disk)->path(untrailingslashit($path));

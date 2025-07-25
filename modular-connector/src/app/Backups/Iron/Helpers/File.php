@@ -20,16 +20,42 @@ class File
      * @param string $disk
      * @return array
      */
-    public static function getDefaultExclusions(string $disk): array
+    public static function getDefaultFileExclusions(string $disk): array
+    {
+        $default = [
+            BackupPart::INCLUDE_CORE => [
+                '.idea',
+                '.wp-cli',
+                'error_log',
+            ],
+            BackupPart::INCLUDE_CONTENT =>
+                [
+                    'error_log',
+                    'debug.log',
+                    'mysql.sql',
+                ],
+            BackupPart::INCLUDE_PLUGINS => [],
+
+            BackupPart::INCLUDE_THEMES => [],
+
+            BackupPart::INCLUDE_MU_PLUGINS => [],
+
+            BackupPart::INCLUDE_UPLOADS => [],
+        ];
+
+        return data_get($default, $disk, []);
+    }
+
+    /**
+     * @param string $disk
+     * @return array
+     */
+    public static function getDefaultDirectoriesExclusions(string $disk): array
     {
         $default = [
             BackupPart::INCLUDE_CORE => array_unique(
                 array_merge(
                     [
-                        '.idea',
-                        '.wp-cli',
-                        'error_log',
-
                         // WordPress default values
                         'wp-content', // WP_CONTENT_DIR
                         'wp-content/plugins', // WP_PLUGIN_DIR
@@ -50,11 +76,9 @@ class File
             BackupPart::INCLUDE_CONTENT => array_unique(
                 array_merge(
                     [
-                        'error_log',
                         'modular_storage',
                         'modular_backups',
                         'upgrade-temp-backup',
-                        'error_log',
                         'cache',
                         'lscache',
                         'litepeed',
@@ -64,8 +88,6 @@ class File
                         'aiowps_backups',
                         'ai1wm-backups',
                         'backups-dup-pro',
-                        'debug.log',
-                        'mysql.sql',
 
                         // WordPress default values
                         'uploads', // INCLUDE_UPLOADS
@@ -101,18 +123,25 @@ class File
     /**
      * @param string $disk
      * @param string $path
-     * @param Collection $excluded
+     * @param bool $excludeDefault
      * @return Finder
      */
-    public static function finder(string $disk, string $path, Collection $excluded): Finder
+    public static function finder(string $disk, string $path, bool $excludeDefault = true): Finder
     {
+        $defaultExclusions = $excludeDefault ? static::getDefaultDirectoriesExclusions($disk) : [];
+
+        $defaultExclusions = array_map(
+            fn($item) => sprintf('#^%s(/|$)#', preg_quote($item, '#')),
+            $defaultExclusions
+        );
+
         return (new Finder())
             ->followLinks()
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs()
             ->ignoreVCS(true)
-            ->filter(fn(\SplFileInfo $file) => !self::shouldExclude($disk, $file, $excluded))
-            ->in($path);
+            ->in($path)
+            ->notPath($defaultExclusions);
     }
 
     /**
@@ -122,10 +151,10 @@ class File
      * @param $limit
      * @return \LimitIterator|\Symfony\Component\Finder\Finder
      */
-    public static function finderWithLimitter(string $disk, Collection $excluded, $offset, $limit)
+    public static function finderWithLimitter(string $disk, $offset, $limit)
     {
         $path = Storage::disk($disk)->path('');
-        $finder = static::finder($disk, $path, $excluded);
+        $finder = static::finder($disk, $path);
 
         return new \LimitIterator($finder->getIterator(), $offset, $limit);
     }
@@ -160,13 +189,10 @@ class File
      */
     public static function getTree(string $disk, string $path, bool $withExclusion): Collection
     {
-        $excluded = [];
+        $excluded = $withExclusion ? static::getDefaultDirectoriesExclusions($disk) : [];
 
-        if ($withExclusion) {
-            $excluded = static::getDefaultExclusions($disk);
-        }
-
-        $files = static::finder($disk, $path, Collection::make($excluded))
+        $files = static::finder($disk, $path, $withExclusion)
+            ->filter(fn(\SplFileInfo $file) => !self::shouldExclude($disk, $file, Collection::make($excluded)))
             ->depth('== 0')
             ->sortByType();
 
@@ -319,5 +345,67 @@ class File
         }
 
         return rmdir($dir);
+    }
+
+    /**
+     * Calculate compression ratio based on file type
+     *
+     * @param array $file File information array with 'path' key
+     * @return float Compression ratio (0.0 to 1.0)
+     */
+    public static function getCompressionRatio(array $file): float
+    {
+        if ($file['type'] === 'd') {
+            return 1.0; // Directories are not compressed
+        }
+
+        $extension = Str::lower(pathinfo($file['path'], PATHINFO_EXTENSION));
+
+        // Already compressed files (images, videos, archives) - minimal compression expected
+        $minimalCompression = [
+            // Images
+            'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'ico',
+            // Videos
+            'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', '3gp',
+            // Audio
+            'mp3', 'aac', 'ogg', 'wma', 'flac', 'wav',
+            // Archives
+            'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz',
+            // Documents (already compressed)
+            'pdf', 'docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp',
+        ];
+
+        // Text-based files - good compression expected
+        $goodCompression = [
+            // Web files
+            'html', 'htm', 'css', 'js', 'json', 'xml', 'svg',
+            // Programming files
+            'php', 'py', 'rb', 'java', 'c', 'cpp', 'h', 'hpp',
+            'go', 'rs', 'swift', 'kt', 'ts', 'jsx', 'tsx', 'vue',
+            // Text files
+            'txt', 'md', 'rst', 'log', 'csv', 'tsv',
+            // Config files
+            'ini', 'conf', 'cfg', 'yml', 'yaml', 'toml',
+        ];
+
+        // Database and logs - excellent compression expected
+        $excellentCompression = [
+            'sql', 'dump', 'log', 'out', 'err',
+        ];
+
+        if (in_array($extension, $excellentCompression)) {
+            return 0.65; // 65% of original size (35% compression)
+        }
+
+        if (in_array($extension, $goodCompression)) {
+            return 0.75; // 75% of original size (25% compression)
+        }
+
+        if (in_array($extension, $minimalCompression)) {
+            return 0.97; // 97% of original size (3% compression)
+        }
+
+        // Default for unknown/binary files
+        return 0.90; // 90% of original size (10% compression)
     }
 }

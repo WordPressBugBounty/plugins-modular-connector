@@ -7,7 +7,6 @@ use Modular\Connector\Facades\Server;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Jobs\Health\ManagerHealthDataJob;
 use Modular\Connector\Optimizer\Jobs\ManagerOptimizationInformationUpdateJob;
-use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -93,11 +92,9 @@ class ServerController extends Controller
     }
 
     /**
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
-     * @throws \Exception
      */
-    public function getLoopback(Request $request)
+    public function getLoopback()
     {
         // Don't lock up other requests while processing.
         session_write_close();

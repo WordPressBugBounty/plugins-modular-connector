@@ -3,6 +3,7 @@
 namespace Modular\Connector\Services;
 
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
 class ServiceDatabase
 {
@@ -18,11 +19,12 @@ class ServiceDatabase
     public function showFullTables()
     {
         $tables = DB::select('SHOW FULL TABLES');
-        
+
         $fullTables = [];
-        foreach($tables as $table) {
-            $tableName = $table->{array_key_first((array) $table)};
-            $tableType = $table->{array_key_last((array) $table)};
+
+        foreach ($tables as $table) {
+            $tableName = $table->{array_key_first((array)$table)};
+            $tableType = $table->{array_key_last((array)$table)};
             $fullTables[$tableName] = $tableType;
         }
 
@@ -34,11 +36,12 @@ class ServiceDatabase
         $query = 'SHOW TABLE STATUS';
 
         if ($table) {
-            $query = "SHOW TABLE STATUS LIKE '$table'";
+            $table = DB::getPdo()->quote($table);
+            $query = "SHOW TABLE STATUS LIKE $table";
         }
 
         $tableStatus = DB::select($query);
-        
+
         return count($tableStatus) === 1 ? $tableStatus[0] : $tableStatus;
     }
 
@@ -73,7 +76,7 @@ class ServiceDatabase
         $serverType = $this->getServerType();
         $serverVersion = $this->getServerVersion();
         $engine = $this->getTableEngine($table);
-        
+
         $validEngines = [self::ENGINE_MYISAM, self::ENGINE_ARCHIVE, self::ENGINE_ARIA];
 
         if (in_array($engine, $validEngines)) {
@@ -103,7 +106,7 @@ class ServiceDatabase
             self::ENGINE_MYISAM,
             self::ENGINE_INNODB,
             self::ENGINE_ARCHIVE,
-            self::ENGINE_ARIA
+            self::ENGINE_ARIA,
         ];
 
         return in_array($tableType, $supportedTableTypes);
@@ -112,14 +115,14 @@ class ServiceDatabase
     public function getServerType()
     {
         $serverType = self::MYSQL_DB;
-        
+
         $variables = DB::select('SHOW SESSION VARIABLES LIKE "version%"');
-        
+
         if (empty($variables)) {
-            return  $serverType;
+            return $serverType;
         }
 
-        foreach($variables as $variable) {
+        foreach ($variables as $variable) {
             if (preg_match('/mariadb/i', $variable->Value)) {
                 $serverType = self::MARIA_DB;
             }
@@ -148,8 +151,9 @@ class ServiceDatabase
 
     public function getVariable($variableName, $default = null)
     {
-        $option = DB::selectOne("SHOW SESSION VARIABLES LIKE '$variableName'");
-        
+        $variableName = DB::getPdo()->quote($variableName);
+        $option = DB::selectOne("SHOW SESSION VARIABLES LIKE $variableName");
+
         return empty($option) ? $default : $option->Value;
     }
 
@@ -157,7 +161,7 @@ class ServiceDatabase
     {
         $optionValue = $this->getVariable($variableName);
 
-        return 'ON' == strtoupper($optionValue);
+        return Str::upper($optionValue) == 'ON';
     }
 
     public function supportsDDL()
@@ -165,16 +169,13 @@ class ServiceDatabase
         if (self::MYSQL_DB == $this->getServerType()) {
             if (version_compare($this->getServerVersion(), '5.7', '>=')) {
                 return true;
-            }
-            else {
+            } else {
                 return false;
             }
-        }
-        else if (self::MARIA_DB == $this->getServerType()) {
+        } elseif (self::MARIA_DB == $this->getServerType()) {
             if (version_compare($this->getServerVersion(), '10.0.0', '>=')) {
                 return true;
-            }
-            else {
+            } else {
                 return false;
             }
         }

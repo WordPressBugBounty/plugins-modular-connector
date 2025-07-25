@@ -6,7 +6,12 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 
 class Varnish
 {
-    public static function purge()
+    public static function available()
+    {
+        return class_exists('VarnishPurger');
+    }
+
+    public static function clear()
     {
         if (!class_exists('VarnishPurger')) {
             return;

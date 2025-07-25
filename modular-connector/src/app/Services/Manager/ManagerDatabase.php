@@ -227,17 +227,16 @@ class ManagerDatabase
      */
     public function upgradeWooCommerce()
     {
-        $fileName = WP_PLUGIN_DIR . '/woocommerce/includes/class-wc-install.php';
-
-        if (!file_exists($fileName)) {
-            Log::debug("FILENAME $fileName doesn't exist");
-            return;
-        }
-
-        include_once $fileName;
-
         if (!class_exists('WC_Install')) {
-            return;
+            $fileName = WP_PLUGIN_DIR . '/woocommerce/includes/class-wc-install.php';
+
+            if (!file_exists($fileName)) {
+                Log::debug("File $fileName doesn't exist");
+
+                return;
+            }
+
+            include_once $fileName;
         }
 
         \WC_Install::run_manual_database_update();
@@ -266,12 +265,16 @@ class ManagerDatabase
         $updater = $manager->get_task_runner();
 
         try {
-            if ($updater->is_process_locked() && empty($assoc_args['force'])) {
-                return 'already_running';
+            if ($updater->is_process_locked()) {
+                Log::debug('Elementor upgrade process is already running.');
+
+                return;
             }
 
             if (!$manager->should_upgrade()) {
-                return 'already_upgraded';
+                Log::debug('Elementor database is already upgraded.');
+
+                return;
             }
 
             $callbacks = $manager->get_upgrade_callbacks();
@@ -279,6 +282,7 @@ class ManagerDatabase
 
             if (!empty($callbacks)) {
                 $updater->handle_immediately($callbacks);
+
                 $didTasks = true;
             }
 

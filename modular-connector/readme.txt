@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, update, monitoring, security, maintenance
 Requires at least: 5.6
 Tested up to: 6.8
-Stable tag: 2.1.2
+Stable tag: 2.2.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -126,6 +126,15 @@ The Modular Connector plugin links your WordPress installation with Modular DS, 
 9. Client report overview page
 
 == Changelog ==
+= v2.2.0 =
+Release date: 2025-07-25
+
+* Improved backup exclusion logic
+* Improved memory management for large backups
+* Improved composer dependency management
+* Improved calculation of the file compression ratio for backups.
+* FIXED: Clear cache for Varnish
+
 = v2.1.2 =
 Release date: 2025-07-07
 

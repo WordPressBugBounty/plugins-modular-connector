@@ -5,11 +5,12 @@ namespace Modular\Connector\Jobs;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Services\Manager\ManagerDatabase;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
-use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 
-class ManagerUpgradeDatabaseJob implements ShouldQueue, ShouldBeUnique
+class ManagerUpgradeDatabaseJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable;
     use Queueable;
@@ -57,12 +58,22 @@ class ManagerUpgradeDatabaseJob implements ShouldQueue, ShouldBeUnique
          */
         $manager = Manager::driver('database');
 
-        if ($basename === 'woocommerce/woocommerce.php') {
-            $manager->upgradeWooCommerce();
-        } elseif ($basename === 'elementor/elementor.php' || $basename === 'elementor-pro/elementor-pro.php') {
-            $manager->upgradeElementor();
-        } elseif ($basename === 'core') {
-            $manager->upgrade();
+        try {
+            if ($basename === 'woocommerce/woocommerce.php') {
+                $manager->upgradeWooCommerce();
+            } elseif ($basename === 'elementor/elementor.php' || $basename === 'elementor-pro/elementor-pro.php') {
+                $manager->upgradeElementor();
+            } elseif ($basename === 'core') {
+                $manager->upgrade();
+            }
+        } catch (\Throwable $e) {
+            Log::error($e, [
+                'mrid' => $this->mrid,
+                'basename' => $basename,
+                'action' => $this->action,
+            ]);
+
+            return;
         }
     }
 

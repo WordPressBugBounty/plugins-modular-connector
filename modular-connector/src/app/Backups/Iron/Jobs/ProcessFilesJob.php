@@ -47,28 +47,24 @@ class ProcessFilesJob implements ShouldQueue
     public function handle()
     {
         $part = $this->part;
-        $isCancelled = $part->isCancelled();
 
-        // Some hosting providers are really slow to read the manifest file, so we need to limit it.
-        $chunkSize = ceil($part->limit * 0.25);
-        $chucks = ceil($part->limit / $chunkSize);
+        if ($part->isCancelled()) {
+            Log::debug('ProcessFilesJob cancelled', [
+                'part' => $part->mrid,
+                'status' => $part->status,
+            ]);
+
+            return;
+        }
 
         Log::debug('Try to process files job', [
             'part' => $part->mrid,
             'status' => $part->status,
             'offset' => $part->offset,
             'limit' => $part->limit,
-            'batch' => $part->batch,
-            'isCancelled' => $isCancelled,
-            'chunks' => $chucks,
-            'chunkSize' => $chunkSize,
             'batchSize' => $part->batchSize,
             'batchMaxFileSize' => $part->batchMaxFileSize,
         ]);
-
-        if ($isCancelled) {
-            return;
-        }
 
         $part->markAs(ManagerBackupPartUpdated::STATUS_IN_PROGRESS);
 
@@ -79,47 +75,37 @@ class ProcessFilesJob implements ShouldQueue
 
             $offset = $part->offset;
 
-            $break = false;
+            Log::debug('Read progress', [
+                'type' => $part->type,
+                'offset' => $offset,
+                'limit' => $part->limit,
+            ]);
 
-            for ($i = 0; $i < $chucks; $i++) {
-                $limit = $offset + $chunkSize - 1;
+            $files = $part->nextFiles($offset, $part->limit);
+            $processedFiles = 0;
 
-                Log::debug('Chunk progress', [
-                    'chunk' => $i,
-                    'type' => $part->type,
-                    'offset' => $offset,
-                    'limit' => $limit,
-                ]);
-
-                $files = $part->nextFiles($offset, $limit);
-
-                foreach ($files as $file) {
-                    if ($file['timestamp'] <= $part->timestamp) {
-                        ++$offset;
-                        continue;
-                    }
-
-                    $file['realpath'] = Storage::disk($part->type)->path($file['path']);
-
-                    File::addToZip($zip, $file);
-                    ++$offset;
-
-                    // TODO Calculate compressed file size in based file type
-                    $itemSize = $file['size'];
-                    $part->batchSize += $itemSize * .9;
-
-                    if ($this->checkIfBatchSizeIsOversize($zip, $offset, $startTime)) {
-                        $break = true;
-                        break;
-                    }
+            foreach ($files as $file) {
+                $processedFiles++;
+                
+                if ($file['timestamp'] <= $part->timestamp) {
+                    continue;
                 }
 
-                if ($break) {
+                $file['realpath'] = Storage::disk($part->type)->path($file['path']);
+
+                File::addToZip($zip, $file);
+
+                // Calculate compressed file size based on file type
+                $itemSize = $file['size'];
+                $compressionRatio = File::getCompressionRatio($file);
+                $part->batchSize += $itemSize * $compressionRatio;
+
+                if ($this->checkIfBatchSizeIsOversize($zip, $offset + $processedFiles, $startTime)) {
                     break;
                 }
             }
 
-            $this->checkFilesIsReady($zip, $offset);
+            $this->checkFilesIsReady($zip, $offset + $processedFiles);
         } catch (\Throwable $e) {
             Log::error($e);
 
