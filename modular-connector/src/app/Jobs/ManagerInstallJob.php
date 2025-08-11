@@ -4,6 +4,8 @@ namespace Modular\Connector\Jobs;
 
 use Modular\Connector\Events\ManagerItemsInstalled;
 use Modular\Connector\Facades\Manager;
+use Modular\Connector\Services\Manager\ManagerPlugin;
+use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
@@ -47,10 +49,10 @@ class ManagerInstallJob implements ShouldQueue, ShouldBeUnique
     {
         $payload = $this->payload;
 
-        if ($payload->type === 'theme') {
-            $result = Manager::driver('theme')->install($payload->downloadLink, $payload->overwrite);
+        if ($payload->type === ManagerTheme::THEME) {
+            $result = Manager::driver(ManagerTheme::THEME)->install($payload->downloadLink, $payload->overwrite);
         } else {
-            $result = Manager::driver('plugin')->install($payload->downloadLink, $payload->overwrite);
+            $result = Manager::driver(ManagerPlugin::PLUGIN)->install($payload->downloadLink, $payload->overwrite);
         }
 
         $result['name'] = $payload->name ?? 'unknown';

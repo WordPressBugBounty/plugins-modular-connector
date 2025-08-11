@@ -4,6 +4,7 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\Compatibilities;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 class ScreenSimulation
 {
     /**
@@ -208,8 +209,13 @@ class ScreenSimulation
             if (HttpUtils::isDirectRequest() || HttpUtils::isCron()) {
                 // Initialize ob_start to avoid any content that has already been sent.
                 @ob_start();
-                require_once \ABSPATH . 'wp-admin/includes/admin.php';
-                do_action('admin_init');
+                try {
+                    require_once \ABSPATH . 'wp-admin/includes/admin.php';
+                    do_action('admin_init');
+                } catch (\Throwable $e) {
+                    // Handle any exceptions that might occur during the loading process.
+                    Log::error($e, ['message' => 'Error loading admin files in ScreenSimulation']);
+                }
                 @ob_end_flush();
                 if (@ob_get_length() > 0) {
                     @ob_end_clean();

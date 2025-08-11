@@ -9,6 +9,8 @@ use Modular\Connector\Events\ManagerItemsDeleted;
 use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Facades\Server;
+use Modular\Connector\Services\Manager\ManagerPlugin;
+use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -81,11 +83,11 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         if (empty($type)) {
             switch (true) {
                 case !empty(data_get($payload, 'plugins')):
-                    $type = 'plugin';
+                    $type = ManagerPlugin::PLUGIN;
                     $items = data_get($payload, 'plugins');
                     break;
                 case !empty(data_get($payload, 'themes')):
-                    $type = 'theme';
+                    $type = ManagerTheme::THEME;
                     $items = data_get($payload, 'themes');
                     break;
                 case !empty(data_get($payload, 'core')):
@@ -100,7 +102,7 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         }
 
         // Check action by type
-        if ($type === 'theme' && in_array($action, ['deactivate'])) {
+        if ($type === ManagerTheme::THEME && in_array($action, ['deactivate'])) {
             return;
         } elseif (in_array($type, ['core', 'translation']) && !in_array($action, ['upgrade'])) {
             return;

@@ -5,6 +5,8 @@ namespace Modular\Connector\Backups;
 use Modular\Connector\Backups\Iron\BackupIronDriver;
 use Modular\Connector\Backups\Phantom\BackupDriverPhantomDriver;
 use Modular\Connector\Facades\Manager as ModularManager;
+use Modular\Connector\Services\Manager\ManagerPlugin;
+use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
@@ -103,7 +105,7 @@ class BackupManager extends Manager
             'posts' => wp_count_posts(),
             'attachment' => wp_count_posts('attachment'),
             'core' => ModularManager::driver('core')->get(),
-            'plugins' => Collection::make(ModularManager::driver('plugin')->all(false))
+            'plugins' => Collection::make(ModularManager::driver(ManagerPlugin::PLUGIN)->all(false))
                 ->map(function ($item) {
                     return [
                         'name' => $item['name'],
@@ -112,7 +114,7 @@ class BackupManager extends Manager
                         'status' => $item['status'],
                     ];
                 }),
-            'themes' => Collection::make(ModularManager::driver('theme')->all(false))
+            'themes' => Collection::make(ModularManager::driver(ManagerTheme::THEME)->all(false))
                 ->map(function ($item) {
                     return [
                         'name' => $item['name'],

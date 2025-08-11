@@ -247,16 +247,11 @@ class ManagerDatabase
      *
      * @return string|void
      */
-    public function upgradeElementor()
+    public function upgradeElementor(bool $isPro)
     {
-        $managerClass = Collection::make([
-            \ElementorPro\Core\Upgrade\Manager::class,
-            \Elementor\Core\Upgrade\Manager::class,
-        ])
-            ->filter(fn($class) => class_exists($class))
-            ->first();
+        $managerClass = $isPro ? \ElementorPro\Core\Upgrade\Manager::class : \Elementor\Core\Upgrade\Manager::class;
 
-        if (!$managerClass) {
+        if (!class_exists($managerClass)) {
             return;
         }
 

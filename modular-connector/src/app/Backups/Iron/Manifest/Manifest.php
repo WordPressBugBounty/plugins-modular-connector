@@ -149,7 +149,6 @@ class Manifest
         $startTime = $this->getCurrentTime();
         $filesProcessed = 0;
 
-        // We need to increment the offset to avoid processing the same files
         if ($this->part->status === ManagerBackupPartUpdated::STATUS_PENDING) {
             // We set the offset to 0 because the finder starts from 0
             $this->part->offset = 0;
@@ -181,7 +180,7 @@ class Manifest
             $offset++;
             $filesProcessed++;
 
-            if (File::shouldExclude($disk, $file, Collection::make($excluded))) {
+            if (File::shouldExclude($disk, $file, $excluded)) {
                 continue;
             }
 

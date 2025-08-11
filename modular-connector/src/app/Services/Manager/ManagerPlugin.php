@@ -6,14 +6,13 @@ use Modular\Connector\WordPress\ModularPluginUpgrader;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ScreenSimulation;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 
 /**
  * Handles all functionality related to WordPress Plugins.
  */
 class ManagerPlugin extends AbstractManager
 {
-    public const PLUGINS = 'plugins';
-
     /**
      * Returns a list with the installed plugins in the webpage, including the new version if available.
      *
@@ -31,11 +30,11 @@ class ManagerPlugin extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/update.php';
         }
 
-        $updatablePlugins = $checkUpdates ? $this->getItemsToUpdate(ManagerPlugin::PLUGINS) : [];
+        $updatablePlugins = $checkUpdates ? $this->getItemsToUpdate(self::PLUGIN) : [];
         $plugins = Collection::make(get_plugins());
 
         // TODO Get drop-ins and must-use plugins.
-        return $this->map('plugin', $plugins, $updatablePlugins);
+        return $this->map(self::PLUGIN, $plugins, $updatablePlugins);
     }
 
     /**
@@ -59,7 +58,7 @@ class ManagerPlugin extends AbstractManager
         if (is_multisite() && !is_main_site()) {
             $error = new \WP_Error('trying_plugin_installation_from_child_site', 'No plugins can be installed from a child site on a multisite.');
 
-            return $this->parseActionResponse($downloadLink, $error, 'install', ManagerPlugin::PLUGINS);
+            return $this->parseActionResponse($downloadLink, $error, 'install', self::PLUGIN);
         }
 
         try {
@@ -80,7 +79,7 @@ class ManagerPlugin extends AbstractManager
             }
 
             if (is_wp_error($result)) {
-                return $this->parseActionResponse($downloadLink, $result, 'install', ManagerPlugin::PLUGINS);
+                return $this->parseActionResponse($downloadLink, $result, 'install', self::PLUGIN);
             }
 
             // We cannot use $this->all() because this function remaps the plugins.
@@ -114,12 +113,14 @@ class ManagerPlugin extends AbstractManager
 
             ServerSetup::clean();
 
-            $updatablePlugins = $this->getItemsToUpdate(static::PLUGINS);
-            $data = $this->map('plugin', Collection::make([$basename => $data]), $updatablePlugins);
+            $updatablePlugins = $this->getItemsToUpdate(static::PLUGIN);
+            $data = $this->map(self::PLUGIN, Collection::make([$basename => $data]), $updatablePlugins);
 
-            return $this->parseActionResponse($basename, $data[array_key_first($data)], 'install', ManagerPlugin::PLUGINS);
+            return $this->parseActionResponse($basename, $data[array_key_first($data)], 'install', self::PLUGIN);
         } catch (\Throwable $e) {
-            return $this->parseActionResponse($downloadLink, $e, 'install', ManagerPlugin::PLUGINS);
+            Log::error($e);
+
+            return $this->parseActionResponse($downloadLink, $e, 'install', self::PLUGIN);
         } finally {
             ServerSetup::logout();
         }
@@ -156,7 +157,7 @@ class ManagerPlugin extends AbstractManager
             }
         }
 
-        return $this->parseBulkActionResponse(array_keys(get_object_vars($items)), $response, 'activate', ManagerPlugin::PLUGINS);
+        return $this->parseBulkActionResponse(array_keys(get_object_vars($items)), $response, 'activate', self::PLUGIN);
     }
 
     /**
@@ -185,7 +186,7 @@ class ManagerPlugin extends AbstractManager
             }
         }
 
-        return $this->parseBulkActionResponse(array_keys(get_object_vars($items)), $response, 'deactivate', ManagerPlugin::PLUGINS);
+        return $this->parseBulkActionResponse(array_keys(get_object_vars($items)), $response, 'deactivate', self::PLUGIN);
     }
 
     /**
@@ -203,7 +204,7 @@ class ManagerPlugin extends AbstractManager
         if (is_multisite() && !is_main_site()) {
             $error = new \WP_Error('trying_plugin_update_from_child_site', 'No plugins can be updated from a child site on a multisite.');
 
-            return $this->parseBulkActionResponse($items, $error, 'upgrade', ManagerPlugin::PLUGINS);
+            return $this->parseBulkActionResponse($items, $error, 'upgrade', self::PLUGIN);
         }
 
         ServerSetup::clean();
@@ -226,7 +227,7 @@ class ManagerPlugin extends AbstractManager
             ServerSetup::logout();
         }
 
-        return $this->parseBulkActionResponse($items, $response, 'upgrade', ManagerPlugin::PLUGINS);
+        return $this->parseBulkActionResponse($items, $response, 'upgrade', self::PLUGIN);
     }
 
     /**
@@ -244,7 +245,7 @@ class ManagerPlugin extends AbstractManager
         if (is_multisite() && !is_main_site()) {
             $error = new \WP_Error('trying_plugin_uninstall_from_child_site', 'No plugins can be uninstalled from a child site on a multisite.');
 
-            return $this->parseBulkActionResponse($items, $error, 'delete', ManagerPlugin::PLUGINS);
+            return $this->parseBulkActionResponse($items, $error, 'delete', self::PLUGIN);
         }
 
         foreach ($items as $plugin) {
@@ -267,6 +268,6 @@ class ManagerPlugin extends AbstractManager
             $response[$plugin] = $result === true ? 'success' : (is_wp_error($result) ? $result : 'error');
         }, $basenamesToDelete);
 
-        return $this->parseBulkActionResponse($items, $response, 'delete', ManagerPlugin::PLUGINS);
+        return $this->parseBulkActionResponse($items, $response, 'delete', self::PLUGIN);
     }
 }

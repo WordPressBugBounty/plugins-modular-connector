@@ -8,6 +8,11 @@ use function Modular\ConnectorDependencies\data_get;
 
 abstract class AbstractManager implements ManagerContract
 {
+    public const THEME = 'theme';
+    public const PLUGIN = 'plugin';
+    public const CORE = 'core';
+    public const TRANSLATION = 'translation';
+
     /**
      * Parses the bulk upgrade response to determine
      * if the items have been updated or not.
@@ -40,7 +45,7 @@ abstract class AbstractManager implements ManagerContract
      */
     final protected function parseActionResponse(string $item, $result, $action, $type)
     {
-        if (!in_array($item, ['core', 'translations'])) {
+        if (!in_array($item, [self::CORE, self::TRANSLATION, 'translations'])) {
             $isSuccess = !is_wp_error($result) && !$result instanceof \Throwable;
 
             if ($action === 'upgrade') {
@@ -65,7 +70,7 @@ abstract class AbstractManager implements ManagerContract
 
         return [
             'item' => $item,
-            'type' => Str::singular($type),
+            'type' => $type,
             'success' => $isSuccess,
             'response' => $this->formatWordPressError($result),
         ];
@@ -126,10 +131,10 @@ abstract class AbstractManager implements ManagerContract
             $homepage = '';
             $status = '';
 
-            if ($type === 'plugin') {
+            if ($type === ManagerPlugin::PLUGIN) {
                 $homepage = $item['PluginURI'];
                 $status = is_plugin_active($basename);
-            } elseif ($type === 'theme') {
+            } elseif ($type === ManagerTheme::THEME) {
                 /**
                  * @var \WP_Theme $item
                  */
@@ -189,10 +194,10 @@ abstract class AbstractManager implements ManagerContract
         }
 
         switch ($type) {
-            case 'plugin':
+            case ManagerPlugin::PLUGIN:
                 $allItems = get_plugins();
                 break;
-            case 'theme':
+            case ManagerTheme::THEME:
                 $allItems = wp_get_themes();
                 break;
             default:
@@ -221,7 +226,7 @@ abstract class AbstractManager implements ManagerContract
             $isPackageEmpty = empty(data_get($updateInfo, 'package'));
 
             if (!$isPackageEmpty) {
-                $updatableItems[$basename] = $type === 'plugin' ? (object)$data : wp_get_theme($basename);
+                $updatableItems[$basename] = $type === ManagerPlugin::PLUGIN ? (object)$data : wp_get_theme($basename);
                 $updatableItems[$basename]->update = $updateInfo;
             }
         }
@@ -232,7 +237,7 @@ abstract class AbstractManager implements ManagerContract
     /**
      * Returns the existing items that have available updates.
      *
-     * @param string $itemType Valid values are 'plugins', 'themes' or 'core'.
+     * @param string $itemType Valid values are 'plugin', 'theme' or 'core'.
      * @return array Array of $itemType base names that have updates available.
      */
     protected function getItemsToUpdate(string $itemType)
@@ -240,13 +245,13 @@ abstract class AbstractManager implements ManagerContract
         $itemsToUpdate = [];
 
         switch ($itemType) {
-            case 'themes':
+            case ManagerTheme::THEME:
                 wp_update_themes();
-                $itemsToUpdate = $this->tryFillMissingUpdates(get_theme_updates(), 'theme');
+                $itemsToUpdate = $this->tryFillMissingUpdates(get_theme_updates(), $itemType);
                 break;
-            case 'plugins':
+            case ManagerPlugin::PLUGIN:
                 wp_update_plugins();
-                $itemsToUpdate = $this->tryFillMissingUpdates(get_plugin_updates(), 'plugin');
+                $itemsToUpdate = $this->tryFillMissingUpdates(get_plugin_updates(), $itemType);
                 break;
         }
 

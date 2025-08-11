@@ -64,6 +64,6 @@ class ManagerTranslation extends AbstractManager
             ServerSetup::logout();
         }
 
-        return $this->parseActionResponse('translations', $result, 'upgrade', 'translations');
+        return $this->parseActionResponse('translations', $result, 'upgrade', self::TRANSLATION);
     }
 }

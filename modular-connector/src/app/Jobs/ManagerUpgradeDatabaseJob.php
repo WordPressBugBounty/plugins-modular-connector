@@ -61,8 +61,10 @@ class ManagerUpgradeDatabaseJob implements ShouldQueue, ShouldBeUniqueUntilProce
         try {
             if ($basename === 'woocommerce/woocommerce.php') {
                 $manager->upgradeWooCommerce();
-            } elseif ($basename === 'elementor/elementor.php' || $basename === 'elementor-pro/elementor-pro.php') {
-                $manager->upgradeElementor();
+            } elseif ($basename === 'elementor/elementor.php') {
+                $manager->upgradeElementor(false);
+            } elseif ($basename === 'elementor-pro/elementor-pro.php') {
+                $manager->upgradeElementor(true);
             } elseif ($basename === 'core') {
                 $manager->upgrade();
             }

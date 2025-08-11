@@ -73,7 +73,7 @@ return array(
     'Modular\\ConnectorDependencies\\GuzzleHttp\\' => array($vendorDir . '/guzzlehttp/guzzle/src'),
     'Modular\\ConnectorDependencies\\GrahamCampbell\\ResultType\\' => array($vendorDir . '/graham-campbell/result-type/src'),
     'Modular\\ConnectorDependencies\\Dotenv\\' => array($vendorDir . '/vlucas/phpdotenv/src'),
-    'Modular\\ConnectorDependencies\\Doctrine\\Inflector\\' => array($vendorDir . '/doctrine/inflector/lib/Doctrine/Inflector'),
+    'Modular\\ConnectorDependencies\\Doctrine\\Inflector\\' => array($vendorDir . '/doctrine/inflector/src'),
     'Modular\\ConnectorDependencies\\Cron\\' => array($vendorDir . '/dragonmantank/cron-expression/src/Cron'),
     'Modular\\ConnectorDependencies\\Carbon\\Doctrine\\' => array($vendorDir . '/carbonphp/carbon-doctrine-types/src/Carbon/Doctrine'),
     'Modular\\ConnectorDependencies\\Carbon\\' => array($vendorDir . '/nesbot/carbon/src/Carbon'),

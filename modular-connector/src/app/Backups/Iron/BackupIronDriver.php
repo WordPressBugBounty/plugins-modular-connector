@@ -82,8 +82,8 @@ class BackupIronDriver implements BackupDriver
         $types->where('status', ManagerBackupPartUpdated::STATUS_PENDING)
             ->each(function (BackupPart $part) {
                 if ($part->type !== BackupPart::INCLUDE_DATABASE) {
-                    // Remove previous manifest
-                    Storage::disk('backups')->delete($part->manifestPath);
+                    // Ensure the manifest is empty before processing
+                    Storage::disk('backups')->put($part->manifestPath, '');
 
                     dispatch(new CalculateManifestJob($part));
                 } else {

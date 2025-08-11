@@ -31,7 +31,7 @@ class Manager extends IlluminateManager
      */
     public function getDefaultDriver()
     {
-        return 'plugin';
+        return ManagerPlugin::PLUGIN;
     }
 
     /**
@@ -45,8 +45,8 @@ class Manager extends IlluminateManager
 
         $response = [
             'core' => $this->driver('core')->get(),
-            'plugins' => $this->driver('plugin')->all(),
-            'themes' => $this->driver('theme')->all(),
+            'plugins' => $this->driver(ManagerPlugin::PLUGIN)->all(),
+            'themes' => $this->driver(ManagerTheme::THEME)->all(),
             'translations' => $this->driver('translation')->get(),
         ];
 

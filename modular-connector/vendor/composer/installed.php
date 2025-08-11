@@ -3,7 +3,7 @@
         'name' => 'modular/connector',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '236395173e7bf17378fd94bb3eb18c702609104d',
+        'reference' => '3d5713a3439eaed5ee43beda77ecbf2c6914793e',
         'type' => 'wordpres-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,14 +11,12 @@
     ),
     'versions' => array(
         'ares/framework' => array(
-            'pretty_version' => 'dev-master',
-            'version' => 'dev-master',
-            'reference' => '374ee9e78475a4a8206f81c4a3219d51f437e115',
+            'pretty_version' => '3.6.4',
+            'version' => '3.6.4.0',
+            'reference' => 'd753761709357c9e17e7fcab07553e42c66ef800',
             'type' => 'library',
             'install_path' => __DIR__ . '/../ares/framework',
-            'aliases' => array(
-                0 => '9999999-dev',
-            ),
+            'aliases' => array(),
             'dev_requirement' => false,
         ),
         'brick/math' => array(
@@ -40,9 +38,9 @@
             'dev_requirement' => false,
         ),
         'doctrine/inflector' => array(
-            'pretty_version' => '2.0.10',
-            'version' => '2.0.10.0',
-            'reference' => '5817d0659c5b50c9b950feb9af7b9668e2c436bc',
+            'pretty_version' => '2.1.0',
+            'version' => '2.1.0.0',
+            'reference' => '6d6c96277ea252fc1304627204c3d5e6e15faa3b',
             'type' => 'library',
             'install_path' => __DIR__ . '/../doctrine/inflector',
             'aliases' => array(),
@@ -303,7 +301,7 @@
         'modular/connector' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '236395173e7bf17378fd94bb3eb18c702609104d',
+            'reference' => '3d5713a3439eaed5ee43beda77ecbf2c6914793e',
             'type' => 'wordpres-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

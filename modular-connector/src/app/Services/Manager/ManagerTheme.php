@@ -10,8 +10,6 @@ use Modular\ConnectorDependencies\Illuminate\Support\Collection;
  */
 class ManagerTheme extends AbstractManager
 {
-    public const THEMES = 'themes';
-
     /**
      * @return string
      */
@@ -39,10 +37,10 @@ class ManagerTheme extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/update.php';
         }
 
-        $updatableThemes = $checkUpdates ? $this->getItemsToUpdate(ManagerTheme::THEMES) : [];
+        $updatableThemes = $checkUpdates ? $this->getItemsToUpdate(self::THEME) : [];
         $installedThemes = Collection::make(wp_get_themes());
 
-        return $this->map('theme', $installedThemes, $updatableThemes);
+        return $this->map(self::THEME, $installedThemes, $updatableThemes);
     }
 
     public function install(string $downloadLink, bool $overwrite = true)
@@ -74,7 +72,7 @@ class ManagerTheme extends AbstractManager
             }
 
             if (is_wp_error($result)) {
-                return $this->parseActionResponse($downloadLink, $result, 'install', ManagerTheme::THEMES);
+                return $this->parseActionResponse($downloadLink, $result, 'install', self::THEME);
             }
 
             $allThemes = $this->all();
@@ -91,9 +89,9 @@ class ManagerTheme extends AbstractManager
 
             $data = $results[0] ?? null;
 
-            return $this->parseActionResponse(is_array($data) && isset($data['basename']) ? $data['basename'] : $downloadLink, $data, 'install', ManagerTheme::THEMES);
+            return $this->parseActionResponse(is_array($data) && isset($data['basename']) ? $data['basename'] : $downloadLink, $data, 'install', self::THEME);
         } catch (\Throwable $e) {
-            return $this->parseActionResponse($downloadLink, $e, 'install', ManagerTheme::THEMES);
+            return $this->parseActionResponse($downloadLink, $e, 'install', self::THEME);
         } finally {
             ServerSetup::logout();
         }
@@ -126,7 +124,7 @@ class ManagerTheme extends AbstractManager
             $response[$basename] = $e;
         }
 
-        return $this->parseBulkActionResponse($items, $response, 'activate', ManagerTheme::THEMES);
+        return $this->parseBulkActionResponse($items, $response, 'activate', self::THEME);
     }
 
     /**
@@ -152,7 +150,7 @@ class ManagerTheme extends AbstractManager
             ServerSetup::logout();
         }
 
-        return $this->parseBulkActionResponse($themes, $response, 'upgrade', ManagerTheme::THEMES);
+        return $this->parseBulkActionResponse($themes, $response, 'upgrade', self::THEME);
     }
 
     /**
@@ -188,6 +186,6 @@ class ManagerTheme extends AbstractManager
             ];
         }
 
-        return $this->parseBulkActionResponse($items, $response, 'delete', ManagerTheme::THEMES);
+        return $this->parseBulkActionResponse($items, $response, 'delete', self::THEME);
     }
 }
