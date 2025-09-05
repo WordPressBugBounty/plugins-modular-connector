@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, update, monitoring, security, maintenance
 Requires at least: 5.6
 Tested up to: 6.8
-Stable tag: 2.2.1
+Stable tag: 2.2.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -126,6 +126,13 @@ The Modular Connector plugin links your WordPress installation with Modular DS, 
 9. Client report overview page
 
 == Changelog ==
+= v2.2.2 =
+Release date: 2025-09-05
+
+* FIXED: Database update after installing Elementor or WooCommerce from a ZIP file
+* FIXED: Compatibility with Cost of Goods for WooCommerce
+* FIXED: Added '.opcache' folder to default backup exclusion list
+
 = v2.2.1 =
 Release date: 2025-08-11
 

@@ -49,15 +49,20 @@ class ManagerWooCommerce
      */
     public function getSalesStats(string $after, string $before, string $interval, array $fields = []): array
     {
-        $args = apply_filters('woocommerce_analytics_revenue_query_args', [
+        $defaultArgs = [
             'per_page' => 100,
             'order' => 'asc',
             'orderby' => 'date',
             'before' => $before,
             'after' => $after,
             'interval' => $interval,
-            'fields' => empty($fields) ? '*' : $fields,
-        ]);
+        ];
+
+        if (!empty($fields)) {
+            $defaultArgs['fields'] = $fields;
+        }
+
+        $args = apply_filters('woocommerce_analytics_revenue_query_args', $defaultArgs);
 
         $results = ['intervals' => []];
 

@@ -13,6 +13,7 @@ use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Manager as IlluminateManager;
 use Modular\ConnectorDependencies\Psr\Container\ContainerExceptionInterface;
@@ -70,8 +71,13 @@ class Manager extends IlluminateManager
         foreach ($connections as $connection) {
             $queue = app('queue')->connection($connection);
 
-            if ($queue instanceof ClearableQueue) {
-                $queue->clear($queueName);
+            try {
+                if ($queue instanceof ClearableQueue) {
+                    $queue->clear($queueName);
+                }
+            } catch (\Throwable $e) {
+                // Silence is golden
+                Log::debug(sprintf('Error clearing queue %s on connection %s: %s', $queueName, $connection, $e->getMessage()));
             }
         }
     }

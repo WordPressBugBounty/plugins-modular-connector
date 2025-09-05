@@ -47,7 +47,7 @@ class JobsCleanupService
         foreach ($connections as $connection) {
             $queue = app('queue')->connection($connection);
 
-            Log::debug("Clearing old jobs from queue", [
+            Log::debug('Clearing old jobs from queue', [
                 'queue' => $queueName,
                 'connection' => $connection,
             ]);
@@ -58,7 +58,7 @@ class JobsCleanupService
                     self::CLEANUP_JOBS_OLDER_THAN_SECONDS
                 );
             } else {
-                Log::debug("Queue connection does not support clearOldPendingJobs", [
+                Log::debug('Queue connection does not support clearOldPendingJobs', [
                     'queue' => $queueName,
                     'connection' => $connection,
                 ]);
@@ -76,7 +76,7 @@ class JobsCleanupService
         // Get last cleanup timestamp from cache
         $lastCleanup = Cache::get(self::LAST_CLEANUP_CACHE_KEY, 0);
 
-        Log::debug("Last cleanup timestamp", ['last_cleanup' => $lastCleanup, 'url' => request()->fullUrl()]);
+        Log::debug('Last cleanup timestamp', ['last_cleanup' => $lastCleanup, 'url' => request()->fullUrl()]);
 
         // Current timestamp using Carbon
         $nowTimestamp = Carbon::now()->timestamp;
@@ -95,10 +95,10 @@ class JobsCleanupService
         try {
             // Clear default queue
             try {
-                Log::debug("Clearing old jobs from default queue", ['queue' => 'default']);
+                Log::debug('Clearing old jobs from default queue', ['queue' => 'default']);
                 $this->clearOldJobsFromQueue('default');
             } catch (\Throwable $e) {
-                Log::error("Failed to clear default queue", [
+                Log::error('Failed to clear default queue', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
@@ -106,10 +106,10 @@ class JobsCleanupService
 
             // Clear backups queue
             try {
-                Log::debug("Clearing old jobs from backups queue", ['queue' => 'backups']);
+                Log::debug('Clearing old jobs from backups queue', ['queue' => 'backups']);
                 $this->clearOldJobsFromQueue('backups');
             } catch (\Throwable $e) {
-                Log::error("Failed to clear backups queue", [
+                Log::error('Failed to clear backups queue', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
@@ -117,10 +117,10 @@ class JobsCleanupService
 
             // Clear optimizations queue
             try {
-                Log::debug("Clearing old jobs from optimizations queue", ['queue' => 'optimizations']);
+                Log::debug('Clearing old jobs from optimizations queue', ['queue' => 'optimizations']);
                 $this->clearOldJobsFromQueue('optimizations');
             } catch (\Throwable $e) {
-                Log::error("Failed to clear optimizations queue", [
+                Log::error('Failed to clear optimizations queue', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);

@@ -32,6 +32,7 @@ class EventServiceProvider extends ServiceProvider
 
         Event::listen(ManagerItemsUpgraded::class, HookEventListener::class);
         Event::listen(ManagerItemsUpgraded::class, PostUpgradeEventListener::class);
+        Event::listen(ManagerItemsInstalled::class, PostUpgradeEventListener::class);
 
         Event::listen(ManagerItemsActivated::class, HookEventListener::class);
         Event::listen(ManagerItemsDeactivated::class, HookEventListener::class);

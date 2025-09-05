@@ -56,6 +56,7 @@ class File
             BackupPart::INCLUDE_CORE => array_unique(
                 array_merge(
                     [
+                        '.opcache',
                         // WordPress default values
                         'wp-content', // WP_CONTENT_DIR
                         'wp-content/plugins', // WP_PLUGIN_DIR

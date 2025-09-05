@@ -13,7 +13,7 @@ use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
 
-class ManagerInstallJob implements ShouldQueue, ShouldBeUnique
+class ManagerInstallJob implements ShouldQueue
 {
     use Dispatchable;
     use Queueable;
