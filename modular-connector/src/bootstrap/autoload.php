@@ -45,7 +45,7 @@ function modular_connector_register_storage(Application $app)
             }
         }
 
-        $subFolders = ['views', 'logs', 'cache'];
+        $subFolders = ['views', 'logs', 'cache', 'upgrades'];
 
         foreach ($subFolders as $subFolder) {
             $subPath = $storagePath . DIRECTORY_SEPARATOR . $subFolder;
@@ -56,6 +56,8 @@ function modular_connector_register_storage(Application $app)
                 if (!$created) {
                     @rmdir($storagePath . DIRECTORY_SEPARATOR . 'views'); // Remove the storage path
                     @rmdir($storagePath . DIRECTORY_SEPARATOR . 'logs'); // Remove the storage path
+                    @rmdir($storagePath . DIRECTORY_SEPARATOR . 'cache'); // Remove the storage path
+                    @rmdir($storagePath . DIRECTORY_SEPARATOR . 'upgrades'); // Remove the storage path
                     @rmdir($storagePath); // Remove the storage path
 
                     return;

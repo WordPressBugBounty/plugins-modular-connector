@@ -6,6 +6,7 @@ use Modular\Connector\Backups\BackupManager;
 use Modular\Connector\Facades\Manager as ManagerFacade;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Services\Manager;
+use Modular\Connector\Services\Manager\ManagerSafeUpgrade;
 use Modular\Connector\Services\Manager\ManagerWooCommerce;
 use Modular\Connector\Services\ManagerServer;
 use Modular\Connector\Services\ManagerWhiteLabel;
@@ -31,6 +32,7 @@ class ModularConnectorServiceProvider extends ServiceProvider
         $this->app->singleton(ManagerServer::class, fn() => new ManagerServer());
         $this->app->singleton(ManagerWhiteLabel::class, fn() => new ManagerWhiteLabel());
         $this->app->singleton(ManagerWooCommerce::class, fn() => new ManagerWooCommerce());
+        $this->app->singleton(ManagerSafeUpgrade::class, fn() => new ManagerSafeUpgrade());
         $this->app->singleton(ServiceDatabase::class, fn() => new ServiceDatabase());
     }
 
@@ -172,7 +174,7 @@ class ModularConnectorServiceProvider extends ServiceProvider
                 if (defined('MODULAR_CONNECTOR_CACHE_DRIVER')) {
                     $driver = MODULAR_CONNECTOR_CACHE_DRIVER;
                 } elseif (Cache::driver('wordpress')->has('cache.default')) {
-                    $driver = Cache::driver('wordpress')->get('cache.default');
+                    $driver = Cache::driver('wordpress')->get('cache.default') ?: Config::get('cache.default');
                 } else {
                     $driver = Config::get('cache.default');
                 }
@@ -190,7 +192,7 @@ class ModularConnectorServiceProvider extends ServiceProvider
                 if (defined('MODULAR_CONNECTOR_QUEUE_DRIVER')) {
                     $driver = MODULAR_CONNECTOR_QUEUE_DRIVER;
                 } elseif (Cache::driver('wordpress')->has('queue.default')) {
-                    $driver = Cache::driver('wordpress')->get('queue.default');
+                    $driver = Cache::driver('wordpress')->get('queue.default') ?: Config::get('queue.default');
                 } else {
                     $driver = Config::get('queue.default');
                 }

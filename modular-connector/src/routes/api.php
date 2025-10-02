@@ -5,6 +5,7 @@ use Modular\Connector\Http\Controllers\BackupController;
 use Modular\Connector\Http\Controllers\CacheController;
 use Modular\Connector\Http\Controllers\ManagerController;
 use Modular\Connector\Http\Controllers\OptimizationController;
+use Modular\Connector\Http\Controllers\SafeUpgradeController;
 use Modular\Connector\Http\Controllers\ServerController;
 use Modular\Connector\Http\Controllers\WooCommerceController;
 use Modular\Connector\Http\Middleware\AuthenticateLoopback;
@@ -57,6 +58,9 @@ Route::middleware('auth')
         Route::get('/manager/{modular_request}/install', [ManagerController::class, 'store'])
             ->name('manager.install');
 
+        Route::get('/manager/{modular_request}/rollback', [ManagerController::class, 'store'])
+            ->name('manager.upgrade.rollback');
+
         Route::get('/manager/{modular_request}/upgrade', [ManagerController::class, 'update'])
             ->name('manager.upgrade');
 
@@ -69,6 +73,18 @@ Route::middleware('auth')
         Route::get('/manager/{modular_request}/delete', [ManagerController::class, 'update'])
             ->name('manager.delete');
         #endregion
+
+
+        # region Safe Upgrade
+        Route::get('/manager/{modular_request}/safe-upgrade/backup', [SafeUpgradeController::class, 'getSafeUpgradeBackup'])
+            ->name('manager.safe-upgrade.backup');
+
+        Route::get('/manager/{modular_request}/safe-upgrade/cleanup', [SafeUpgradeController::class, 'getSafeUpgradeCleanup'])
+            ->name('manager.safe-upgrade.cleanup');
+
+        Route::get('/manager/{modular_request}/safe-upgrade/rollback', [SafeUpgradeController::class, 'getSafeUpgradeRollback'])
+            ->name('manager.safe-upgrade.rollback');
+        # endregion
 
         #region Backup
         Route::get('/tree/directory/{modular_request}', [BackupController::class, 'getDirectoryTree'])

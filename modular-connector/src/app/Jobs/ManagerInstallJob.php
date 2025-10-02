@@ -7,7 +7,6 @@ use Modular\Connector\Facades\Manager;
 use Modular\Connector\Services\Manager\ManagerPlugin;
 use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
-use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
 use function Modular\ConnectorDependencies\dispatch;
@@ -57,8 +56,6 @@ class ManagerInstallJob implements ShouldQueue
 
         $result['name'] = $payload->name ?? 'unknown';
 
-        event(new ManagerItemsInstalled($this->mrid, $result));
-
         if ($payload->activate && $result['success'] === true) {
             $key = $payload->type . 's';
 
@@ -71,6 +68,8 @@ class ManagerInstallJob implements ShouldQueue
 
             dispatch(new ManagerManageItemJob($this->mrid, $payload, 'activate'));
         }
+
+        event(new ManagerItemsInstalled($this->mrid, $result));
     }
 
     /**

@@ -45,10 +45,9 @@ class Manager extends IlluminateManager
         ServerSetup::clean();
 
         $response = [
-            'core' => $this->driver('core')->get(),
+            'core' => $this->driver(ManagerTheme::CORE)->get(),
             'plugins' => $this->driver(ManagerPlugin::PLUGIN)->all(),
             'themes' => $this->driver(ManagerTheme::THEME)->all(),
-            'translations' => $this->driver('translation')->get(),
         ];
 
         ServerSetup::logout();

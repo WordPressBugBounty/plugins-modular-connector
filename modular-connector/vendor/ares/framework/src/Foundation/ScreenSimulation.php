@@ -76,12 +76,12 @@ class ScreenSimulation
         if (!isset($GLOBALS['pagenow'])) {
             $GLOBALS['pagenow'] = $path;
         }
+        // We use Laravel Response to make our redirections.
+        add_filter('wp_redirect', '__return_false');
         if (HttpUtils::isDirectRequest()) {
             if (!defined('DOING_AJAX')) {
                 define('DOING_AJAX', \true);
             }
-            // We use Laravel Response to make our redirections.
-            add_filter('wp_redirect', '__return_false');
             // When it's a modular request, we need to avoid the cron execution.
             remove_action('init', 'wp_cron');
             // Disable auto updates for core, themes, plugins and translations.

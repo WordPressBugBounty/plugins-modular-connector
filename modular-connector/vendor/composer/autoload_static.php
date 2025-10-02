@@ -4,30 +4,30 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa
+class ComposerStaticInit20dc4b5b6916718faedab6064b350e72
 {
     public static $files = array (
-        'fbce7fccda05ad6df92d4fff649eda96' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
-        '74bd193e312411734b8846cb67c79619' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        '007aa5c4b43ee3079f11033457dd637b' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
-        'd441f39a3e4864bf9c2ea791fe2b720b' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
-        '022b1ebe61c233a3d3171256f4015f47' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        'add195fc5101d512373742c824cee48b' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
-        '75c6bdfbdffe022a513edc40ff861a59' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        'ee1c79b7629420bdb77be07dcd06207d' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
-        'f09ded0ed3e3160424ed89815a5a15b4' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
-        '8633c55bdc05195c20d454b597ee60e2' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        '243e1ccae8f3e9365a48bcd820dda703' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        '4c3615e516f68dbb5ebda346854852d7' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        '579b08707c2938c9cb3170a8de8473f1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
-        'ce1c6e4b29bf9bd65acf64a19a9338c1' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-        'ddc1f3ac797ceea160d8f2edf70c9843' => __DIR__ . '/..' . '/illuminate/events/functions.php',
-        '797c4e11a49c1daa7a3bef1c48c20de0' => __DIR__ . '/..' . '/opis/closure/functions.php',
-        '9b7d2db422d5d65bb552f4fc0e340bc4' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        '4b14eb0ce280c718ef15f6bd6ee252d9' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        '7f60c293e6883667c4b57f77fa7d4ad4' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
-        'a9b0fc2579d3f876049238affb3477ea' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
-        '7b4261db4d2630b1371070330000e141' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        'ab6c79e2683973cfcd734109841a921f' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        'cff079aef7d21a46c804a271518dd9e4' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+        '68b37ee2a927a6a6c8a24a88612dc198' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        '091e1dcbf13434481035aa490557190e' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
+        '3e3c4f41a347449676a072c734408542' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
+        '49f6909a4e577b854db0dbc63ac2c684' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        'c2f876311842f1e9d63b826c2fd5c05e' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
+        'a154877d23f75aebb74056c8adc23b83' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
+        'f1eac90aefff7f960c105923e4f7d116' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
+        'b6bc66cfc9096db63a9e4bdbf8c1c1b2' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        'fc7e92774bace1a1824f67b716c72028' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
+        '1a2a3acee1c6551725b440a538aebfbe' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
+        'de1b81291386d62e9d313e47458bdcc1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        'a65770232045f89dc4bb10ef06eb14b1' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
+        'f26575e8fecf363f206adf8e9d2eb113' => __DIR__ . '/..' . '/illuminate/events/functions.php',
+        'f1d94d098f75bad6bfecebaafd9bb423' => __DIR__ . '/..' . '/opis/closure/functions.php',
+        'ef208a680182418ea07626d92657403d' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        'a15a7385134e27f11e3484a385dee6af' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        '929dfc641cfb2384fafe826e906ebb5c' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
+        'af0d26f79df5db74a34ace5b488330e4' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
+        'e8ebcb894cbb8ddfe9095c780222c44c' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -2672,9 +2672,13 @@ class ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa
         'Modular\\Connector\\Events\\ManagerItemsInstalled' => __DIR__ . '/../..' . '/src/app/Events/ManagerItemsInstalled.php',
         'Modular\\Connector\\Events\\ManagerItemsUpdated' => __DIR__ . '/../..' . '/src/app/Events/ManagerItemsUpdated.php',
         'Modular\\Connector\\Events\\ManagerItemsUpgraded' => __DIR__ . '/../..' . '/src/app/Events/ManagerItemsUpgraded.php',
+        'Modular\\Connector\\Events\\ManagerSafeUpgradeBackedUp' => __DIR__ . '/../..' . '/src/app/Events/ManagerSafeUpgradeBackedUp.php',
+        'Modular\\Connector\\Events\\ManagerSafeUpgradeCleanedUp' => __DIR__ . '/../..' . '/src/app/Events/ManagerSafeUpgradeCleanedUp.php',
+        'Modular\\Connector\\Events\\ManagerSafeUpgradeRolledBack' => __DIR__ . '/../..' . '/src/app/Events/ManagerSafeUpgradeRolledBack.php',
         'Modular\\Connector\\Exceptions\\Handler' => __DIR__ . '/../..' . '/src/app/Exceptions/Handler.php',
         'Modular\\Connector\\Facades\\Database' => __DIR__ . '/../..' . '/src/app/Facades/Database.php',
         'Modular\\Connector\\Facades\\Manager' => __DIR__ . '/../..' . '/src/app/Facades/Manager.php',
+        'Modular\\Connector\\Facades\\SafeUpgrade' => __DIR__ . '/../..' . '/src/app/Facades/SafeUpgrade.php',
         'Modular\\Connector\\Facades\\Server' => __DIR__ . '/../..' . '/src/app/Facades/Server.php',
         'Modular\\Connector\\Facades\\WhiteLabel' => __DIR__ . '/../..' . '/src/app/Facades/WhiteLabel.php',
         'Modular\\Connector\\Facades\\WooCommerce' => __DIR__ . '/../..' . '/src/app/Facades/WooCommerce.php',
@@ -2684,6 +2688,7 @@ class ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa
         'Modular\\Connector\\Http\\Controllers\\CacheController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/CacheController.php',
         'Modular\\Connector\\Http\\Controllers\\ManagerController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/ManagerController.php',
         'Modular\\Connector\\Http\\Controllers\\OptimizationController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/OptimizationController.php',
+        'Modular\\Connector\\Http\\Controllers\\SafeUpgradeController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/SafeUpgradeController.php',
         'Modular\\Connector\\Http\\Controllers\\ServerController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/ServerController.php',
         'Modular\\Connector\\Http\\Controllers\\WooCommerceController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/WooCommerceController.php',
         'Modular\\Connector\\Http\\Kernel' => __DIR__ . '/../..' . '/src/app/Http/Kernel.php',
@@ -2694,6 +2699,9 @@ class ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa
         'Modular\\Connector\\Jobs\\Hooks\\HookSendEventJob' => __DIR__ . '/../..' . '/src/app/Jobs/Hooks/HookSendEventJob.php',
         'Modular\\Connector\\Jobs\\ManagerInstallJob' => __DIR__ . '/../..' . '/src/app/Jobs/ManagerInstallJob.php',
         'Modular\\Connector\\Jobs\\ManagerManageItemJob' => __DIR__ . '/../..' . '/src/app/Jobs/ManagerManageItemJob.php',
+        'Modular\\Connector\\Jobs\\ManagerSafeUpgradeBackupJob' => __DIR__ . '/../..' . '/src/app/Jobs/ManagerSafeUpgradeBackupJob.php',
+        'Modular\\Connector\\Jobs\\ManagerSafeUpgradeCleanupJob' => __DIR__ . '/../..' . '/src/app/Jobs/ManagerSafeUpgradeCleanupJob.php',
+        'Modular\\Connector\\Jobs\\ManagerSafeUpgradeRolledBackJob' => __DIR__ . '/../..' . '/src/app/Jobs/ManagerSafeUpgradeRolledBackJob.php',
         'Modular\\Connector\\Jobs\\ManagerUpdateJob' => __DIR__ . '/../..' . '/src/app/Jobs/ManagerUpdateJob.php',
         'Modular\\Connector\\Jobs\\ManagerUpgradeDatabaseJob' => __DIR__ . '/../..' . '/src/app/Jobs/ManagerUpgradeDatabaseJob.php',
         'Modular\\Connector\\Listeners\\HookEventListener' => __DIR__ . '/../..' . '/src/app/Listeners/HookEventListener.php',
@@ -2755,6 +2763,7 @@ class ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa
         'Modular\\Connector\\Services\\Manager\\ManagerCore' => __DIR__ . '/../..' . '/src/app/Services/Manager/ManagerCore.php',
         'Modular\\Connector\\Services\\Manager\\ManagerDatabase' => __DIR__ . '/../..' . '/src/app/Services/Manager/ManagerDatabase.php',
         'Modular\\Connector\\Services\\Manager\\ManagerPlugin' => __DIR__ . '/../..' . '/src/app/Services/Manager/ManagerPlugin.php',
+        'Modular\\Connector\\Services\\Manager\\ManagerSafeUpgrade' => __DIR__ . '/../..' . '/src/app/Services/Manager/ManagerSafeUpgrade.php',
         'Modular\\Connector\\Services\\Manager\\ManagerTheme' => __DIR__ . '/../..' . '/src/app/Services/Manager/ManagerTheme.php',
         'Modular\\Connector\\Services\\Manager\\ManagerTranslation' => __DIR__ . '/../..' . '/src/app/Services/Manager/ManagerTranslation.php',
         'Modular\\Connector\\Services\\Manager\\ManagerWooCommerce' => __DIR__ . '/../..' . '/src/app/Services/Manager/ManagerWooCommerce.php',
@@ -2798,9 +2807,9 @@ class ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit13c4bbf962e18ba1ef1522d0f20237fa::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit20dc4b5b6916718faedab6064b350e72::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit20dc4b5b6916718faedab6064b350e72::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit20dc4b5b6916718faedab6064b350e72::$classMap;
 
         }, null, ClassLoader::class);
     }

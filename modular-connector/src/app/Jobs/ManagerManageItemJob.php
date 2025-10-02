@@ -91,11 +91,11 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                     $items = data_get($payload, 'themes');
                     break;
                 case !empty(data_get($payload, 'core')):
-                    $type = 'core';
+                    $type = ManagerTheme::CORE;
                     $items = data_get($payload, 'core');
                     break;
                 case !empty(data_get($payload, 'translations')):
-                    $type = 'translation';
+                    $type = ManagerTheme::TRANSLATION;
                     $items = data_get($payload, 'translations');
                     break;
             }
@@ -104,7 +104,7 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         // Check action by type
         if ($type === ManagerTheme::THEME && in_array($action, ['deactivate'])) {
             return;
-        } elseif (in_array($type, ['core', 'translation']) && !in_array($action, ['upgrade'])) {
+        } elseif (in_array($type, [ManagerTheme::CORE, ManagerTheme::TRANSLATION]) && !in_array($action, ['upgrade'])) {
             return;
         } elseif (empty($type)) {
             return;
@@ -113,7 +113,7 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         $facade = Manager::driver($type);
 
         try {
-            if (in_array($type, ['core', 'translation'])) {
+            if (in_array($type, [ManagerTheme::CORE, ManagerTheme::TRANSLATION])) {
                 $result = $facade->{$action}();
             } else {
                 $result = $facade->{$action}($items);
@@ -127,7 +127,7 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
             // If we use HTTP Ajax request, it doesn't work updates, so we must try to use the CRON.
             // FIXME Remove after not using wp-admin/admin-ajax.php
             if (!HttpUtils::isCron() && $this->tries === 1) {
-                $tmpResult = $type === 'core' ? [$result] : $result;
+                $tmpResult = $type === ManagerTheme::CORE ? [$result] : $result;
 
                 $allIsFailedByFilePermissions = Collection::make($tmpResult)
                     ->some(fn($item) => !boolval(data_get($item, 'success')) && data_get($item, 'response.error.code') === 'copy_failed_pclzip');
@@ -150,7 +150,7 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 }
             }
 
-            $type = $type !== 'core' ? Str::plural($type) : $type;
+            $type = $type !== ManagerTheme::CORE ? Str::plural($type) : $type;
 
             $result = [$type => $result];
         }
@@ -159,6 +159,11 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 
         if ($cleanCache) {
             dispatch(new CacheClearJob());
+        }
+
+        // When translations, don't fire any event
+        if ($type === ManagerTheme::TRANSLATION . 's') {
+            return;
         }
 
         switch ($action) {

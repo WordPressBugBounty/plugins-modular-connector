@@ -31,11 +31,11 @@ class AutoCleanUpCommand extends Command
             $path = Backup::path('*');
 
             $files = Collection::make(FileFacade::glob($path))
-                ->filter(function ($file) {
-                    return FileFacade::isFile($file) &&
+                ->filter(
+                    fn($file) => FileFacade::isFile($file) &&
                         !in_array(FileFacade::basename($file), ['index.html', 'index.php', '.htaccess', 'web.config']) &&
-                        FileFacade::lastModified($file) < Carbon::now()->subDays($this->option('max-age'))->timestamp;
-                });
+                        FileFacade::lastModified($file) < Carbon::now()->subDays($this->option('max-age'))->timestamp
+                );
 
             $maxFilesToClean = $this->option('max-files');
             $files = $files->slice(0, $maxFilesToClean)->toArray();
@@ -53,11 +53,11 @@ class AutoCleanUpCommand extends Command
             $path = Storage::disk('content')->path('upgrade-temp-backup/plugins/*');
 
             $dirs = Collection::make(FileFacade::glob($path))
-                ->filter(function ($file) {
-                    return FileFacade::isDirectory($file) &&
+                ->filter(
+                    fn($file) => FileFacade::isDirectory($file) &&
                         in_array(FileFacade::basename($file), [FileFacade::dirname(MODULAR_CONNECTOR_BASENAME)]) &&
-                        FileFacade::lastModified($file) < Carbon::now()->subDays($this->option('max-age'))->timestamp;
-                });
+                        FileFacade::lastModified($file) < Carbon::now()->subDays($this->option('max-age'))->timestamp
+                );
 
             $maxFilesToClean = $this->option('max-files');
 
@@ -65,6 +65,22 @@ class AutoCleanUpCommand extends Command
                 ->each(fn($dir) => FileFacade::deleteDirectory($dir));
         } catch (\Throwable $e) {
             // Silence is golden
+            Log::error($e);
+        }
+
+        // Delete old safe updates
+        try {
+            $path = Storage::disk('safe_upgrades')->path('*');
+
+            $dirs = Collection::make(FileFacade::glob($path))
+                ->filter(
+                    fn($file) => FileFacade::isDirectory($file) &&
+                        FileFacade::lastModified($file) < Carbon::now()->subDays(7)->timestamp
+                );
+
+            $dirs->slice(0, $maxFilesToClean)
+                ->each(fn($dir) => FileFacade::deleteDirectory($dir));
+        } catch (\Throwable $e) {
             Log::error($e);
         }
     }

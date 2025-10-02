@@ -64,5 +64,10 @@ return [
             'root' => untrailingslashit(get_theme_root()),
             'visibility' => 'public',
         ],
+        'safe_upgrades' => [
+            'driver' => 'local',
+            'root' => MODULAR_CONNECTOR_STORAGE_PATH . DIRECTORY_SEPARATOR . 'upgrades',
+            'visibility' => 'public',
+        ],
     ],
 ];
