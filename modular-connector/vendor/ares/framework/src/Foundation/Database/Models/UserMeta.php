@@ -2,7 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Models;
 
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Meta\Meta;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Models\Meta\Meta;
 class UserMeta extends Meta
 {
     /**

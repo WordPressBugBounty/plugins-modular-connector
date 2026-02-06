@@ -52,15 +52,12 @@ class ManagerTranslation extends AbstractManager
     {
         ScreenSimulation::includeUpgrader();
 
-        ServerSetup::clean();
-
         try {
             $skin = new \WP_Ajax_Upgrader_Skin([]);
             $upgrader = new \Language_Pack_Upgrader($skin);
 
             $result = @$upgrader->bulk_upgrade();
         } finally {
-            ServerSetup::clean();
             ServerSetup::logout();
         }
 

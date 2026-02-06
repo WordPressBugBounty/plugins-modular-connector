@@ -19,9 +19,10 @@ use function Modular\ConnectorDependencies\dispatch;
 class ServerController extends Controller
 {
     /**
+     * @param SiteRequest $modularRequest
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getInformation()
+    public function getInformation(SiteRequest $modularRequest)
     {
         $information = Server::information();
 
@@ -56,9 +57,10 @@ class ServerController extends Controller
     }
 
     /**
+     * @param SiteRequest $modularRequest
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getWhiteLabel()
+    public function getWhiteLabel(SiteRequest $modularRequest)
     {
         dispatch(fn() => WhiteLabel::forget());
 

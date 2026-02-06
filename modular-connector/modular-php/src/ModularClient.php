@@ -2,9 +2,9 @@
 
 namespace Modular\SDK;
 
+use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\GuzzleHttp\Client;
-use Modular\Connector\Facades\Server;
 use Modular\SDK\Services\CoreServiceFactory;
 use Modular\SDK\Support\ApiHelper;
 
@@ -12,6 +12,7 @@ use Modular\SDK\Support\ApiHelper;
  * @property \Modular\SDK\Services\OauthService $oauth
  * @property \Modular\SDK\Services\WordPressService $wordpress
  * @property \Modular\SDK\Services\BackupService $backup
+ * @property \Modular\SDK\Services\LinkingService $linking
  */
 class ModularClient implements ModularClientInterface
 {
@@ -66,8 +67,11 @@ class ModularClient implements ModularClientInterface
         $this->oauthClient = $config['oauth_client'];
         $this->oauthToken = $config['oauth_token'];
 
+        // Only disable for local/staging development
+        $isDevEnvironment = in_array($config['env'] ?? 'production', ['local', 'stg', 'dev', 'testing'], true);
+
         $this->client = new Client([
-            'verify' => false,
+            'verify' => !$isDevEnvironment,
             'base_uri' => rtrim($config['base_uri'], '/'),
             'headers' => [
                 'Accept' => 'application/json',

@@ -2,9 +2,9 @@
 
 namespace Modular\Connector\Models;
 
-use Modular\Connector\Models\Concerns\Aliases;
 use Modular\Connector\Models\Concerns\MetaFields;
-use Modular\Connector\Models\Concerns\OrderScopes;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\Aliases;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\OrderScopes;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Auth\Authenticatable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Auth\CanResetPassword;
 use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
@@ -29,15 +29,15 @@ class User extends Model implements Authenticatable, CanResetPassword
     protected $with = ['meta'];
 
     protected static $aliases = [
-        'login'         => 'user_login',
-        'email'         => 'user_email',
-        'slug'          => 'user_nicename',
-        'url'           => 'user_url',
-        'nickname'      => ['meta' => 'nickname'],
-        'first_name'    => ['meta' => 'first_name'],
-        'last_name'     => ['meta' => 'last_name'],
-        'description'   => ['meta' => 'description'],
-        'created_at'    => 'user_registered',
+        'login' => 'user_login',
+        'email' => 'user_email',
+        'slug' => 'user_nicename',
+        'url' => 'user_url',
+        'nickname' => ['meta' => 'nickname'],
+        'first_name' => ['meta' => 'first_name'],
+        'last_name' => ['meta' => 'last_name'],
+        'description' => ['meta' => 'description'],
+        'created_at' => 'user_registered',
     ];
 
     protected $appends = [
@@ -61,7 +61,12 @@ class User extends Model implements Authenticatable, CanResetPassword
         });
     }
 
-    public function setUpdatedAtAttribute($value) {}
+    public function setUpdatedAtAttribute($value)
+    {
+        // WordPress users table doesn't have an updated_at column
+        // This method is intentionally empty to prevent errors
+        return null;
+    }
 
     public function posts()
     {
@@ -119,7 +124,9 @@ class User extends Model implements Authenticatable, CanResetPassword
         return $this->user_email;
     }
 
-    public function sendPasswordResetNotification($token) {}
+    public function sendPasswordResetNotification($token)
+    {
+    }
 
     public function getAvatarAttribute()
     {
@@ -127,9 +134,10 @@ class User extends Model implements Authenticatable, CanResetPassword
 
         return sprintf('//secure.gravatar.com/avatar/%s?d=mm', $hash);
     }
-    
+
     public function setUpdatedAt($value)
     {
-        //
+        // WordPress users table doesn't have an updated_at column
+        // This method is intentionally empty to prevent errors
     }
 }

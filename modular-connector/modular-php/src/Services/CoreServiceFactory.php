@@ -6,6 +6,7 @@ namespace Modular\SDK\Services;
  * @property \Modular\SDK\Services\OauthService $oauth
  * @property \Modular\SDK\Services\WordPressService $wordpress
  * @property \Modular\SDK\Services\BackupService $backup
+ * @property \Modular\SDK\Services\LinkingService $linking
  */
 class CoreServiceFactory extends AbstractServiceFactory
 {
@@ -16,6 +17,7 @@ class CoreServiceFactory extends AbstractServiceFactory
         'oauth' => OauthService::class,
         'wordpress' => WordPressService::class,
         'backup' => BackupService::class,
+        'linking' => LinkingService::class,
     ];
 
     /**

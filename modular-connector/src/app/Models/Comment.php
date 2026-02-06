@@ -2,8 +2,8 @@
 
 namespace Modular\Connector\Models;
 
-use Modular\Connector\Models\Concerns\CustomTimestamps;
 use Modular\Connector\Models\Concerns\MetaFields;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\CustomTimestamps;
 use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 
 class Comment extends Model
@@ -24,7 +24,7 @@ class Comment extends Model
     {
         parent::boot();
 
-        static::deleting(function($comment) {
+        static::deleting(function ($comment) {
             $comment->meta()->delete();
             $comment->replies()->delete();
         });
@@ -32,9 +32,7 @@ class Comment extends Model
 
     public static function findByPostId($postId)
     {
-        return (new static())
-            ->where('comment_post_ID', $postId)
-            ->get();
+        return static::where('comment_post_ID', $postId)->get();
     }
 
     public function post()
@@ -59,7 +57,7 @@ class Comment extends Model
 
     public function isApproved()
     {
-        return $this->attributes['comment_approved'] == 1;
+        return $this->attributes['comment_approved'] === '1' || $this->attributes['comment_approved'] === 1;
     }
 
     public function isReply()
@@ -69,11 +67,12 @@ class Comment extends Model
 
     public function hasReplies()
     {
-        return $this->replies->count() > 0;
+        return $this->replies()->exists();
     }
 
     public function setUpdatedAt($value)
     {
-        //
+        // WordPress comments table doesn't have an updated_at column
+        // This method is intentionally empty to prevent errors
     }
 }

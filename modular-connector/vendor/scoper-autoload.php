@@ -9,12 +9,12 @@ $loader = (static function () {
     $loader = require_once __DIR__.'/autoload.php';
     // Ensure InstalledVersions is available
     $installedVersionsPath = __DIR__.'/composer/InstalledVersions.php';
-    if (file_exists($installedVersionsPath)) require_once $installedVersionsPath;
+    if (file_exists($installedVersionsPath) && !class_exists('Composer\InstalledVersions')) require_once $installedVersionsPath;
 
     // Restore the backup and ensure the excluded files are properly marked as loaded
     $GLOBALS['__composer_autoload_files'] = \array_merge(
         $existingComposerAutoloadFiles,
-        \array_fill_keys(['9eaa6b0f3f04e58e17ae5ecb754ea313', 'c2f876311842f1e9d63b826c2fd5c05e', 'acbe0d033c55cd0a032b415e08d14f4c', 'fc7e92774bace1a1824f67b716c72028', 'b48cbeb76a71e226a23fa64ac2b94dc6', 'de1b81291386d62e9d313e47458bdcc1', '36dfd6ed9dd74e8062aa61f09caf8554', 'f1eac90aefff7f960c105923e4f7d116', '5928a00fa978807cf85d90ec3f4b0147', 'cff079aef7d21a46c804a271518dd9e4', 'a154877d23f75aebb74056c8adc23b83', 'ab6c79e2683973cfcd734109841a921f', 'a65770232045f89dc4bb10ef06eb14b1', 'b178954ba4692b8876c08a4a97e6ce23', '9250916e8af80e0d1bb31401fd2e15a7', 'c5e5dfa7f2077b89dbc43523332b50aa', '674e404d8857dd99db32bc218bb5643a', '99b27172349c9ec3abea78f62e2938bb', '28099935d0ea91a1b5e09408e356eacb', '83cc8b953df9a6f7e51f674d84d57730', 'a875add15ea9a7df1a6c0c26cc9e4590', '1cbb53d50065225a14c2360be2ccbf6f', '54b9ab13bc86d8251a04a939888e357e', 'a89966141ddd51b9b7e868bc3b2f9bb0', '51421aa3e5e8003b70a289762d146a2a', '18e965175c6bcd96deba6bc791a44373', 'f49032536fdd06afd9df7191c3f21453', '7bdb062931f6e7102434c3ad28423eb6', '7edcabe1b67fbb38f4972a722bbbb429', 'd1fb64fd99fc22e28e29a95cc0ea533a', '7b0b5d7b98f96ad751222ae5cc98cfcb'], true)
+        \array_fill_keys(['6ea807bc03fcc27c378f5fa664ede99d', '9eaa6b0f3f04e58e17ae5ecb754ea313', '60b2ff9fbe95cc0c74c7db9ce13c798a', 'acbe0d033c55cd0a032b415e08d14f4c', 'e19c1b275255b4a0bbc8070578cef1f4', 'b48cbeb76a71e226a23fa64ac2b94dc6', '2426340af01a8b217493aa8368f4b958', '36dfd6ed9dd74e8062aa61f09caf8554', '81fff749dea142020b3ea93bf310d4d6', '5928a00fa978807cf85d90ec3f4b0147', '912f363f8e7295363e41d9b5977504da', '81a546c527c3e6e843fb05f40137fab8', '56177a1894ecfb66699acf00a4d8a575', 'b178954ba4692b8876c08a4a97e6ce23', '28099935d0ea91a1b5e09408e356eacb', 'c5e5dfa7f2077b89dbc43523332b50aa', '674e404d8857dd99db32bc218bb5643a', '83cc8b953df9a6f7e51f674d84d57730', '9250916e8af80e0d1bb31401fd2e15a7', '99b27172349c9ec3abea78f62e2938bb', 'a875add15ea9a7df1a6c0c26cc9e4590', '1cbb53d50065225a14c2360be2ccbf6f', '54b9ab13bc86d8251a04a939888e357e', 'a89966141ddd51b9b7e868bc3b2f9bb0', '7bdb062931f6e7102434c3ad28423eb6', 'f49032536fdd06afd9df7191c3f21453', '18e965175c6bcd96deba6bc791a44373', '51421aa3e5e8003b70a289762d146a2a', '7edcabe1b67fbb38f4972a722bbbb429', '7b0b5d7b98f96ad751222ae5cc98cfcb', 'd1fb64fd99fc22e28e29a95cc0ea533a'], true)
     );
 
     return $loader;
@@ -29,15 +29,16 @@ if (!function_exists('humbug_phpscoper_expose_class')) {
         }
     }
 }
-humbug_phpscoper_expose_class('ReturnTypeWillChange', 'Modular\ConnectorDependencies\ReturnTypeWillChange');
 humbug_phpscoper_expose_class('CURLStringFile', 'Modular\ConnectorDependencies\CURLStringFile');
-humbug_phpscoper_expose_class('JsonException', 'Modular\ConnectorDependencies\JsonException');
-humbug_phpscoper_expose_class('PhpToken', 'Modular\ConnectorDependencies\PhpToken');
-humbug_phpscoper_expose_class('Attribute', 'Modular\ConnectorDependencies\Attribute');
-humbug_phpscoper_expose_class('ValueError', 'Modular\ConnectorDependencies\ValueError');
-humbug_phpscoper_expose_class('Stringable', 'Modular\ConnectorDependencies\Stringable');
-humbug_phpscoper_expose_class('UnhandledMatchError', 'Modular\ConnectorDependencies\UnhandledMatchError');
+humbug_phpscoper_expose_class('ReturnTypeWillChange', 'Modular\ConnectorDependencies\ReturnTypeWillChange');
 humbug_phpscoper_expose_class('Normalizer', 'Modular\ConnectorDependencies\Normalizer');
+humbug_phpscoper_expose_class('Stringable', 'Modular\ConnectorDependencies\Stringable');
+humbug_phpscoper_expose_class('ValueError', 'Modular\ConnectorDependencies\ValueError');
+humbug_phpscoper_expose_class('Attribute', 'Modular\ConnectorDependencies\Attribute');
+humbug_phpscoper_expose_class('PhpToken', 'Modular\ConnectorDependencies\PhpToken');
+humbug_phpscoper_expose_class('UnhandledMatchError', 'Modular\ConnectorDependencies\UnhandledMatchError');
+humbug_phpscoper_expose_class('JsonException', 'Modular\ConnectorDependencies\JsonException');
+humbug_phpscoper_expose_class('ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth', 'Modular\ConnectorDependencies\ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth');
 
 // Function aliases. For more information see:
 // https://github.com/humbug/php-scoper/blob/master/docs/further-reading.md#function-aliases

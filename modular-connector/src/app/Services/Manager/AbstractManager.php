@@ -168,23 +168,34 @@ abstract class AbstractManager implements ManagerContract
     protected function tryFillMissingUpdates($updatableItems, $type)
     {
         /**
-         * We create a dummy transient object that gets passed to the “pre_set_site_transient_*” filter so plugins
-         * or themes can fill it with update data.
+         * Get the REAL transient that WordPress uses for updates.
+         * This transient contains the actual installed plugins/themes and their versions,
+         * which premium plugins need to see to determine if they should add update info.
          *
-         * We set default properties to ensure they don’t skip adding update information,
-         * since many scripts check these properties or rely on the 12-hour interval before populating updates.
-         * */
-        $transient = (object)[
-            'last_checked' => time() - (13 * 3600), /* Making sure that we passed the 12 hour period check */
-            'checked' => ['default' => 'none'],
-            'response' => ['default' => 'none'],
-        ];
+         * Premium plugins hook into "pre_set_site_transient_update_*" and expect to receive
+         * the complete transient object with:
+         * - checked: array of installed items and their versions
+         * - response: array of available updates
+         * - last_checked: timestamp of last check
+         *
+         * If we pass a dummy/fake transient, premium plugins may not recognize their own
+         * plugin in the 'checked' array and skip adding update information.
+         */
+        $transient = get_site_transient("update_{$type}s");
+
+        if (!is_object($transient)) {
+            $transient = new \stdClass();
+            $transient->last_checked = time();
+            $transient->checked = [];
+            $transient->response = [];
+        }
 
         /**
-         * Premium plugin often use the “pre_set_site_transient_update_$TYPEs” filter
-         * for automatic updates. Here, we manually add any plugins or themes that weren’t
-         * automatically included in “update_plugins” or “update_themes.”
-         * */
+         * Premium plugins often use the "pre_set_site_transient_update_$TYPEs" filter
+         * to inject their update information. WordPress calls this filter when SAVING
+         * the transient, but we simulate it here to capture premium plugin updates
+         * that aren't included in the standard wordpress.org response.
+         */
         try {
             $updatesFromHook = apply_filters("pre_set_site_transient_update_{$type}s", $transient, "update_{$type}s");
         } catch (\Throwable $e) {
@@ -210,25 +221,25 @@ abstract class AbstractManager implements ManagerContract
         }
 
         foreach ($allItems as $basename => $data) {
+            /**
+             * If we already have update info from the standard check, or if
+             * the premium plugin did not add any update info, skip it.
+             */
             if (isset($updatableItems[$basename]) || !isset($updatesFromHook->response[$basename])) {
                 continue;
             }
 
-            $updateInfo = data_get($updatesFromHook, 'response.' . $basename, $data);
+            $response = data_get($updatesFromHook, 'response', $data);
+            $updateInfo = $response[$basename] ?? [];
 
             /**
-             * An empty “package” means the plugin or theme doesn’t support automatic updates
+             * An empty “package” means the plugin or theme doesn't support automatic updates
              * (no download link available). For premium items, that field typically
-             * depends on a valid access key. It defaults to “false,” and
-             * we only include items with a non-empty “package”
-             * for automatic updates.
+             * depends on a valid access key. However, we still want to show the update
+             * is available, even if automatic update isn't possible.
              * */
-            $isPackageEmpty = empty(data_get($updateInfo, 'package'));
-
-            if (!$isPackageEmpty) {
-                $updatableItems[$basename] = $type === ManagerPlugin::PLUGIN ? (object)$data : wp_get_theme($basename);
-                $updatableItems[$basename]->update = $updateInfo;
-            }
+            $updatableItems[$basename] = $type === ManagerPlugin::PLUGIN ? (object)$data : wp_get_theme($basename);
+            $updatableItems[$basename]->update = $updateInfo;
         }
 
         return $updatableItems;
@@ -246,11 +257,9 @@ abstract class AbstractManager implements ManagerContract
 
         switch ($itemType) {
             case ManagerTheme::THEME:
-                wp_update_themes();
                 $itemsToUpdate = $this->tryFillMissingUpdates(get_theme_updates(), $itemType);
                 break;
             case ManagerPlugin::PLUGIN:
-                wp_update_plugins();
                 $itemsToUpdate = $this->tryFillMissingUpdates(get_plugin_updates(), $itemType);
                 break;
         }

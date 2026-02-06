@@ -10,6 +10,7 @@ use Modular\ConnectorDependencies\Illuminate\Support\Collection as BaseCollectio
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Date;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Modular\SDK\ModularClient;
+use function Modular\ConnectorDependencies\collect;
 
 class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayAccess
 {

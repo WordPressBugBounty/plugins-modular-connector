@@ -168,6 +168,19 @@ class ManagerManageItemJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 
         switch ($action) {
             case 'activate':
+                $patchstackLicenseKey = data_get($payload, 'extra.patchstackLicenseKey', false);
+
+                if (!empty($patchstackLicenseKey)) {
+                    $isSuccess = data_get($result, '0.success', false);
+
+                    if ($isSuccess) {
+                        HttpUtils::restartQueue($this->currentTime());
+
+                        dispatch(new ManagerPatchstackActivationJob($patchstackLicenseKey, $this->mrid, $result));
+                        break;
+                    }
+                }
+
                 event(new ManagerItemsActivated($this->mrid, $result));
                 break;
             case 'deactivate':

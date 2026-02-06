@@ -2,6 +2,9 @@
 
 namespace Modular\ConnectorDependencies;
 
+if (!\defined('ABSPATH')) {
+    exit;
+}
 return [
     /*
     |--------------------------------------------------------------------------
@@ -13,7 +16,7 @@ return [
     | syntax for every one. Here you may define a default connection.
     |
     */
-    'default' => \defined('Modular\ConnectorDependencies\MODULAR_CONNECTOR_QUEUE_SYNC') && \Modular\ConnectorDependencies\MODULAR_CONNECTOR_QUEUE_SYNC ? 'sync' : 'modular',
+    'default' => \defined('Modular\ConnectorDependencies\MODULAR_CONNECTOR_QUEUE_DRIVER') ? \Modular\ConnectorDependencies\MODULAR_CONNECTOR_QUEUE_DRIVER : 'wordpress',
     /*
     |--------------------------------------------------------------------------
     | Queue Connections
@@ -26,5 +29,6 @@ return [
     | Drivers: "sync", "database", "beanstalkd", "sqs", "redis", "null"
     |
     */
-    'connections' => ['sync' => ['driver' => 'sync'], 'modular' => ['prefix' => 'modular', 'driver' => 'database', 'table' => 'options', 'queue' => 'default', 'retry_after' => 10 * 60]],
+    'connections' => ['sync' => ['driver' => 'sync'], 'wordpress' => ['prefix' => 'modular', 'driver' => 'wordpress', 'table' => 'options', 'queue' => 'default', 'retry_after' => 10 * 60], 'database' => ['driver' => 'database', 'connection' => 'modular', 'table' => 'jobs', 'queue' => 'default', 'retry_after' => 10 * 60]],
+    'failed' => ['driver' => null],
 ];

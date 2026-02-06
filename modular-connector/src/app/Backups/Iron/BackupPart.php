@@ -92,6 +92,16 @@ class BackupPart
     public array $excludedTables = [];
 
     /**
+     * @var array|string[]
+     */
+    public array $excludedExtensions = [];
+
+    /**
+     * @var int
+     */
+    public int $excludedSize = 0;
+
+    /**
      * @var bool
      */
     public bool $onlyWithTheSamePrefix = false;
@@ -176,6 +186,8 @@ class BackupPart
 
         if ($this->type !== self::INCLUDE_DATABASE) {
             $this->excludedFiles = $this->getExcludedFiles($this->type, data_get($payload, 'excluded', []));
+            $this->excludedExtensions = data_get($payload, 'excluded.extensions') ?: [];
+            $this->excludedSize = data_get($payload, 'excluded.max_file_size') ?: 0;
         } else {
             $this->excludedTables = $this->getExcludedTables(data_get($payload, 'excluded.database', []));
         }
@@ -245,9 +257,42 @@ class BackupPart
 
             $files = Collection::make($files)
                 // If the type is core, we need to exclude all files but if the type is another directory,
-                // we need to exclude only the files from that directory
-                ->filter(fn($file) => $type === 'core' || Str::startsWith($file, $relativePath))
-                ->map(fn($file) => ltrim(Str::after($file, $relativePath), '/\\'))
+                // we need to exclude only the files from that directory OR parent directories
+                ->filter(function ($file) use ($type, $relativePath) {
+                    if ($type === 'core') {
+                        return true;
+                    }
+
+                    // Keep if exclusion is within this type's directory
+                    // Example: "wp-content/themes/twentytwenty" for type="themes"
+                    if (Str::startsWith($file, $relativePath)) {
+                        return true;
+                    }
+
+                    // Keep if this type's directory is within the exclusion (parent exclusion)
+                    // Example: "wp-content" excludes type="themes" (wp-content/themes)
+                    if (Str::startsWith($relativePath, $file)) {
+                        return true;
+                    }
+
+                    return false;
+                })
+                ->map(function ($file) use ($relativePath) {
+                    // If relativePath starts with the exclusion, this is a parent exclusion
+                    // Return empty string to mark entire type as excluded
+                    if (Str::startsWith($relativePath, $file)) {
+                        return '';
+                    }
+
+                    // Remove the relative path prefix
+                    $result = Str::after($file, $relativePath);
+
+                    // Remove only leading directory separators (/, \)
+                    // Using preg_replace instead of ltrim for explicit behavior:
+                    // ltrim('/\\') removes ANY combination of / and \ from the start
+                    // preg_replace removes only consecutive separators from the start
+                    return preg_replace('#^[/\\\\]+#', '', $result);
+                })
                 ->toArray();
         } else {
             // When we use a custom filesystem, we can get the excluded files directly

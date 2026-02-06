@@ -2,7 +2,7 @@
 
 namespace Modular\Connector\Models;
 
-use Modular\Connector\Models\Meta\Meta;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Models\Meta\Meta;
 
 class PostMeta extends Meta
 {

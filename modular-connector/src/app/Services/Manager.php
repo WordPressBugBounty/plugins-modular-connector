@@ -9,7 +9,6 @@ use Modular\Connector\Services\Manager\ManagerDatabase;
 use Modular\Connector\Services\Manager\ManagerPlugin;
 use Modular\Connector\Services\Manager\ManagerTheme;
 use Modular\Connector\Services\Manager\ManagerTranslation;
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ClearableQueue;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
@@ -42,15 +41,11 @@ class Manager extends IlluminateManager
      */
     public function update()
     {
-        ServerSetup::clean();
-
         $response = [
             'core' => $this->driver(ManagerTheme::CORE)->get(),
             'plugins' => $this->driver(ManagerPlugin::PLUGIN)->all(),
             'themes' => $this->driver(ManagerTheme::THEME)->all(),
         ];
-
-        ServerSetup::logout();
 
         return $response;
     }
@@ -146,6 +141,13 @@ class Manager extends IlluminateManager
             error_log(sprintf('Error rolling back database: %s', $e->getMessage()));
         }
 
+        try {
+            OauthClient::removeLinkingRegistered();
+        } catch (\Throwable $e) {
+            // Silence is golden
+            error_log(sprintf('Error resetting linking registration: %s', $e->getMessage()));
+        }
+
         $this->clearCompiledViews();
     }
 
@@ -193,6 +195,60 @@ class Manager extends IlluminateManager
         } catch (\Throwable $e) {
             // Silence is golden
             error_log(sprintf('Error deleting storage: %s', $e->getMessage()));
+        }
+    }
+
+    /**
+     * Handle plugin activation with linking token.
+     *
+     * This method is called during plugin activation when MODULAR_CONNECTOR_LINKING_TOKEN
+     * constant is defined. It auto-registers the site with Modular DS.
+     *
+     * @return void
+     */
+    public static function activate(): void
+    {
+        // No linking token defined
+        if (!defined('MODULAR_CONNECTOR_LINKING_TOKEN')) {
+            return;
+        }
+
+        // Already registered via linking token
+        if (OauthClient::isLinkingRegistered()) {
+            return;
+        }
+
+        try {
+            // Already connected via manual OAuth setup
+            $client = OauthClient::getClient();
+
+            if ($client->getConnectedAt()) {
+                return;
+            }
+
+            $token = MODULAR_CONNECTOR_LINKING_TOKEN;
+
+            $uri = OauthClient::getHomeUrl('/');
+            $name = get_bloginfo('name') ?: parse_url($uri, PHP_URL_HOST);
+
+            $response = $client->linking->register(
+                $token,
+                $uri,
+                substr($name, 0, 60)
+            );
+
+            if ($response && isset($response->client_id, $response->client_secret, $response->site_id)) {
+                $client->setClientId($response->client_id)
+                    ->setClientSecret($response->client_secret)
+                    ->save();
+
+                $client->linking->confirm($token, $response->site_id);
+            }
+        } catch (\Throwable $e) {
+            Log::error($e);
+        } finally {
+            // Always mark as registered to prevent infinite loops
+            OauthClient::setLinkingRegistered();
         }
     }
 

@@ -22,7 +22,7 @@ class Admin
         add_action('admin_menu', [self::class, 'addMenu']);
         add_action('admin_notices', [self::class, 'addAdminNotice']);
         add_action('template_redirect', [self::class, 'addMaintenanceMode'], 99);
-        add_action('admin_init', [self::class, 'addJobsCleanup']);
+        add_action('admin_init', [self::class, 'addJobsCleanup'], PHP_INT_MAX);
     }
 
     /**
@@ -95,6 +95,12 @@ class Admin
 
     /**
      * Adds a job cleanup action to the admin panel
+     *
+     * This runs as a fallback for sites where loopback/system cron doesn't work.
+     * It has strict guards to prevent excessive execution:
+     * - Only on Modular admin page or dashboard
+     * - Only on GET requests from logged-in users
+     * - JobsCleanupService has internal time check (1 day interval) and lock (60s)
      */
     public static function addJobsCleanup()
     {
@@ -104,12 +110,28 @@ class Admin
                 return;
             }
 
-            if (HttpUtils::isCron() || HttpUtils::isDirectRequest() || defined('DOING_AJAX') && DOING_AJAX) {
+            if (HttpUtils::isCron() || defined('DOING_AJAX') && DOING_AJAX) {
                 return;
             }
 
             if (!request()->isMethod('get')) {
                 // If it's a POST request, we don't want to run the cleanup
+                return;
+            }
+
+            // Only run on specific admin pages to minimize execution frequency
+            global $pagenow;
+
+            $isDashboard = ($pagenow === 'index.php');
+            $isModularPage = ($pagenow === 'tools.php' && request()->get('page') === 'modular-connector');
+
+            // Only execute on dashboard or Modular Connector page
+            if (!$isDashboard && !$isModularPage) {
+                return;
+            }
+
+            // If it's dashboard, only run 25% of the time to reduce frequency
+            if ($isDashboard && wp_rand(1, 4) !== 1) {
                 return;
             }
 

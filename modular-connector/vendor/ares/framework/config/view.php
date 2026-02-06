@@ -2,6 +2,9 @@
 
 namespace Modular\ConnectorDependencies;
 
+if (!\defined('ABSPATH')) {
+    exit;
+}
 return [
     /*
     |--------------------------------------------------------------------------
@@ -24,7 +27,7 @@ return [
     | directory. However, as usual, you are free to change this value.
     |
     */
-    'compiled' => \realpath(\Modular\ConnectorDependencies\storage_path('framework/views')),
+    'compiled' => \realpath(\Modular\ConnectorDependencies\storage_path('views')),
     /*
     |--------------------------------------------------------------------------
     | View Namespaces

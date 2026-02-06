@@ -22,17 +22,6 @@ class Kernel extends HttpKernel
     ];
 
     /**
-     * The application's route middleware.
-     *
-     * These middleware may be assigned to groups or used individually.
-     *
-     * @var array
-     */
-    protected $routeMiddleware = [
-        'auth' => \Modular\Connector\Http\Middleware\Authenticate::class,
-    ];
-
-    /**
      * @param Schedule $schedule
      * @return void
      * @throws \Illuminate\Contracts\Container\BindingResolutionException

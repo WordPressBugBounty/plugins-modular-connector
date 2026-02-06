@@ -1,5 +1,9 @@
 <?php
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -73,7 +77,6 @@ return [
     |
     */
     'providers' => [
-        Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\AuthServiceProvider::class,
         Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers\BusServiceProvider::class,
         Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache\CacheServiceProvider::class,
         Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\DatabaseServiceProvider::class,

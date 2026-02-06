@@ -59,11 +59,19 @@ class ManagerInstallJob implements ShouldQueue
         if ($payload->activate && $result['success'] === true) {
             $key = $payload->type . 's';
 
+            $toActivate = [
+                'network_wide' => false,
+                'silent' => true,
+            ];
+
             $payload = (object)[
-                $key => (object)[$result['item']['basename'] => (object)[
-                    'network_wide' => false,
-                    'silent' => true,
-                ]],
+                $key => (object)[
+                    $result['item']['basename'] => (object)$toActivate,
+                ],
+                'extra' => [
+                    'clean_cache' => $payload->cleanCache ?? false,
+                    'patchstackLicenseKey' => $payload->patchstackLicenseKey ?? null,
+                ],
             ];
 
             dispatch(new ManagerManageItemJob($this->mrid, $payload, 'activate'));

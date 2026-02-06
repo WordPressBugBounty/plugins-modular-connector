@@ -37,6 +37,12 @@ class ManagerTheme extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/update.php';
         }
 
+        // Only refresh when explicitly checking for updates
+        // This ensures direct calls to all() get fresh data, but BackupManager with all(false) doesn't trigger API calls
+        if ($checkUpdates) {
+            ServerSetup::refreshThemeUpdates();
+        }
+
         $updatableThemes = $checkUpdates ? $this->getItemsToUpdate(self::THEME) : [];
         $installedThemes = Collection::make(wp_get_themes());
 
@@ -46,8 +52,6 @@ class ManagerTheme extends AbstractManager
     public function install(string $downloadLink, bool $overwrite = true)
     {
         ScreenSimulation::includeUpgrader();
-
-        ServerSetup::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
             $options['clear_destination'] = $overwrite;
@@ -92,8 +96,6 @@ class ManagerTheme extends AbstractManager
             return $this->parseActionResponse(is_array($data) && isset($data['basename']) ? $data['basename'] : $downloadLink, $data, 'install', self::THEME);
         } catch (\Throwable $e) {
             return $this->parseActionResponse($downloadLink, $e, 'install', self::THEME);
-        } finally {
-            ServerSetup::logout();
         }
     }
 
@@ -138,17 +140,11 @@ class ManagerTheme extends AbstractManager
     public function upgrade(array $themes = [])
     {
         ScreenSimulation::includeUpgrader();
-        ServerSetup::clean();
 
-        try {
-            $skin = new \WP_Ajax_Upgrader_Skin();
-            $upgrader = new \Theme_Upgrader($skin);
+        $skin = new \WP_Ajax_Upgrader_Skin();
+        $upgrader = new \Theme_Upgrader($skin);
 
-            $response = @$upgrader->bulk_upgrade($themes);
-        } finally {
-            ServerSetup::clean();
-            ServerSetup::logout();
-        }
+        $response = @$upgrader->bulk_upgrade($themes);
 
         return $this->parseBulkActionResponse($themes, $response, 'upgrade', self::THEME);
     }

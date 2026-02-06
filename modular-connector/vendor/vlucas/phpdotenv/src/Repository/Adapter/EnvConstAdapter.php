@@ -45,7 +45,6 @@ final class EnvConstAdapter implements AdapterInterface
             if ($value === \true) {
                 return 'true';
             }
-            /** @psalm-suppress PossiblyInvalidCast */
             return (string) $value;
         });
     }

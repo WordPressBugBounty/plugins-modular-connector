@@ -25,7 +25,13 @@ use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel as Illuminate
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 
-require __DIR__ . '/../../vendor/scoper-autoload.php';
+$_autoload = __DIR__ . '/../../vendor/scoper-autoload.php';
+
+if (!file_exists($_autoload)) {
+    return false;
+}
+
+require_once $_autoload;
 
 /**
  * @var Application $app
@@ -129,10 +135,14 @@ function modular_connector_register_must_use(string $name)
     try {
         $disk = Storage::disk('mu_plugins');
 
+        if (!is_writable($disk->path(''))) {
+            return;
+        }
+
         $path = $disk->path($name);
         $content = modular_connector_register_must_use_content(MODULAR_CONNECTOR_BASENAME);
 
-        if ($disk->exists($name) && sha1($content) === sha1_file($path)) {
+        if ($disk->exists($name) && hash('sha256', $content) === hash_file('sha256', $path)) {
             return;
         }
 

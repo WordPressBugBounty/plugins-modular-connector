@@ -11,8 +11,6 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Request;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\View;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
-use Psr\Container\ContainerExceptionInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use function Modular\ConnectorDependencies\app;
 use function Modular\ConnectorDependencies\request;
 use function Modular\ConnectorDependencies\storage_path;
@@ -82,8 +80,8 @@ class Settings
      * The function to be called to output the content for this page.
      *
      * @return void
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
+     * @throws \Psr\Container\ContainerExceptionInterface
+     * @throws \Psr\Container\NotFoundExceptionInterface
      */
     public function show(): void
     {
@@ -192,6 +190,11 @@ class Settings
             wp_die(esc_html__('No log file selected for download.', 'modular-connector'));
         }
 
+        // Prevent path traversal attacks
+        if (!preg_match('/^[a-zA-Z0-9._-]+\.log$/', $log)) {
+            wp_die(esc_html__('Invalid log file name.', 'modular-connector'));
+        }
+
         // Build the file path
         $path = storage_path(sprintf('/logs/%s', $log));
 
@@ -224,6 +227,16 @@ class Settings
     }
 
     /**
+     * Allowed queue connection names for clear operations.
+     */
+    private const ALLOWED_QUEUE_CONNECTIONS = ['sync', 'wordpress', 'database'];
+
+    /**
+     * Allowed cache store names for clear operations.
+     */
+    private const ALLOWED_CACHE_STORES = ['file', 'database'];
+
+    /**
      * The function used to clear the cache
      *
      * @return void
@@ -242,6 +255,11 @@ class Settings
             $queueName = $request->get('queue');
             $connection = $request->get('driver');
 
+            // Validate connection is in allowed list
+            if (!in_array($connection, self::ALLOWED_QUEUE_CONNECTIONS, true)) {
+                wp_die(esc_html__('Invalid queue connection.', 'modular-connector'));
+            }
+
             $queue = app('queue')->connection($connection);
 
             if ($queue instanceof ClearableQueue) {
@@ -249,6 +267,11 @@ class Settings
             }
         } elseif ($request->get('action') === 'cache') {
             $driver = $request->get('driver');
+
+            // Validate driver is in allowed list
+            if (!in_array($driver, self::ALLOWED_CACHE_STORES, true)) {
+                wp_die(esc_html__('Invalid cache driver.', 'modular-connector'));
+            }
 
             app('cache')->driver($driver)->flush();
         } elseif ($request->get('action') === 'reset') {
@@ -260,8 +283,8 @@ class Settings
      * The function to save connection data
      *
      * @return void
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
+     * @throws \Psr\Container\ContainerExceptionInterface
+     * @throws \Psr\Container\NotFoundExceptionInterface
      */
     public function store(): void
     {
@@ -289,7 +312,6 @@ class Settings
             $clientSecret = '';
         }
 
-        // TODO allow multiple connection
         $client = OauthClient::mapClient([]);
 
         $client->setClientId($clientId)

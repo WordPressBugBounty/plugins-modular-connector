@@ -2,7 +2,6 @@
 
 namespace Modular\Connector\Models;
 
-use Exception;
 use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 
 class Option extends Model
@@ -22,12 +21,12 @@ class Option extends Model
     public function getValueAttribute()
     {
         try {
-            $value = unserialize($this->option_value);
+            $value = maybe_unserialize($this->option_value);
 
             return $value === false && $this->option_value !== false ?
                 $this->option_value :
                 $value;
-        } catch (Exception $ex) {
+        } catch (\Throwable $ex) {
             return $this->option_value;
         }
     }
@@ -42,11 +41,9 @@ class Option extends Model
 
     public static function get($name)
     {
-        if ($option = self::where('option_name', $name)->first()) {
-            return $option->value;
-        }
+        $option = static::where('option_name', $name)->first();
 
-        return null;
+        return $option ? $option->value : null;
     }
 
     public static function getAll()

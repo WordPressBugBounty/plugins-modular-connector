@@ -59,6 +59,9 @@ class User extends Model implements Authenticatable, CanResetPassword
      */
     public function setUpdatedAtAttribute($value)
     {
+        // WordPress users table doesn't have an updated_at column
+        // This method is intentionally empty to prevent errors
+        return null;
     }
     /**
      * @return string
@@ -126,6 +129,7 @@ class User extends Model implements Authenticatable, CanResetPassword
      */
     public function sendPasswordResetNotification($token)
     {
+        //
     }
     /**
      * @return string

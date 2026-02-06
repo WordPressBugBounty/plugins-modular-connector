@@ -459,6 +459,8 @@ class ManagerServer
                     'zip' => extension_loaded('zip'),
                     'phar' => extension_loaded('phar'),
                     'pcntl' => extension_loaded('pcntl'),
+
+                    'posix' => extension_loaded('posix'),
                 ],
                 'shell' => $this->shellIsAvailable(),
                 'signal' => SignalRegistry::isSupported(),
@@ -537,11 +539,9 @@ class ManagerServer
         $file = $wp_filesystem->abspath() . '.maintenance';
 
         if ($enable) {
-            // Create maintenance file to signal that we are upgrading.
-            $maintenanceString = sprintf(
-                '<?php $upgrading = (!isset($_GET["origin"], $_GET["type"], $_GET["mrid"]) || $_GET["origin"] !== "mo") ? %s : 0; ?>',
-                $indefinite ? 'time()' : time()
-            );
+            // Create maintenance file with strict validation for Modular communications
+            // Uses centralized logic from HttpUtils::generateMaintenance()
+            $maintenanceString = HttpUtils::generateMaintenance($indefinite);
 
             $wp_filesystem->delete($file);
             $wp_filesystem->put_contents($file, $maintenanceString, FS_CHMOD_FILE);

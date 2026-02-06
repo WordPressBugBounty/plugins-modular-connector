@@ -2,6 +2,9 @@
 
 namespace Modular\ConnectorDependencies;
 
+if (!\defined('ABSPATH')) {
+    exit;
+}
 return [
     /*
     |--------------------------------------------------------------------------

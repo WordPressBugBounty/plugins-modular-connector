@@ -2,7 +2,18 @@
 
 namespace Modular\ConnectorDependencies;
 
-global $table_prefix;
+if (!\defined('ABSPATH')) {
+    exit;
+}
+global $wpdb;
+if (!\defined('DB_HOST')) {
+    [$host, $port, $socket, $isIpv6] = ['localhost', 3306, null, \false];
+} else {
+    [$host, $port, $socket, $isIpv6] = $wpdb->parse_db_host(\DB_HOST);
+}
+if ($isIpv6 && \extension_loaded('mysqlnd')) {
+    $host = "[{$host}]";
+}
 return [
     /*
     |--------------------------------------------------------------------------
@@ -14,7 +25,7 @@ return [
     | you may use many connections at once using the Database library.
     |
     */
-    'default' => 'mysql',
+    'default' => 'wordpress',
     /*
     |--------------------------------------------------------------------------
     | Database Connections
@@ -30,7 +41,7 @@ return [
     | choice installed on your machine before you begin development.
     |
     */
-    'connections' => ['mysql' => ['driver' => 'mysql', 'host' => \defined('DB_HOST') ? \DB_HOST : null, 'port' => \defined('Modular\ConnectorDependencies\DB_PORT') ? \Modular\ConnectorDependencies\DB_PORT : 3306, 'database' => \defined('DB_NAME') ? \DB_NAME : null, 'username' => \defined('DB_USER') ? \DB_USER : null, 'password' => \defined('DB_PASSWORD') ? \DB_PASSWORD : null, 'unix_socket' => \defined('DB_HOST') ? \DB_HOST : null, 'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci', 'prefix' => !empty($table_prefix) ? $table_prefix : '', 'prefix_indexes' => \true, 'strict' => \true, 'engine' => null, 'options' => \extension_loaded('pdo_mysql') ? \array_filter([\PDO::MYSQL_ATTR_SSL_CA => \defined('Modular\ConnectorDependencies\DB_ATTR_SSL_CA') ? \Modular\ConnectorDependencies\DB_ATTR_SSL_CA : null]) : []]],
+    'connections' => ['wordpress' => ['driver' => 'mysql', 'host' => $host, 'port' => $port ?: 3306, 'database' => \defined('DB_NAME') ? \DB_NAME : null, 'username' => \defined('DB_USER') ? \DB_USER : null, 'password' => \defined('DB_PASSWORD') ? \DB_PASSWORD : null, 'unix_socket' => $socket ?: null, 'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci', 'prefix' => !empty($wpdb->prefix) ? $wpdb->prefix : '', 'prefix_indexes' => \true, 'strict' => \false, 'engine' => null, 'options' => \extension_loaded('pdo_mysql') ? [\PDO::ATTR_PERSISTENT => \false, \PDO::ATTR_EMULATE_PREPARES => \true] : []], 'modular' => ['driver' => 'mysql', 'host' => $host, 'port' => $port ?: 3306, 'database' => \defined('DB_NAME') ? \DB_NAME : null, 'username' => \defined('DB_USER') ? \DB_USER : null, 'password' => \defined('DB_PASSWORD') ? \DB_PASSWORD : null, 'unix_socket' => $socket ?: null, 'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci', 'prefix' => (!empty($wpdb->prefix) ? $wpdb->prefix : '') . 'modular_', 'prefix_indexes' => \true, 'strict' => \false, 'engine' => null, 'options' => \extension_loaded('pdo_mysql') ? [\PDO::ATTR_PERSISTENT => \false, \PDO::ATTR_EMULATE_PREPARES => \true] : []]],
     /*
     |--------------------------------------------------------------------------
     | Migration Repository Table

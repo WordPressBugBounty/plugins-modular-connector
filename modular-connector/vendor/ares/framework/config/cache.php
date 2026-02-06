@@ -2,6 +2,9 @@
 
 namespace Modular\ConnectorDependencies;
 
+if (!\defined('ABSPATH')) {
+    exit;
+}
 return [
     /*
     |--------------------------------------------------------------------------
@@ -13,7 +16,7 @@ return [
     | not explicitly specified when executing a given caching function.
     |
     */
-    'default' => \defined('Modular\ConnectorDependencies\MODULAR_ARES_CACHE_DRIVER') ? \Modular\ConnectorDependencies\MODULAR_ARES_CACHE_DRIVER : 'wordpress',
+    'default' => \defined('Modular\ConnectorDependencies\MODULAR_CONNECTOR_CACHE_DRIVER') ? \Modular\ConnectorDependencies\MODULAR_CONNECTOR_CACHE_DRIVER : 'file',
     /*
     |--------------------------------------------------------------------------
     | Cache Stores
@@ -27,7 +30,7 @@ return [
     |         "memcached", "redis", "dynamodb", "octane", "null"
     |
     */
-    'stores' => ['apc' => ['driver' => 'apc'], 'array' => ['driver' => 'array', 'serialize' => \false], 'wordpress' => ['driver' => 'wordpress', 'prefix' => \defined('MODULAR_ARES_CACHE_PREFIX') ? \MODULAR_ARES_CACHE_PREFIX : 'modular_connector_cache_']],
+    'stores' => ['apc' => ['driver' => 'apc'], 'array' => ['driver' => 'array', 'serialize' => \false], 'file' => ['driver' => 'file', 'path' => \Modular\ConnectorDependencies\storage_path('cache')], 'wordpress' => ['driver' => 'wordpress', 'prefix' => 'modular_connector_cache_'], 'database' => ['driver' => 'database', 'table' => 'cache', 'lock_table' => 'cache_locks', 'connection' => 'modular', 'lock_connection' => 'modular']],
     /*
     |--------------------------------------------------------------------------
     | Cache Key Prefix

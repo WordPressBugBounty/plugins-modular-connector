@@ -2,11 +2,11 @@
 
 namespace Modular\Connector\Models;
 
-use Modular\Connector\Models\Concerns\Aliases;
-use Modular\Connector\Models\Concerns\CustomTimestamps;
 use Modular\Connector\Models\Concerns\MetaFields;
-use Modular\Connector\Models\Concerns\OrderScopes;
 use Modular\Connector\Models\Meta\ThumbnailMeta;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\Aliases;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\CustomTimestamps;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\OrderScopes;
 use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
 
 class Post extends Model
@@ -60,25 +60,25 @@ class Post extends Model
     ];
 
     protected static $aliases = [
-        'title'         => 'post_title',
-        'content'       => 'post_content',
-        'excerpt'       => 'post_excerpt',
-        'slug'          => 'post_name',
-        'type'          => 'post_type',
-        'mime_type'     => 'post_mime_type',
-        'url'           => 'guid',
-        'author_id'     => 'post_author',
-        'parent_id'     => 'post_parent',
-        'created_at'    => 'post_date',
-        'updated_at'    => 'post_modified',
-        'status'        => 'post_status',
+        'title' => 'post_title',
+        'content' => 'post_content',
+        'excerpt' => 'post_excerpt',
+        'slug' => 'post_name',
+        'type' => 'post_type',
+        'mime_type' => 'post_mime_type',
+        'url' => 'guid',
+        'author_id' => 'post_author',
+        'parent_id' => 'post_parent',
+        'created_at' => 'post_date',
+        'updated_at' => 'post_modified',
+        'status' => 'post_status',
     ];
 
     protected static function boot()
     {
         parent::boot();
 
-        static::deleting(function($post) {
+        static::deleting(function ($post) {
             $post->postmeta()->delete();
             $post->termRelationships()->delete();
             $post->comments()->delete();
@@ -161,7 +161,7 @@ class Post extends Model
     {
         return $this->taxonomies->groupBy(function ($taxonomy) {
             return $taxonomy->taxonomy == 'post_tag' ?
-            'tag' : $taxonomy->taxonomy;
+                'tag' : $taxonomy->taxonomy;
         })->map(function ($group) {
             return $group->mapWithKeys(function ($item) {
                 return [$item->term->slug => $item->term->name];
@@ -171,30 +171,43 @@ class Post extends Model
 
     public function getMainCategoryAttribute()
     {
-        $mainCategory = 'Uncategorized';
+        if (empty($this->terms)) {
+            return 'Uncategorized';
+        }
 
-        if (!empty($this->terms)) {
-            $taxonomies = array_values($this->terms);
+        $firstTaxonomy = reset($this->terms);
 
-            if (!empty($taxonomies[0])) {
-                $terms = array_values($taxonomies[0]);
-                $mainCategory = $terms[0];
+        if ($firstTaxonomy && is_array($firstTaxonomy)) {
+            $firstTerm = reset($firstTaxonomy);
+
+            if ($firstTerm) {
+                return $firstTerm;
             }
         }
 
-        return $mainCategory;
+        return 'Uncategorized';
     }
 
     public function getKeywordsAttribute()
     {
-        return collect($this->terms)->map(function ($taxonomy) {
-            return collect($taxonomy)->values();
-        })->collapse()->toArray();
+        if (empty($this->terms)) {
+            return [];
+        }
+
+        $keywords = [];
+
+        foreach ($this->terms as $taxonomy) {
+            if (is_array($taxonomy)) {
+                $keywords = array_merge($keywords, array_values($taxonomy));
+            }
+        }
+
+        return $keywords;
     }
 
     public function getKeywordsStrAttribute()
     {
-        return implode(',', (array) $this->keywords);
+        return implode(',', (array)$this->keywords);
     }
 
     public static function registerPostType($name, $class)
@@ -209,9 +222,8 @@ class Post extends Model
 
     public function getFormat()
     {
-        $taxonomy = $this->taxonomies()
-            ->where('taxonomy', 'post_format')
-            ->first();
+        // Use already loaded taxonomies collection instead of new query
+        $taxonomy = $this->taxonomies->firstWhere('taxonomy', 'post_format');
 
         if ($taxonomy && $taxonomy->term) {
             return str_replace(

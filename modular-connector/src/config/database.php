@@ -1,5 +1,9 @@
 <?php
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 global $wpdb;
 
 if (!defined('DB_HOST')) {
@@ -60,6 +64,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? [
                 \PDO::ATTR_PERSISTENT => false,
+                \PDO::ATTR_EMULATE_PREPARES => true,
             ] : [],
         ],
 
@@ -79,6 +84,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? [
                 \PDO::ATTR_PERSISTENT => false,
+                \PDO::ATTR_EMULATE_PREPARES => true,
             ] : [],
         ],
     ],

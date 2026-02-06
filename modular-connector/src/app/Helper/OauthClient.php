@@ -2,45 +2,11 @@
 
 namespace Modular\Connector\Helper;
 
-use Modular\ConnectorDependencies\Illuminate\Support\Collection;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\SDK\ModularClient;
 use function Modular\ConnectorDependencies\data_get;
 
 class OauthClient
 {
-    /**
-     * Migrates old clients option to new ones
-     *
-     * @return void
-     * @deprecated Since 1.15.0
-     */
-    private static function migrateOldClients(): void
-    {
-        try {
-            $clients = get_option('_modular_connection_clients');
-
-            if (!$clients) {
-                return;
-            }
-
-            // The "Docket Cache" plugin sets up a cache that sometimes makes the "get_option" directly an array.
-            if (!is_array($clients)) {
-                $clients = $clients ? unserialize($clients) : [];
-            }
-
-            $clients = Collection::make($clients)
-                ->map(fn($client) => static::mapClient($client));
-
-            $clients->each(fn($client) => $client->save());
-
-        } catch (\Throwable $e) {
-            Log::error($e);
-        } finally {
-            delete_option('_modular_connection_clients');
-        }
-    }
-
     /**
      * Generate Modular Key Connection
      *
@@ -48,8 +14,6 @@ class OauthClient
      */
     public static function getClient(): ModularClient
     {
-        static::migrateOldClients();
-
         $value = [
             'client_id' => get_option('_modular_connection_client_id', null),
             'client_secret' => get_option('_modular_connection_client_secret', null),
@@ -107,6 +71,36 @@ class OauthClient
     }
 
     /**
+     * Check if the site was registered via linking token.
+     *
+     * @return bool
+     */
+    public static function isLinkingRegistered(): bool
+    {
+        return (bool)get_option('_modular_linking_registered', false);
+    }
+
+    /**
+     * Mark the site as registered via linking token.
+     *
+     * @return void
+     */
+    public static function setLinkingRegistered(): void
+    {
+        update_option('_modular_linking_registered', true);
+    }
+
+    /**
+     * Mark the site as registered via linking token.
+     *
+     * @return void
+     */
+    public static function removeLinkingRegistered(): void
+    {
+        delete_option('_modular_linking_registered');
+    }
+
+    /**
      * Deletes all stored clients
      */
     public static function uninstall()
@@ -118,5 +112,7 @@ class OauthClient
         delete_option('_modular_connection_connected_at');
         delete_option('_modular_connection_used_at');
         delete_option('_modular_connection_expires_in');
+
+        static::removeLinkingRegistered();
     }
 }

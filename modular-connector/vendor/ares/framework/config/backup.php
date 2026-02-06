@@ -2,8 +2,11 @@
 
 namespace Modular\ConnectorDependencies;
 
+if (!\defined('ABSPATH')) {
+    exit;
+}
 return [
-    'default' => 'phantom',
+    'default' => 'iron',
     'source' => [
         /*
          * The compression algorithm to be used for creating the zip archive.

@@ -3,7 +3,6 @@
 namespace Modular\Connector\Backups;
 
 use Modular\Connector\Backups\Iron\BackupIronDriver;
-use Modular\Connector\Backups\Phantom\BackupDriverPhantomDriver;
 use Modular\Connector\Facades\Manager as ModularManager;
 use Modular\Connector\Services\Manager\ManagerPlugin;
 use Modular\Connector\Services\Manager\ManagerTheme;
@@ -20,15 +19,10 @@ class BackupManager extends Manager
      */
     public function getDefaultDriver()
     {
-        return Cache::driver('wordpress')->get('backup.driver') ?: $this->config->get('backup.default');
-    }
+        $driver = Cache::driver('wordpress')->get('backup.driver') ?: $this->config->get('backup.default');
+        $driver = $driver === 'phantom' ? 'iron' : $driver;
 
-    /**
-     * @return BackupDriverPhantomDriver
-     */
-    public function createPhantomDriver()
-    {
-        return new BackupDriverPhantomDriver();
+        return $driver;
     }
 
     /**

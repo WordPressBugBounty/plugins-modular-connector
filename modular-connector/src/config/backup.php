@@ -1,7 +1,11 @@
 <?php
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 return [
-    'default' => 'phantom',
+    'default' => 'iron',
 
     'source' => [
         /*

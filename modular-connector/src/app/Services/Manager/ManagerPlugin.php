@@ -30,6 +30,12 @@ class ManagerPlugin extends AbstractManager
             require_once ABSPATH . 'wp-admin/includes/update.php';
         }
 
+        // Only refresh when explicitly checking for updates
+        // This ensures direct calls to all() get fresh data, but BackupManager with all(false) doesn't trigger API calls
+        if ($checkUpdates) {
+            ServerSetup::refreshPluginUpdates();
+        }
+
         $updatablePlugins = $checkUpdates ? $this->getItemsToUpdate(self::PLUGIN) : [];
         $plugins = Collection::make(get_plugins());
 
@@ -46,8 +52,6 @@ class ManagerPlugin extends AbstractManager
     public function install(string $downloadLink, bool $overwrite = true)
     {
         ScreenSimulation::includeUpgrader();
-
-        ServerSetup::clean();
 
         add_filter('upgrader_package_options', function ($options) use ($overwrite) {
             $options['clear_destination'] = $overwrite;
@@ -111,8 +115,6 @@ class ManagerPlugin extends AbstractManager
 
             $basename = $results[0] ?? '';
 
-            ServerSetup::clean();
-
             $updatablePlugins = $this->getItemsToUpdate(static::PLUGIN);
             $data = $this->map(self::PLUGIN, Collection::make([$basename => $data]), $updatablePlugins);
 
@@ -121,8 +123,6 @@ class ManagerPlugin extends AbstractManager
             Log::error($e);
 
             return $this->parseActionResponse($downloadLink, $e, 'install', self::PLUGIN);
-        } finally {
-            ServerSetup::logout();
         }
     }
 
@@ -207,8 +207,6 @@ class ManagerPlugin extends AbstractManager
             return $this->parseBulkActionResponse($items, $error, 'upgrade', self::PLUGIN);
         }
 
-        ServerSetup::clean();
-
         try {
             $skin = new \WP_Ajax_Upgrader_Skin();
             $upgrader = new ModularPluginUpgrader($skin);
@@ -222,9 +220,6 @@ class ManagerPlugin extends AbstractManager
                     ];
                 })
                 ->toArray();
-        } finally {
-            ServerSetup::clean();
-            ServerSetup::logout();
         }
 
         return $this->parseBulkActionResponse($items, $response, 'upgrade', self::PLUGIN);

@@ -2,6 +2,8 @@
 
 namespace Modular\Connector\WordPress;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
+
 class ModularPluginUpgrader extends \Plugin_Upgrader
 {
     public function maintenance_mode($enable = \false)
@@ -19,10 +21,10 @@ class ModularPluginUpgrader extends \Plugin_Upgrader
             if (!wp_doing_cron()) {
                 $this->skin->feedback('maintenance_start');
             }
-            $maintenanceString = sprintf(
-                '<?php $upgrading = (!isset($_GET["origin"], $_GET["type"], $_GET["mrid"]) || $_GET["origin"] !== "mo") ? %s : 0; ?>',
-                time()
-            );
+
+            // Create maintenance file with strict validation for Modular communications
+            // Uses centralized logic from HttpUtils::generateMaintenance()
+            $maintenanceString = HttpUtils::generateMaintenance();
 
             $wp_filesystem->delete($file);
             $wp_filesystem->put_contents($file, $maintenanceString, FS_CHMOD_FILE);

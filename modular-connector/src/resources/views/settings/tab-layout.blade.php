@@ -13,10 +13,14 @@
 
     <div class="ds-content {{ $isWhiteLabelActive || $isConnected ? 'ds-content-sm' : '' }}">
         @if(!$isWhiteLabelActive)
+            @php
+                $currentTab = isset($_GET['tab']) ? sanitize_text_field(wp_unslash($_GET['tab'])) : '';
+            @endphp
+
             <div class="ds-tabs">
-                <a href="?page=modular-connector" class="ds-tab {{ !isset($_GET['tab']) ? 'ds-tab-active' : '' }}">{{ esc_html__('Connection Manager', 'modular') }}</a>
-                <a href="?page=modular-connector&tab=logs" class="ds-tab {{ isset($_GET['tab']) && $_GET['tab'] === 'logs' ? 'ds-tab-active' : '' }}">{{ esc_html__('Logs', 'modular') }}</a>
-                <a href="?page=modular-connector&tab=health" class="ds-tab {{ isset($_GET['tab']) && $_GET['tab'] === 'health' ? 'ds-tab-active' : '' }}">{{ esc_html__('Health', 'modular') }}</a>
+                <a href="?page=modular-connector" class="ds-tab {{ empty($currentTab) ? 'ds-tab-active' : '' }}">{{ esc_html__('Connection Manager', 'modular') }}</a>
+                <a href="?page=modular-connector&tab=logs" class="ds-tab {{ $currentTab === 'logs' ? 'ds-tab-active' : '' }}">{{ esc_html__('Logs', 'modular') }}</a>
+                <a href="?page=modular-connector&tab=health" class="ds-tab {{ $currentTab === 'health' ? 'ds-tab-active' : '' }}">{{ esc_html__('Health', 'modular') }}</a>
             </div>
         @endif
 

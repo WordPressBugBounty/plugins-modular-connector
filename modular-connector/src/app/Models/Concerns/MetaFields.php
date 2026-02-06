@@ -8,18 +8,18 @@ use Modular\Connector\Models\Post;
 use Modular\Connector\Models\PostMeta;
 use Modular\Connector\Models\Term;
 use Modular\Connector\Models\TermMeta;
-use Modular\connector\Models\User;
-use Modular\connector\Models\UserMeta;
-use UnexpectedValueException;
+use Modular\Connector\Models\User;
+use Modular\Connector\Models\UserMeta;
+use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use function Modular\ConnectorDependencies\class_basename;
 
 trait MetaFields
 {
     protected $builtInClasses = [
-        Comment::class  => CommentMeta::class,
-        Post::class     => PostMeta::class,
-        Term::class     => TermMeta::class,
-        User::class     => UserMeta::class
+        Comment::class => CommentMeta::class,
+        Post::class => PostMeta::class,
+        Term::class => TermMeta::class,
+        User::class => UserMeta::class,
     ];
 
     public function fields()
@@ -40,7 +40,7 @@ trait MetaFields
             }
         }
 
-        throw new UnexpectedValueException(sprintf(
+        throw new \UnexpectedValueException(sprintf(
             '%s must extend one of ModularDS built-in models: Comment, Post, Term or User.',
             static::class
         ));
@@ -54,7 +54,7 @@ trait MetaFields
             }
         }
 
-        throw new UnexpectedValueException(sprintf(
+        throw new \UnexpectedValueException(sprintf(
             '%s must extend one of ModularDS built-in models: Comment, Post, Term or User.',
             static::class
         ));
@@ -124,7 +124,7 @@ trait MetaFields
     public function createMeta($key, $value = null)
     {
         if (is_array($key)) {
-            return collect($key)->map(function ($value, $key) {
+            return Collection::make($key)->map(function ($value, $key) {
                 return $this->createOneMeta($key, $value);
             });
         }
@@ -134,7 +134,7 @@ trait MetaFields
 
     private function createOneMeta($key, $value)
     {
-        $meta =  $this->meta()->create([
+        $meta = $this->meta()->create([
             'meta_key' => $key,
             'meta_value' => $value,
         ]);
@@ -145,7 +145,9 @@ trait MetaFields
 
     public function getMeta($attribute)
     {
-        if ($meta = $this->meta->{$attribute}) {
+        $meta = $this->meta->{$attribute};
+
+        if ($meta) {
             return $meta;
         }
 

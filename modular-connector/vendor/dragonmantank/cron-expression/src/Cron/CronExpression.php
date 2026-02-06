@@ -34,7 +34,7 @@ class CronExpression
     public const YEAR = 5;
     public const MAPPINGS = ['@yearly' => '0 0 1 1 *', '@annually' => '0 0 1 1 *', '@monthly' => '0 0 1 * *', '@weekly' => '0 0 * * 0', '@daily' => '0 0 * * *', '@midnight' => '0 0 * * *', '@hourly' => '0 * * * *'];
     /**
-     * @var array CRON expression parts
+     * @var array<int, string> CRON expression parts
      */
     protected $cronParts;
     /**
@@ -46,7 +46,7 @@ class CronExpression
      */
     protected $maxIterationCount = 1000;
     /**
-     * @var array Order in which to test of cron parts
+     * @var array<int, int> Order in which to test of cron parts
      */
     protected static $order = [self::YEAR, self::MONTH, self::DAY, self::WEEKDAY, self::HOUR, self::MINUTE];
     /**

@@ -45,9 +45,10 @@ class BackupController extends Controller
     }
 
     /**
+     * @param SiteRequest $modularRequest
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getDatabaseTree()
+    public function getDatabaseTree(SiteRequest $modularRequest)
     {
         $tree = Manager::driver('database')->tree();
 
@@ -57,9 +58,10 @@ class BackupController extends Controller
     /**
      * Returns the backup with the provided $payload name content if existing.
      *
+     * @param SiteRequest $modularRequest
      * @return \Illuminate\Http\JsonResponse
      */
-    protected function getBackupInformation()
+    protected function getBackupInformation(SiteRequest $modularRequest)
     {
         $information = Backup::information();
 

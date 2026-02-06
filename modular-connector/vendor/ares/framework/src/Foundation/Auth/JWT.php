@@ -47,7 +47,7 @@ class JWT
      *
      * @return string       The Base64Url encoded string.
      */
-    private static function base64UrlEncode($input)
+    public static function base64UrlEncode($input)
     {
         return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($input));
     }
@@ -115,6 +115,65 @@ class JWT
         return $action === \Modular\ConnectorDependencies\data_get($payload, 'action', '');
     }
     /**
+     * Verify the validity of a JWT token with a custom key.
+     * Used for API authentication with client_secret.
+     *
+     * @param string $token The JWT token to verify.
+     * @param string $key The secret key to use for verification.
+     * @param string|null $expectedAction Optional action to verify in payload.
+     *
+     * @return bool `true` if the token is valid. `false` otherwise
+     * @throws \Exception
+     */
+    public static function verifyWithKey($token, $key, $expectedAction = null)
+    {
+        if (!$token) {
+            return \false;
+        }
+        // Remove Bearer prefix if present
+        if (Str::contains($token, 'Bearer')) {
+            $token = Str::replace('Bearer ', '', $token);
+        }
+        try {
+            $jwtParts = self::explodeToken($token);
+            $header = json_decode(base64_decode($jwtParts[0]));
+            $payload = json_decode(base64_decode($jwtParts[1]));
+            $signature = self::base64UrlDecode($jwtParts[2]);
+            if (!$header || !$payload) {
+                return \false;
+            }
+            // Get algorithm from header
+            $alg = \Modular\ConnectorDependencies\data_get($header, 'alg');
+            if (!$alg || !isset(self::$SUPPORTED_ALGORITHMS[$alg])) {
+                return \false;
+            }
+            // Check signature
+            $base64UrlHeader = $jwtParts[0];
+            $base64UrlPayload = $jwtParts[1];
+            if (!self::verifySignature("{$base64UrlHeader}.{$base64UrlPayload}", $signature, $key, $alg)) {
+                return \false;
+            }
+            $currentTime = Carbon::now()->timestamp;
+            // Check expiration
+            $exp = \Modular\ConnectorDependencies\data_get($payload, 'exp', 0);
+            if ($exp && $currentTime > $exp) {
+                return \false;
+            }
+            // Check issued at (not before)
+            $iat = \Modular\ConnectorDependencies\data_get($payload, 'iat', 0);
+            if ($iat && $currentTime < $iat) {
+                return \false;
+            }
+            // Check action if provided
+            if ($expectedAction !== null) {
+                return $expectedAction === \Modular\ConnectorDependencies\data_get($payload, 'action', '');
+            }
+            return \true;
+        } catch (\Exception $e) {
+            return \false;
+        }
+    }
+    /**
      * Separates into an array the different parts of a given JWT token
      *
      * @param string $token The token to explode.
@@ -137,7 +196,7 @@ class JWT
      *
      * @return string       The decoded string
      */
-    private static function base64UrlDecode($input)
+    public static function base64UrlDecode($input)
     {
         $remainder = strlen($input) % 4;
         if ($remainder) {

@@ -3,7 +3,7 @@
 namespace Modular\Connector\Models\Meta;
 
 use Modular\Connector\Models\Attachment;
-use Modular\ConnectorDependencies\Illuminate\Support\Arr;
+use Modular\Connector\Models\PostMeta;
 
 class ThumbnailMeta extends PostMeta
 {
@@ -21,18 +21,18 @@ class ThumbnailMeta extends PostMeta
 
     public function size($size)
     {
-        if ($size == self::SIZE_FULL) {
+        if ($size === self::SIZE_FULL) {
             return $this->attachment->url;
         }
 
-        $meta = unserialize($this->attachment->meta->_wp_attachment_metadata);
-        $sizes = Arr::get($meta, 'sizes');
+        $meta = maybe_unserialize($this->attachment->meta->_wp_attachment_metadata);
+        $sizes = $meta['sizes'] ?? [];
 
         if (!isset($sizes[$size])) {
             return $this->attachment->url;
         }
 
-        $data = Arr::get($sizes, $size);
+        $data = $sizes[$size];
 
         return array_merge($data, [
             'url' => dirname($this->attachment->url) . '/' . $data['file'],

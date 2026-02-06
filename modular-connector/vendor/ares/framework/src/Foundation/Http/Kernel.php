@@ -101,6 +101,7 @@ class Kernel extends FoundationKernel
      */
     protected function commands()
     {
+        //
     }
     /**
      * Bootstrap the application for artisan commands.
@@ -124,7 +125,6 @@ class Kernel extends FoundationKernel
     public function handle($request)
     {
         try {
-            $request->enableHttpMethodParameterOverride();
             $response = $this->sendRequestThroughRouter($request);
         } catch (\Throwable $e) {
             $this->reportException($e);

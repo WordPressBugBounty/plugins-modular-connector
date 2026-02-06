@@ -88,6 +88,7 @@ class JobsCleanupService
 
         // Acquire lock to prevent concurrent cleanups
         $lock = Cache::lock('_modular_jobs_cleanup_lock', self::LOCK_TIMEOUT);
+
         if (!$lock->get()) {
             return false;
         }

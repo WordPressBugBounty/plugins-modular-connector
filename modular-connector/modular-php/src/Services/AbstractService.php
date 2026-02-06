@@ -4,7 +4,6 @@ namespace Modular\SDK\Services;
 
 use Modular\SDK\ModularClient;
 use Modular\SDK\ModularClientInterface;
-use Modular\SDK\Objects\BaseObject;
 use Modular\SDK\Objects\BaseObjectFactory;
 
 abstract class AbstractService extends BaseObjectFactory

@@ -11,10 +11,33 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Response;
 use Modular\SDK\Objects\SiteRequest;
+use function Modular\ConnectorDependencies\abort;
 use function Modular\ConnectorDependencies\data_get;
 
 class AuthController
 {
+    /**
+     * Get code from request (header XOR query, never both).
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return string|null
+     */
+    private function getCodeFromRequest($request): ?string
+    {
+        $hasQuery = $request->has('code');
+        $hasHeader = $request->hasHeader('x-mo-code');
+
+        if ($hasQuery) {
+            return $request->get('code');
+        }
+
+        if ($hasHeader) {
+            return $request->header('x-mo-code');
+        }
+
+        return null;
+    }
+
     /**
      * Confirm OAuth from Modular
      *
@@ -26,8 +49,11 @@ class AuthController
     {
         $client = OauthClient::getClient();
 
+        // code: XOR - query or header, never both (already validated in isDirectRequest)
+        $code = $this->getCodeFromRequest($request);
+
         try {
-            $token = $client->oauth->confirmAuthorizationCode($request->get('code'));
+            $token = $client->oauth->confirmAuthorizationCode($code);
 
             $client->setAccessToken($token->access_token)
                 ->setRefreshToken($token->refresh_token)
@@ -60,32 +86,47 @@ class AuthController
     /**
      * @param SiteRequest $modularRequest
      * @return \Illuminate\Http\RedirectResponse
-     * @throws \Exception
      */
     public function getLogin(SiteRequest $modularRequest)
     {
-        $user = data_get($modularRequest->body, 'id');
+        $body = $modularRequest->body;
+        $userId = data_get($body, 'id');
+        $useFallback = data_get($body, 'use_fallback', false);
+        $redirectTo = data_get($body, 'redirect_to', 'index.php');
 
-        if (!empty($user)) {
-            $user = get_user_by('id', $user);
+        $user = null;
+
+        // Try to get the requested user by ID
+        if (!empty($userId)) {
+            $user = get_user_by('id', $userId);
         }
 
+        // If user not found, check if fallback is allowed
         if (empty($user)) {
-            Cache::driver('wordpress')->forget('user.login');
+            if ($useFallback) {
+                // Fallback allowed - get admin user and clear cached user
+                Cache::driver('wordpress')->forget('user.login');
 
-            $user = ServerSetup::getAdminUser();
-        } else {
-            Cache::driver('wordpress')->forever('user.login', $user->ID);
+                $user = ServerSetup::getAdminUser();
+            }
         }
 
+        // If still no user, abort
         if (empty($user)) {
-            // TODO Make a custom exception
-            throw new \Exception('No admin user detected.');
+            abort(404, 'User not found or not authorized.');
+        }
+
+        // User found - cache it for future reference
+        Cache::driver('wordpress')->forever('user.login', $user->ID);
+
+        // Only allow relative paths (no protocol://)
+        if (strpos($redirectTo, '://') !== false) {
+            $redirectTo = 'index.php';
         }
 
         $cookies = ServerSetup::loginAs($user, true);
 
-        return Response::redirectTo(admin_url('index.php'))
+        return Response::redirectTo(admin_url($redirectTo))
             ->withCookies($cookies);
     }
 

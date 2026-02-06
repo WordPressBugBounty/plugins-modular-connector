@@ -158,6 +158,8 @@ class Manifest
         $disk = $this->part->type;
         $limit = $this->part->limit;
         $excluded = Collection::make($this->part->excludedFiles);
+        $excludedExtensions = Collection::make($this->part->excludedExtensions);
+        $excludedSize = $this->part->excludedSize;
 
         $offset = $this->part->offset;
 
@@ -180,7 +182,7 @@ class Manifest
             $offset++;
             $filesProcessed++;
 
-            if (File::shouldExclude($disk, $file, $excluded)) {
+            if (File::shouldExclude($disk, $file, $excluded, $excludedExtensions, $excludedSize)) {
                 continue;
             }
 

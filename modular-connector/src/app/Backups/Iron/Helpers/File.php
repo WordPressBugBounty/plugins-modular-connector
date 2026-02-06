@@ -166,9 +166,27 @@ class File
      * @param Collection $excluded
      * @return bool
      */
-    public static function shouldExclude(string $disk, \SplFileInfo $file, Collection $excluded): bool
+    public static function shouldExclude(
+        string       $disk,
+        \SplFileInfo $file,
+        Collection   $excluded,
+        ?Collection  $excludedExtensions = null,
+        int          $excludedSize = 0
+    ): bool
     {
         if (!file_exists($file->getRealPath()) || !$file->isReadable()) {
+            return true;
+        }
+
+        if ($excludedExtensions && $file->isFile()) {
+            $extension = Str::lower($file->getExtension());
+
+            if ($excludedExtensions->contains($extension)) {
+                return true;
+            }
+        }
+
+        if ($excludedSize > 0 && $file->isFile() && $file->getSize() > $excludedSize) {
             return true;
         }
 
@@ -176,7 +194,29 @@ class File
         $path = Str::replaceFirst($abspath, '', $file->getPathname());
         $dirname = dirname($path);
 
-        return $excluded->some(fn($excludeItem) => Str::startsWith($dirname, $excludeItem) || $path === $excludeItem);
+        return $excluded->some(function ($excludeItem) use ($dirname, $path) {
+            // Exact path match
+            if ($path === $excludeItem) {
+                return true;
+            }
+
+            // Check if dirname starts with excludeItem
+            if (Str::startsWith($dirname, $excludeItem)) {
+                // Exact dirname match
+                if ($dirname === $excludeItem) {
+                    return true;
+                }
+
+                // Verify that after the excludeItem there's a directory separator
+                // This prevents false positives like "my-plugin" matching "my-plugin-pro"
+                $afterPrefix = substr($dirname, strlen($excludeItem));
+                if (isset($afterPrefix[0]) && ($afterPrefix[0] === '/' || $afterPrefix[0] === DIRECTORY_SEPARATOR)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
     }
 
     /**

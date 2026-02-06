@@ -3,8 +3,11 @@
 namespace Modular\Connector\Providers;
 
 use Modular\Connector\Backups\BackupManager;
+use Modular\Connector\Backups\LocalDriver;
 use Modular\Connector\Facades\Manager as ManagerFacade;
 use Modular\Connector\Facades\WhiteLabel;
+use Modular\Connector\Helper\OauthClient;
+use Modular\Connector\Http\ModularRouteResolver;
 use Modular\Connector\Services\Manager;
 use Modular\Connector\Services\Manager\ManagerSafeUpgrade;
 use Modular\Connector\Services\Manager\ManagerWooCommerce;
@@ -12,11 +15,18 @@ use Modular\Connector\Services\ManagerServer;
 use Modular\Connector\Services\ManagerWhiteLabel;
 use Modular\Connector\Services\ServiceDatabase;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Contracts\RouteResolver;
+use Modular\ConnectorDependencies\Illuminate\Filesystem\FilesystemAdapter;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Queue;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
+use Modular\ConnectorDependencies\League\Flysystem\Adapter\Local as LocalAdapter;
+use Modular\ConnectorDependencies\League\Flysystem\Filesystem as Flysystem;
+use Modular\SDK\ModularClientInterface;
+use Modular\SDK\Objects\SiteRequest;
 use function Modular\ConnectorDependencies\base_path;
 
 class ModularConnectorServiceProvider extends ServiceProvider
@@ -34,6 +44,12 @@ class ModularConnectorServiceProvider extends ServiceProvider
         $this->app->singleton(ManagerWooCommerce::class, fn() => new ManagerWooCommerce());
         $this->app->singleton(ManagerSafeUpgrade::class, fn() => new ManagerSafeUpgrade());
         $this->app->singleton(ServiceDatabase::class, fn() => new ServiceDatabase());
+
+        // Register Modular SDK client singleton
+        $this->app->singleton(ModularClientInterface::class, fn() => OauthClient::getClient());
+
+        // Register route resolver for secure internal routing
+        $this->app->singleton(RouteResolver::class, fn() => new ModularRouteResolver());
     }
 
     /**
@@ -66,6 +82,34 @@ class ModularConnectorServiceProvider extends ServiceProvider
     }
 
     /**
+     * Register the custom local filesystem driver.
+     *
+     * @return void
+     */
+    protected function registerFilesystemDriver()
+    {
+        Storage::extend('local', function ($app, $config) {
+            $permissions = $config['permissions'] ?? [];
+
+            $links = ($config['links'] ?? null) === 'skip'
+                ? LocalAdapter::SKIP_LINKS
+                : LocalAdapter::DISALLOW_LINKS;
+
+            // Use our custom LocalDriver instead of the standard LocalAdapter
+            $adapter = new LocalDriver(
+                $config['root'],
+                $config['lock'] ?? LOCK_EX,
+                $links,
+                $permissions
+            );
+
+            return new FilesystemAdapter(
+                new Flysystem($adapter, $config ?? [])
+            );
+        });
+    }
+
+    /**
      * Many sites have problems with the WP Cron system, so we need to force the schedule run.
      * This method will be called when the application is terminating and will force
      * the schedule run by calling an AJAX action.
@@ -95,12 +139,15 @@ class ModularConnectorServiceProvider extends ServiceProvider
             $hook = $this->app->getScheduleHook();
             $url = apply_filters(sprintf('%s_query_url', $hook), site_url('wp-load.php'));
 
+            // Generate random control parameter for this specific request
+            $lbNonce = bin2hex(random_bytes(16));
+
             $query = apply_filters(
                 sprintf('%s_query_args', $hook),
                 [
                     'origin' => 'mo',
                     'type' => 'lb',
-                    'nonce' => wp_create_nonce($hook),
+                    'lbn' => $lbNonce, // Loopback nonce - must match JWT payload
                 ]
             );
 
@@ -110,18 +157,34 @@ class ModularConnectorServiceProvider extends ServiceProvider
                 'timeout' => 10, // In some websites, the default value of 5 seconds is too short.
                 'sslverify' => false,
                 'blocking' => $debugSchedule,
-                'headers' => [],
+                'headers' => [
+                    'User-Agent' => 'ModularConnector/' . MODULAR_CONNECTOR_VERSION . ' (Linux)',
+                ],
             ];
 
+            // Generate JWT with client_secret for x-mo-authentication
             try {
-                $token = JWT::generate($hook);
-                $args['headers']['Authentication'] = 'Bearer ' . $token;
+                $client = OauthClient::getClient();
+                $clientSecret = $client->getClientSecret();
+                $clientId = $client->getClientId();
+
+                if (!empty($clientSecret) && !empty($clientId)) {
+                    $token = $this->generateLoopbackJwt($clientSecret, $clientId, $lbNonce);
+
+                    $args['headers']['x-mo-authentication'] = 'Bearer ' . $token;
+                } else {
+                    Log::warning('Loopback: client_secret or client_id not available, skipping dispatch');
+
+                    return;
+                }
             } catch (\Throwable $e) {
-                // Silence is golden
-                Log::debug($e);
+                Log::debug('Loopback: Failed to generate JWT', ['error' => $e->getMessage()]);
+                return;
             }
 
-            if ($authorization = Cache::driver('wordpress')->get('header.authorization')) {
+            $authorization = Cache::driver('wordpress')->get('header.authorization');
+
+            if ($authorization) {
                 $args['headers']['Authorization'] = $authorization;
             }
 
@@ -152,8 +215,56 @@ class ModularConnectorServiceProvider extends ServiceProvider
     public function register()
     {
         $this->registerFacades();
+        $this->registerFilesystemDriver();
         $this->registerActionLinks();
         $this->registerForceCallSchedule();
+        $this->registerSiteRequestBinding();
+    }
+
+    /**
+     * Register SiteRequest binding as null to resolve from request attributes.
+     *
+     * @return void
+     */
+    protected function registerSiteRequestBinding()
+    {
+        $this->app->bind(SiteRequest::class, fn($app) => null);
+    }
+
+    /**
+     * Generate a JWT for loopback requests using client_secret.
+     *
+     * @param string $clientSecret
+     * @param string $clientId
+     * @param string $lbNonce Random nonce that must match the query string parameter
+     * @return string
+     */
+    private function generateLoopbackJwt(string $clientSecret, string $clientId, string $lbNonce): string
+    {
+        $header = [
+            'typ' => 'JWT',
+            'alg' => 'HS256',
+        ];
+
+        $payload = [
+            'iat' => time(),
+            'exp' => time() + 300, // 5 minutes expiration
+            'type' => 'loopback',
+            'client_id' => $clientId, // Site-specific verification
+            'lbn' => $lbNonce, // Must match query string lbn parameter
+        ];
+
+        $base64UrlHeader = JWT::base64UrlEncode(
+            json_encode($header, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
+        );
+        $base64UrlPayload = JWT::base64UrlEncode(
+            json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
+        );
+
+        $signature = hash_hmac('sha256', "{$base64UrlHeader}.{$base64UrlPayload}", $clientSecret, true);
+        $base64UrlSignature = JWT::base64UrlEncode($signature);
+
+        return "{$base64UrlHeader}.{$base64UrlPayload}.{$base64UrlSignature}";
     }
 
     /**

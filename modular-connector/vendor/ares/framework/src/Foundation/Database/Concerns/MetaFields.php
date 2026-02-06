@@ -4,6 +4,7 @@ namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Conce
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Models\User;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Models\UserMeta;
+use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 trait MetaFields
 {
     /**
@@ -50,7 +51,7 @@ trait MetaFields
                 return sprintf('%s_id', strtolower(\Modular\ConnectorDependencies\class_basename($model)));
             }
         }
-        throw new UnexpectedValueException(sprintf('%s must extend one of ModularDS built-in models: Comment, Post, Term or User.', static::class));
+        throw new \UnexpectedValueException(sprintf('%s must extend one of ModularDS built-in models: Comment, Post, Term or User.', static::class));
     }
     /**
      * @param $query
@@ -139,7 +140,7 @@ trait MetaFields
     public function createMeta($key, $value = null)
     {
         if (is_array($key)) {
-            return \Modular\ConnectorDependencies\collect($key)->map(function ($value, $key) {
+            return Collection::make($key)->map(function ($value, $key) {
                 return $this->createOneMeta($key, $value);
             });
         }
@@ -162,7 +163,8 @@ trait MetaFields
      */
     public function getMeta($attribute)
     {
-        if ($meta = $this->meta->{$attribute}) {
+        $meta = $this->meta->{$attribute};
+        if ($meta) {
             return $meta;
         }
         return null;

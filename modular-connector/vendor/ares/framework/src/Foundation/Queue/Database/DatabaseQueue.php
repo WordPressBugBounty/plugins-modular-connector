@@ -16,7 +16,8 @@ class DatabaseQueue extends IlluminateDatabaseQueue
     public function pop($queue = null)
     {
         $queue = $this->getQueue($queue);
-        if ($job = $this->getNextAvailableJob($queue)) {
+        $job = $this->getNextAvailableJob($queue);
+        if ($job) {
             return $this->marshalJob($queue, $job);
         }
     }

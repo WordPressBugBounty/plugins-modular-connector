@@ -8,6 +8,7 @@ use Modular\Connector\Facades\Server;
 use Modular\Connector\Jobs\ConfigureDriversJob;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\database_path;
@@ -51,11 +52,27 @@ class ManagerDatabase
      *
      * @return string|null
      */
-    public function server()
+    public function serverInfo()
     {
         global $wpdb;
 
-        return $wpdb->db_version();
+        $q = 'SELECT VERSION() AS version';
+
+        try {
+            return DB::selectOne($q)->version;
+        } catch (\Throwable $e) {
+            return $wpdb->get_var($q);
+        }
+    }
+
+    /**
+     * Get database version.
+     *
+     * @return string|null
+     */
+    public function server()
+    {
+        return preg_replace('/[^0-9.].*/', '', $this->serverInfo());
     }
 
     /**
@@ -65,9 +82,7 @@ class ManagerDatabase
      */
     public function engine()
     {
-        global $wpdb;
-
-        $mysql_server_type = $wpdb->db_server_info();
+        $mysql_server_type = $this->serverInfo();
 
         return stristr($mysql_server_type, 'mariadb') ? 'MariaDB' : 'MySQL';
     }
@@ -291,7 +306,7 @@ class ManagerDatabase
      * Create database dump
      *
      * @param string $path
-     * @param \Modular\Connector\Backups\Iron\BackupPart|\Modular\Connector\Backups\Phantom\BackupOptions $options
+     * @param \Modular\Connector\Backups\Iron\BackupPart $options
      * @return void
      * @throws \Exception
      */

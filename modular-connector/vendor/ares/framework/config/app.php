@@ -2,6 +2,9 @@
 
 namespace Modular\ConnectorDependencies;
 
+if (!\defined('ABSPATH')) {
+    exit;
+}
 return [
     /*
     |--------------------------------------------------------------------------
@@ -37,6 +40,16 @@ return [
     */
     'debug_schedule' => \defined('Modular\ConnectorDependencies\MODULAR_CONNECTOR_DEBUG_SCHEDULE') && \Modular\ConnectorDependencies\MODULAR_CONNECTOR_DEBUG_SCHEDULE,
     /*
+     * --------------------------------------------------------------------------
+     * Loopback Requests
+     * --------------------------------------------------------------------------
+     *
+     * This option determines whether the application should allow loopback
+     * requests. Loopback requests are used by the application to
+     * simulate HTTP requests to itself.
+     */
+    'loopback' => \defined('Modular\ConnectorDependencies\MODULAR_CONNECTOR_LOOPBACK') ? \Modular\ConnectorDependencies\MODULAR_CONNECTOR_LOOPBACK : \true,
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
@@ -57,5 +70,5 @@ return [
     | this array to grant expanded functionality to your applications.
     |
     */
-    'providers' => [Ares\Framework\Foundation\Auth\AuthServiceProvider::class, Ares\Framework\Foundation\Providers\BusServiceProvider::class, Ares\Framework\Foundation\Cache\CacheServiceProvider::class, Illuminate\Filesystem\FilesystemServiceProvider::class, Ares\Framework\Foundation\Providers\FoundationServiceProvider::class, Illuminate\View\ViewServiceProvider::class, Ares\Framework\Foundation\Queue\QueueServiceProvider::class],
+    'providers' => [\Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers\BusServiceProvider::class, \Modular\ConnectorDependencies\Ares\Framework\Foundation\Cache\CacheServiceProvider::class, \Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\DatabaseServiceProvider::class, \Modular\ConnectorDependencies\Illuminate\Database\MigrationServiceProvider::class, \Modular\ConnectorDependencies\Illuminate\Filesystem\FilesystemServiceProvider::class, \Modular\ConnectorDependencies\Ares\Framework\Foundation\Providers\FoundationServiceProvider::class, \Modular\ConnectorDependencies\Illuminate\View\ViewServiceProvider::class, \Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue\QueueServiceProvider::class, \Modular\Connector\Providers\ModularConnectorServiceProvider::class, \Modular\Connector\Providers\EventServiceProvider::class, \Modular\Connector\Providers\RouteServiceProvider::class],
 ];

@@ -17,7 +17,6 @@ return array(
     'Modular\\SDK\\' => array($baseDir . '/modular-php/src'),
     'Modular\\Connector\\' => array($baseDir . '/src/app'),
     'Modular\\ConnectorDependencies\\voku\\' => array($vendorDir . '/voku/portable-ascii/src/voku'),
-    'Modular\\ConnectorDependencies\\Webmozart\\Assert\\' => array($vendorDir . '/webmozart/assert/src'),
     'Modular\\ConnectorDependencies\\Symfony\\Contracts\\Translation\\' => array($vendorDir . '/symfony/translation-contracts'),
     'Modular\\ConnectorDependencies\\Symfony\\Contracts\\Service\\' => array($vendorDir . '/symfony/service-contracts'),
     'Modular\\ConnectorDependencies\\Symfony\\Contracts\\EventDispatcher\\' => array($vendorDir . '/symfony/event-dispatcher-contracts'),

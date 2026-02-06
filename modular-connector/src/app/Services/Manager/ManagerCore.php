@@ -41,6 +41,7 @@ class ManagerCore extends AbstractManager
     public function get()
     {
         ScreenSimulation::includeUpgrader();
+        ServerSetup::refreshCoreUpdates();
 
         $coreUpdate = $this->getLatestUpdate();
         $newVersion = $coreUpdate->version ?? null;
@@ -89,17 +90,11 @@ class ManagerCore extends AbstractManager
     public function upgrade($items = [])
     {
         ScreenSimulation::includeUpgrader();
-        ServerSetup::clean();
 
-        try {
-            $skin = new \WP_Ajax_Upgrader_Skin();
-            $core = new \Core_Upgrader($skin);
+        $skin = new \WP_Ajax_Upgrader_Skin();
+        $core = new \Core_Upgrader($skin);
 
-            $result = @$core->upgrade($this->getLatestUpdate());
-        } finally {
-            ServerSetup::clean();
-            ServerSetup::logout();
-        }
+        $result = @$core->upgrade($this->getLatestUpdate());
 
         return $this->parseActionResponse('core', $result, 'upgrade', 'core');
 
