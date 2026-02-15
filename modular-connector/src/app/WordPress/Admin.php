@@ -72,7 +72,7 @@ class Admin
         $enabled = data_get($data, 'enabled', false) ?: false;
         $enabled = $enabled && !current_user_can('manage_options') && !empty(OauthClient::getClient()->getConnectedAt());
 
-        if ($enabled && !HttpUtils::isCron() && !HttpUtils::isDirectRequest()) {
+        if ($enabled && !is_admin() && !HttpUtils::isCron() && !HttpUtils::isDirectRequest()) {
             if (!headers_sent()) {
                 header('Retry-After: 600');
                 header("Content-Type: text/html; charset=utf-8");

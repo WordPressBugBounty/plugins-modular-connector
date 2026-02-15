@@ -91,7 +91,7 @@ class Factory
      * @param  \Illuminate\Contracts\Events\Dispatcher|null  $dispatcher
      * @return void
      */
-    public function __construct(Dispatcher $dispatcher = null)
+    public function __construct(?Dispatcher $dispatcher = null)
     {
         $this->dispatcher = $dispatcher;
         $this->stubCallbacks = \Modular\ConnectorDependencies\collect();

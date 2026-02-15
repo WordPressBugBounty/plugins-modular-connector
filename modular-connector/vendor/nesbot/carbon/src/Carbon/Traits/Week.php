@@ -31,7 +31,7 @@ namespace Modular\ConnectorDependencies\Carbon\Traits;
  * @method static next(int|string $day = null)
  * @method static startOfWeek(int $day = 1)
  * @method static subWeeks(int $weeks = 1)
- * @method static year(int $year = null)
+ * @method static year(?int $year = null)
  */
 trait Week
 {

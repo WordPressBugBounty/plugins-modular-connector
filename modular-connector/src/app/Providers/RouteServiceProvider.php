@@ -19,6 +19,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->routes(function () {
             Route::prefix('/api/modular-connector')
+                ->middleware('api')
                 ->group(base_path('routes/api.php'));
         });
     }

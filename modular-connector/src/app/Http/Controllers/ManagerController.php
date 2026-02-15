@@ -18,7 +18,8 @@ class ManagerController
      */
     public function index(SiteRequest $modularRequest)
     {
-        dispatch(new ManagerUpdateJob($modularRequest->request_id))->afterResponse();
+        $job = dispatch(new ManagerUpdateJob($modularRequest->request_id))->afterResponse();
+        unset($job);
 
         return Response::json([
             'success' => 'OK',

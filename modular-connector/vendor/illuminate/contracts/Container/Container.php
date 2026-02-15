@@ -152,7 +152,7 @@ interface Container extends ContainerInterface
      * @param  \Closure|null  $callback
      * @return void
      */
-    public function resolving($abstract, Closure $callback = null);
+    public function resolving($abstract, ?Closure $callback = null);
     /**
      * Register a new after resolving callback.
      *
@@ -160,5 +160,5 @@ interface Container extends ContainerInterface
      * @param  \Closure|null  $callback
      * @return void
      */
-    public function afterResolving($abstract, Closure $callback = null);
+    public function afterResolving($abstract, ?Closure $callback = null);
 }

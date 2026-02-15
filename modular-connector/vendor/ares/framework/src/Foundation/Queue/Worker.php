@@ -2,6 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Queue\Worker as IlluminateWorker;
 use Modular\ConnectorDependencies\Illuminate\Queue\WorkerOptions;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -14,19 +15,7 @@ class Worker extends IlluminateWorker
      */
     protected function supportsAsyncSignals()
     {
-        $functions = ['pcntl_signal', 'pcntl_alarm', 'pcntl_async_signals', 'posix_kill'];
-        foreach ($functions as $function) {
-            if (!function_exists($function)) {
-                return \false;
-            }
-        }
-        $disabledFunctions = explode(',', @ini_get('disable_functions'));
-        foreach ($functions as $function) {
-            if (\in_array($function, $disabledFunctions)) {
-                return \false;
-            }
-        }
-        return \true;
+        return ServerSetup::supportsAsyncSignals();
     }
     /**
      * Determine the exit code to stop the process if necessary.

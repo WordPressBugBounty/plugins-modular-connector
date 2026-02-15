@@ -4,8 +4,8 @@ namespace Modular\ConnectorDependencies\Illuminate\Support\Facades;
 
 /**
  * @method static \Doctrine\DBAL\Driver\PDOConnection getPdo()
- * @method static \Illuminate\Database\ConnectionInterface connection(string $name = null)
- * @method static \Illuminate\Database\Query\Builder table(string $table, string $as = null)
+ * @method static \Illuminate\Database\ConnectionInterface connection(?string $name = null)
+ * @method static \Illuminate\Database\Query\Builder table(string $table, ?string $as = null)
  * @method static \Illuminate\Database\Query\Expression raw($value)
  * @method static array getQueryLog()
  * @method static array prepareBindings(array $bindings)
@@ -30,7 +30,7 @@ namespace Modular\ConnectorDependencies\Illuminate\Support\Facades;
  * @method static void flushQueryLog()
  * @method static \Illuminate\Database\Connection beforeExecuting(\Closure $callback)
  * @method static void listen(\Closure $callback)
- * @method static void rollBack(int $toLevel = null)
+ * @method static void rollBack(?int $toLevel = null)
  * @method static void setDefaultConnection(string $name)
  *
  * @see \Illuminate\Database\DatabaseManager

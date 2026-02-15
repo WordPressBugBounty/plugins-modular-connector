@@ -3,6 +3,7 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Closure;
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
  * - Defines WP_ADMIN, WP_NETWORK_ADMIN, WP_BLOG_ADMIN constants
  * - Simulates wp-admin environment ($_SERVER, $_COOKIE, $GLOBALS)
  * - Disables WordPress auto-actions (redirects, auto-updates, wp_cron)
+ * - Logs in the admin user early so themes with authorization gates
  */
 class SetupAdminEnvironment
 {
@@ -31,6 +33,9 @@ class SetupAdminEnvironment
         $this->simulateAdminEnvironment();
         // Disable WordPress automatic actions during our operations
         $this->disableWordPressAutoActions();
+        // Login admin user early so themes loading during WordPress init
+        // can pass authorization gates and register their hooks
+        $this->loginAdminUser();
         return $next($request);
     }
     /**
@@ -41,6 +46,11 @@ class SetupAdminEnvironment
      */
     private function setupAdminConstants(): void
     {
+        // Some hosting blocks write permissions for wp-content/mu-plugins,
+        // so in that case we won't be able to define WP_ADMIN constant
+        if (empty($GLOBALS['modular_is_mu_plugin'])) {
+            return;
+        }
         if (!defined('WP_ADMIN')) {
             define('WP_ADMIN', \true);
         }
@@ -101,7 +111,39 @@ class SetupAdminEnvironment
         add_filter('auto_update_theme', '__return_false', \PHP_INT_MAX);
         add_filter('auto_update_plugin', '__return_false', \PHP_INT_MAX);
         add_filter('automatic_updater_disabled', '__return_true');
-        // Prevent wp_cron from running during our requests
+        // Prevent wp_cron hook
         remove_action('init', 'wp_cron');
+    }
+    /**
+     * Login admin user early so plugins and themes see an authenticated user.
+     *
+     * When running as mu-plugin (step 3), defers to muplugins_loaded (step 4)
+     * so login happens BEFORE regular plugins (step 5) and themes (step 9).
+     *
+     * When NOT a mu-plugin (regular plugin, step 5+), logs in immediately
+     * since muplugins_loaded has already fired.
+     *
+     * wp_cookie_constants() is safe to call at this point: it only defines
+     * constants via !defined() checks using get_site_option() (DB is ready
+     * since step 1). When WordPress calls it again at step 7, it's a no-op.
+     */
+    private function loginAdminUser(): void
+    {
+        if (empty($GLOBALS['modular_is_mu_plugin'])) {
+            self::doLogin();
+            return;
+        }
+        add_action('muplugins_loaded', [self::class, 'doLogin']);
+    }
+    /**
+     * @internal Called directly or via muplugins_loaded hook.
+     */
+    public static function doLogin(): void
+    {
+        try {
+            ServerSetup::loginAs();
+        } catch (\Throwable $e) {
+            Log::warning('SetupAdminEnvironment: Early login failed', ['error' => $e->getMessage()]);
+        }
     }
 }

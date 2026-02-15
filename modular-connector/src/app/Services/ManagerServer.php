@@ -2,21 +2,37 @@
 
 namespace Modular\Connector\Services;
 
-use DateTime;
-use DateTimeZone;
 use Imagick;
 use Modular\Connector\Facades\Manager;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
+use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
-use Modular\ConnectorDependencies\Symfony\Component\Console\SignalRegistry\SignalRegistry;
 
 /**
  * Handles all functionality related to WordPress Core.
  */
 class ManagerServer
 {
+    /**
+     * Safely execute a callable and return default value on failure
+     *
+     * @param callable $callback
+     * @param mixed $default
+     * @return mixed
+     */
+    private function safe(callable $callback, $default = null)
+    {
+        try {
+            return $callback();
+        } catch (\Throwable $e) {
+            return $default;
+        }
+    }
+
     /**
      * @return string
      */
@@ -39,18 +55,6 @@ class ManagerServer
     public function useSsl()
     {
         return is_ssl();
-    }
-
-    /**
-     * Detect if php is in safe mode
-     *
-     * @return bool
-     */
-    public function isSafeMode()
-    {
-        $value = ini_get('safe_mode');
-
-        return !($value == 0 || strtolower($value) === 'off');
     }
 
     /**
@@ -89,7 +93,7 @@ class ManagerServer
         $requiredFunctions = ['escapeshellarg', 'proc_open', 'proc_get_status', 'proc_terminate', 'proc_close'];
         $disabledFunction = $this->disabledFunctions();
 
-        return !$this->isSafeMode() && count(array_diff($requiredFunctions, $disabledFunction)) === count($requiredFunctions);
+        return count(array_diff($requiredFunctions, $disabledFunction)) === count($requiredFunctions);
     }
 
     /**
@@ -141,7 +145,7 @@ class ManagerServer
     /**
      * @return mixed|null
      */
-    public function getAutoloadedOptions()
+    private function getAutoloadedOptions()
     {
         if (!function_exists('wp_load_alloptions')) {
             return null;
@@ -197,7 +201,7 @@ class ManagerServer
     /**
      * @return array[]
      */
-    public function getDirectoriesData()
+    private function getDirectoriesData()
     {
         $directories = [
             'root' => [
@@ -248,13 +252,17 @@ class ManagerServer
     /**
      * @return array|null
      */
-    public function getGDData()
+    private function getGDData()
     {
         if (!function_exists('gd_info')) {
             return null;
         }
 
-        $gdData = gd_info();
+        $gdData = $this->safe(fn() => gd_info());
+
+        if (!is_array($gdData)) {
+            return null;
+        }
 
         $gdImageFormats = [];
         $gdSupportedFormats = [
@@ -271,58 +279,55 @@ class ManagerServer
 
         foreach ($gdSupportedFormats as $formatKey => $format) {
             $index = $formatKey . ' Support';
-            if (isset($gd[$index]) && $gd[$index]) {
+            if (isset($gdData[$index]) && $gdData[$index]) {
                 $gdImageFormats[] = $format;
             }
         }
 
-        if (is_array($gdData)) {
-            $gd = [
-                'version' => $gdData['GD Version'],
-                'formats' => $gdImageFormats,
-            ];
-        } else {
-            $gd = null;
-        }
-
-        return $gd;
+        return [
+            'version' => $gdData['GD Version'] ?? null,
+            'formats' => $gdImageFormats,
+        ];
     }
 
-    public function getImageMagickData()
+    private function getImageMagickData()
     {
         if (!class_exists('Imagick')) {
             return null;
         }
 
-        $imagick = new Imagick();
+        $imagick = $this->safe(fn() => new Imagick());
+        if (!$imagick) {
+            return null;
+        }
 
-        $imagemagickVersion = $imagick->getVersion() ?? null;
+        $imagemagickVersion = $this->safe(fn() => $imagick->getVersion());
 
-        $formats = Imagick::queryFormats();
+        $formats = $this->safe(fn() => Imagick::queryFormats(), []);
         $imagemagickFormats = !empty($formats) ? implode(', ', $formats) : null;
 
         if (_wp_image_editor_choose() === 'WP_Image_Editor_Imagick') {
             $imagemagickResources = [
                 'area' => defined('imagick::RESOURCETYPE_AREA')
-                    ? size_format($imagick->getResourceLimit(imagick::RESOURCETYPE_AREA))
+                    ? $this->safe(fn() => size_format($imagick->getResourceLimit(imagick::RESOURCETYPE_AREA)))
                     : null,
                 'disk' => defined('imagick::RESOURCETYPE_DISK')
-                    ? $imagick->getResourceLimit(imagick::RESOURCETYPE_DISK)
+                    ? $this->safe(fn() => $imagick->getResourceLimit(imagick::RESOURCETYPE_DISK))
                     : null,
                 'file' => defined('imagick::RESOURCETYPE_FILE')
-                    ? $imagick->getResourceLimit(imagick::RESOURCETYPE_FILE)
+                    ? $this->safe(fn() => $imagick->getResourceLimit(imagick::RESOURCETYPE_FILE))
                     : null,
                 'map' => defined('imagick::RESOURCETYPE_MAP')
-                    ? size_format($imagick->getResourceLimit(imagick::RESOURCETYPE_MAP))
+                    ? $this->safe(fn() => size_format($imagick->getResourceLimit(imagick::RESOURCETYPE_MAP)))
                     : null,
                 'memory' => defined('imagick::RESOURCETYPE_MEMORY')
-                    ? size_format($imagick->getResourceLimit(imagick::RESOURCETYPE_MEMORY))
+                    ? $this->safe(fn() => size_format($imagick->getResourceLimit(imagick::RESOURCETYPE_MEMORY)))
                     : null,
                 'thread' => defined('imagick::RESOURCETYPE_THREAD')
-                    ? $imagick->getResourceLimit(imagick::RESOURCETYPE_THREAD)
+                    ? $this->safe(fn() => $imagick->getResourceLimit(imagick::RESOURCETYPE_THREAD))
                     : null,
                 'time' => defined('imagick::RESOURCETYPE_TIME')
-                    ? $imagick->getResourceLimit(imagick::RESOURCETYPE_TIME)
+                    ? $this->safe(fn() => $imagick->getResourceLimit(imagick::RESOURCETYPE_TIME))
                     : null,
             ];
         } else {
@@ -339,9 +344,9 @@ class ManagerServer
     /**
      * @return array
      */
-    public function getMediaData()
+    private function getMediaData()
     {
-        $imagickVersion = phpversion('imagick');
+        $imagickVersion = function_exists('phpversion') ? phpversion('imagick') : null;
 
         $fileUploads = ini_get('file_uploads');
         $postMaxSize = ini_get('post_max_size');
@@ -362,13 +367,14 @@ class ManagerServer
                 'effective' => size_format($effective),
             ],
             'gd' => $this->getGDData(),
+            'yearmonth_folders' => (bool)get_option('uploads_use_yearmonth_folders', 1),
         ];
     }
 
     /**
      * @return array
      */
-    public function getConstantsData()
+    private function getConstantsData()
     {
         return [
             'ABSPATH' => defined('ABSPATH') ? ABSPATH : null,
@@ -397,6 +403,35 @@ class ManagerServer
             'DB_COLLATE' => defined('DB_COLLATE') ? DB_COLLATE : null,
             'PHP_SAPI' => defined('PHP_SAPI') ? PHP_SAPI : null,
 
+            // Filesystem restrictions
+            'DISALLOW_FILE_MODS' => defined('DISALLOW_FILE_MODS') ? DISALLOW_FILE_MODS : null,
+            'DISALLOW_FILE_EDIT' => defined('DISALLOW_FILE_EDIT') ? DISALLOW_FILE_EDIT : null,
+
+            // Auto-update controls
+            'AUTOMATIC_UPDATER_DISABLED' => defined('AUTOMATIC_UPDATER_DISABLED') ? AUTOMATIC_UPDATER_DISABLED : null,
+            'WP_AUTO_UPDATE_CORE' => defined('WP_AUTO_UPDATE_CORE') ? WP_AUTO_UPDATE_CORE : null,
+
+            // Filesystem method and permissions
+            'FS_METHOD' => defined('FS_METHOD') ? FS_METHOD : null,
+            'FS_CHMOD_FILE' => defined('FS_CHMOD_FILE') ? FS_CHMOD_FILE : null,
+            'FS_CHMOD_DIR' => defined('FS_CHMOD_DIR') ? FS_CHMOD_DIR : null,
+            'FTP_BASE' => defined('FTP_BASE') ? FTP_BASE : null,
+            'FTP_CONTENT_DIR' => defined('FTP_CONTENT_DIR') ? FTP_CONTENT_DIR : null,
+            'FTP_PLUGIN_DIR' => defined('FTP_PLUGIN_DIR') ? FTP_PLUGIN_DIR : null,
+
+            // Temp and paths
+            'WP_TEMP_DIR' => defined('WP_TEMP_DIR') ? WP_TEMP_DIR : null,
+
+            // SSL
+            'FORCE_SSL_ADMIN' => defined('FORCE_SSL_ADMIN') ? FORCE_SSL_ADMIN : null,
+
+            // Security
+            'ALLOW_UNFILTERED_UPLOADS' => defined('ALLOW_UNFILTERED_UPLOADS') ? ALLOW_UNFILTERED_UPLOADS : null,
+            'DISALLOW_UNFILTERED_HTML' => defined('DISALLOW_UNFILTERED_HTML') ? DISALLOW_UNFILTERED_HTML : null,
+
+            // Cron
+            'WP_CRON_LOCK_TIMEOUT' => defined('WP_CRON_LOCK_TIMEOUT') ? WP_CRON_LOCK_TIMEOUT : null,
+
             'MODULAR_CONNECTOR_ENV' => defined('MODULAR_CONNECTOR_ENV') ? MODULAR_CONNECTOR_ENV : null,
             'MODULAR_CONNECTOR_LOOPBACK' => defined('MODULAR_CONNECTOR_LOOPBACK') ? MODULAR_CONNECTOR_LOOPBACK : null,
             'MODULAR_CONNECTOR_DEBUG' => defined('MODULAR_CONNECTOR_DEBUG') ? MODULAR_CONNECTOR_DEBUG : null,
@@ -414,6 +449,281 @@ class ManagerServer
     }
 
     /**
+     * Get user count with role distribution.
+     *
+     * Emulates WordPress count_users() but optimized with a single query.
+     * Only counts registered roles (like WordPress strategy 'time').
+     *
+     * @return array
+     */
+    private function getUserCountData(): array
+    {
+        $prefix = DB::getTablePrefix();
+
+        // In multisite, get the correct prefix for current blog
+        if (is_multisite()) {
+            global $wpdb;
+
+            $prefix = $wpdb->get_blog_prefix();
+        }
+
+        $metaKey = $prefix . 'capabilities';
+
+        // Single query with JOIN to ensure only existing users are counted
+        $results = DB::table('usermeta')
+            ->join('users', 'usermeta.user_id', '=', 'users.ID')
+            ->select(DB::raw('meta_value, COUNT(*) as count'))
+            ->where('meta_key', $metaKey)
+            ->groupBy('meta_value')
+            ->get();
+
+        // Initialize with all registered roles (like WordPress does)
+        $registeredRoles = array_keys(wp_roles()->get_names());
+        $availRoles = array_fill_keys($registeredRoles, 0);
+        $availRoles['none'] = 0;  // For users without roles
+
+        $totalUsers = 0;
+
+        foreach ($results as $row) {
+            $totalUsers += (int)$row->count;
+            $capabilities = maybe_unserialize($row->meta_value);
+
+            // Users without roles (a:0:{})
+            if (!is_array($capabilities) || empty($capabilities)) {
+                $availRoles['none'] += (int)$row->count;
+                continue;
+            }
+
+            // Only count registered roles (like WordPress strategy 'time')
+            foreach ($capabilities as $role => $enabled) {
+                if ($enabled && isset($availRoles[$role])) {
+                    $availRoles[$role] += (int)$row->count;
+                }
+            }
+        }
+
+        return [
+            'total_users' => $totalUsers,
+            'avail_roles' => $availRoles,
+        ];
+    }
+
+    /**
+     * Get PHP runtime configuration.
+     *
+     * @return array
+     */
+    private function getRuntimeData(): array
+    {
+        $uploadTmpDir = ini_get('upload_tmp_dir') ?: sys_get_temp_dir();
+
+        return [
+            'max_execution_time' => (int)ini_get('max_execution_time'),
+            'max_input_time' => (int)ini_get('max_input_time'),
+            'max_input_vars' => (int)ini_get('max_input_vars'),
+            'upload_tmp_dir' => $uploadTmpDir,
+            'upload_tmp_dir_writable' => function_exists('wp_is_writable')
+                ? wp_is_writable($uploadTmpDir)
+                : is_writable($uploadTmpDir),
+            'opcache' => [
+                'enabled' => function_exists('opcache_get_status')
+                    && !empty(@opcache_get_status(false)),
+                'revalidate_freq' => $this->safe(fn() => ini_get('opcache.revalidate_freq')),
+                'validate_timestamps' => $this->safe(fn() => (bool)ini_get('opcache.validate_timestamps')),
+                'memory_consumption' => $this->safe(fn() => ini_get('opcache.memory_consumption')),
+                'max_accelerated_files' => $this->safe(fn() => (int)ini_get('opcache.max_accelerated_files')),
+                'interned_strings_buffer' => $this->safe(fn() => ini_get('opcache.interned_strings_buffer')),
+                'jit' => $this->safe(fn() => ini_get('opcache.jit')),
+            ],
+        ];
+    }
+
+    /**
+     * Detect reverse proxy and CDN infrastructure.
+     *
+     * @return array
+     */
+    private function getProxyData(): array
+    {
+        return [
+            'is_proxied' => !empty($_SERVER['HTTP_X_FORWARDED_FOR'])
+                || !empty($_SERVER['HTTP_X_REAL_IP'])
+                || !empty($_SERVER['HTTP_CF_CONNECTING_IP']),
+            'cloudflare' => [
+                'detected' => !empty($_SERVER['HTTP_CF_RAY']),
+                'country' => $_SERVER['HTTP_CF_IPCOUNTRY'] ?? null,
+                'ray_id' => $_SERVER['HTTP_CF_RAY'] ?? null,
+            ],
+            'forwarded' => [
+                'for' => $_SERVER['HTTP_X_FORWARDED_FOR'] ?? null,
+                'proto' => $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null,
+                'host' => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? null,
+            ],
+            'real_ip' => $_SERVER['HTTP_X_REAL_IP'] ?? null,
+        ];
+    }
+
+    /**
+     * Detect WordPress object cache configuration.
+     *
+     * @return array
+     */
+    private function getObjectCacheData(): array
+    {
+        return [
+            'external' => function_exists('wp_using_ext_object_cache')
+                ? wp_using_ext_object_cache()
+                : false,
+            'drop_in_exists' => Storage::disk('content')->exists('object-cache.php'),
+            'redis_available' => extension_loaded('redis'),
+            'memcached_available' => extension_loaded('memcached') || extension_loaded('memcache'),
+            'apcu_available' => extension_loaded('apcu'),
+        ];
+    }
+
+    /**
+     * Get WP-Cron health information.
+     *
+     * @return array
+     */
+    private function getCronHealthData(): array
+    {
+        $crons = function_exists('_get_cron_array') ? _get_cron_array() : [];
+        $cronLock = function_exists('get_transient')
+            ? (int)get_transient('doing_cron')
+            : 0;
+
+        $nextCron = null;
+        if (is_array($crons) && !empty($crons)) {
+            $nextCron = min(array_keys($crons));
+        }
+
+        $eventCount = 0;
+        if (is_array($crons)) {
+            foreach ($crons as $timestamp => $hooks) {
+                if (is_array($hooks)) {
+                    foreach ($hooks as $hook => $events) {
+                        $eventCount += is_array($events) ? count($events) : 0;
+                    }
+                }
+            }
+        }
+
+        return [
+            'disabled' => defined('DISABLE_WP_CRON') && DISABLE_WP_CRON,
+            'scheduled_events' => $eventCount,
+            'cron_lock_active' => $cronLock > 0,
+            'cron_lock_timestamp' => $cronLock > 0 ? $cronLock : null,
+            'next_scheduled' => $nextCron ? Carbon::createFromTimestamp($nextCron)->format(Carbon::ATOM) : null,
+            'cron_lock_timeout' => defined('WP_CRON_LOCK_TIMEOUT') ? WP_CRON_LOCK_TIMEOUT : 60,
+        ];
+    }
+
+    /**
+     * Get PHP runtime and extensions data.
+     *
+     * @return array
+     */
+    private function getPhpData(): array
+    {
+        return [
+            'current' => $this->phpVersion(),
+            'memory_limit' => $this->memoryLimit(),
+            'extensions' => [
+                'dom' => extension_loaded('dom'),
+                'exif' => extension_loaded('exif'),
+                'fileinfo' => extension_loaded('fileinfo'),
+                'hash' => extension_loaded('hash'),
+                'imagick' => extension_loaded('imagick'),
+                'json' => extension_loaded('json'),
+                'mbstring' => extension_loaded('mbstring'),
+                'libsodium' => extension_loaded('libsodium'),
+                'openssl' => extension_loaded('openssl'),
+                'pcre' => extension_loaded('pcre'),
+                'mod_xml' => extension_loaded('mod_xml'),
+                'filter' => extension_loaded('filter'),
+                'gd' => extension_loaded('gd'),
+                'iconv' => extension_loaded('iconv'),
+                'intl' => extension_loaded('intl'),
+                'mcrypt' => extension_loaded('mcrypt'),
+                'simplexml' => extension_loaded('simplexml'),
+                'xmlreader' => extension_loaded('xmlreader'),
+                'zlib' => extension_loaded('zlib'),
+                'mysqli' => extension_loaded('mysqli'),
+                'pdo' => extension_loaded('pdo'),
+                'pdo_mysql' => extension_loaded('pdo_mysql'),
+                'curl' => extension_loaded('curl'),
+                'zip' => extension_loaded('zip'),
+                'phar' => extension_loaded('phar'),
+                'pcntl' => extension_loaded('pcntl'),
+                'posix' => extension_loaded('posix'),
+            ],
+            'hash_algos' => $this->safe(function () {
+                $available = hash_algos();
+                return [
+                    'sha256' => in_array('sha256', $available),
+                    'xxh128' => in_array('xxh128', $available),
+                    'md5' => in_array('md5', $available),
+                ];
+            }, ['sha256' => false, 'xxh128' => false, 'md5' => false]),
+            'shell' => $this->shellIsAvailable(),
+            'signal' => ServerSetup::supportsAsyncSignals(),
+            'disabled_functions' => $this->disabledFunctions(),
+            'runtime' => $this->getRuntimeData(),
+        ];
+    }
+
+    /**
+     * Get WordPress site configuration data.
+     *
+     * @return array
+     */
+    private function getSiteData(): array
+    {
+        return [
+            'is_ssl' => $this->useSsl(),
+            'is_multisite' => is_multisite(),
+            'is_main_site' => is_main_site(),
+            'base_url' => site_url(),
+            'rest_url' => rest_url(),
+            'home_url' => home_url(),
+            'plugins_url' => plugins_url(),
+            'timezone' => wp_timezone_string(),
+            'is_public' => $this->isPublic(),
+            'user_count' => $this->safe(fn() => $this->getUserCountData(), count_users()),
+            'is_mu_plugin' => HttpUtils::isMuPlugin(),
+            'cache_driver' => Config::get('cache.default'),
+            'queue_driver' => Config::get('queue.default'),
+            'proxy' => $this->getProxyData(),
+            'object_cache' => $this->getObjectCacheData(),
+            'cron' => $this->getCronHealthData(),
+        ];
+    }
+
+    /**
+     * Get server environment data.
+     *
+     * @return array
+     */
+    private function getServerData(): array
+    {
+        $date = Carbon::now('UTC');
+
+        return [
+            'uname' => function_exists('php_uname') ? php_uname() : null,
+            'hostname' => function_exists('php_uname') ? php_uname('n') : null,
+            'disk_free_space' => $this->getDiskSpace(),
+            'is_unix' => $this->isUnix(),
+            'web_server' => $this->getWebServer(),
+            'curl_version' => $this->curlVersion(),
+            'default_time_zone' => $this->getDefaultTimezone(),
+            'current_time' => $date->format(Carbon::ATOM),
+            'server_time' => $this->getServerTime(),
+            'autoloaded_options' => $this->getAutoloadedOptions(),
+        ];
+    }
+
+    /**
      * Get server information
      *
      * @return array
@@ -421,80 +731,13 @@ class ManagerServer
      */
     public function information()
     {
-        $date = new \DateTime('now', new DateTimeZone('UTC'));
-
         return [
             'connector_version' => $this->connectorVersion(),
-            'php' => [
-                'current' => $this->phpVersion(),
-                'memory_limit' => $this->memoryLimit(),
-                'safe_mode' => $this->isSafeMode(),
-                'extensions' => [
-                    'dom' => extension_loaded('dom'),
-                    'exif' => extension_loaded('exif'),
-                    'fileinfo' => extension_loaded('fileinfo'),
-                    'hash' => extension_loaded('hash'),
-                    'imagick' => extension_loaded('imagick'),
-                    'json' => extension_loaded('json'),
-                    'mbstring' => extension_loaded('mbstring'),
-                    'libsodium' => extension_loaded('libsodium'),
-                    'openssl' => extension_loaded('openssl'),
-                    'pcre' => extension_loaded('pcre'),
-                    'mod_xml' => extension_loaded('mod_xml'),
-                    'filter' => extension_loaded('filter'),
-                    'gd' => extension_loaded('gd'),
-                    'iconv' => extension_loaded('iconv'),
-                    'intl' => extension_loaded('intl'),
-                    'mcrypt' => extension_loaded('mcrypt'),
-                    'simplexml' => extension_loaded('simplexml'),
-                    'xmlreader' => extension_loaded('xmlreader'),
-
-                    'zlib' => extension_loaded('zlib'),
-                    'mysql' => extension_loaded('mysql'),
-                    'mysqli' => extension_loaded('mysqli'),
-                    'pdo' => extension_loaded('pdo'),
-                    'pdo_mysql' => extension_loaded('pdo_mysql'),
-                    'open_ssl' => extension_loaded('openssl'),
-                    'curl' => extension_loaded('curl'),
-                    'zip' => extension_loaded('zip'),
-                    'phar' => extension_loaded('phar'),
-                    'pcntl' => extension_loaded('pcntl'),
-
-                    'posix' => extension_loaded('posix'),
-                ],
-                'shell' => $this->shellIsAvailable(),
-                'signal' => SignalRegistry::isSupported(),
-                'disabled_functions' => $this->disabledFunctions(),
-            ],
+            'php' => $this->getPhpData(),
             'database' => Manager::driver('database')->get(),
             'core' => Manager::driver('core')->get(),
-            'site' => [
-                'is_ssl' => $this->useSsl(),
-                'is_multisite' => is_multisite(),
-                'is_main_site' => is_main_site(),
-                'base_url' => site_url(),
-                'rest_url' => rest_url(),
-                'home_url' => home_url(),
-                'plugins_url' => plugins_url(),
-                'timezone' => wp_timezone_string(),
-                'is_public' => $this->isPublic(),
-                'user_count' => count_users(), // TODO admin_user_count
-                'is_mu_plugin' => HttpUtils::isMuPlugin(),
-                'cache_driver' => Config::get('cache.default'),
-                'queue_driver' => Config::get('queue.default'),
-            ],
-            'server' => [
-                'uname' => function_exists('php_uname') ? php_uname() : null, // mode: a
-                'hostname' => function_exists('php_uname') ? php_uname('n') : null,
-                'disk_free_space' => $this->getDiskSpace(),
-                'is_unix' => $this->isUnix(),
-                'web_server' => $this->getWebServer(), // TODO split: web_server and web_server_version
-                'curl_version' => $this->curlVersion(),
-                'default_time_zone' => $this->getDefaultTimezone(),
-                'current_time' => $date->format(DateTime::ATOM),
-                'server_time' => $this->getServerTime(),
-                'autoloaded_options' => $this->getAutoloadedOptions(),
-            ],
+            'site' => $this->getSiteData(),
+            'server' => $this->getServerData(),
             'media' => $this->getMediaData(),
             'directories' => $this->getDirectoriesData(),
             'constants' => $this->getConstantsData(),
@@ -512,10 +755,8 @@ class ManagerServer
         }
 
         try {
-            // Emulate the logout process without do_action( 'wp_logout', $user_id );
             wp_set_current_user(0);
         } catch (\Throwable $e) {
-            // Silence is golden
         }
     }
 

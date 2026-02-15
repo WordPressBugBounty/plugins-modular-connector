@@ -32,7 +32,7 @@ class Pool
      * @param  \Illuminate\Http\Client\Factory|null  $factory
      * @return void
      */
-    public function __construct(Factory $factory = null)
+    public function __construct(?Factory $factory = null)
     {
         $this->factory = $factory ?: new Factory();
         if (method_exists(Utils::class, 'chooseHandler')) {

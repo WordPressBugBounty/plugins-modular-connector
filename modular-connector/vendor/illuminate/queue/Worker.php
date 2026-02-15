@@ -90,7 +90,7 @@ class Worker
      * @param  callable|null  $resetScope
      * @return void
      */
-    public function __construct(QueueManager $manager, Dispatcher $events, ExceptionHandler $exceptions, callable $isDownForMaintenance, callable $resetScope = null)
+    public function __construct(QueueManager $manager, Dispatcher $events, ExceptionHandler $exceptions, callable $isDownForMaintenance, ?callable $resetScope = null)
     {
         $this->events = $events;
         $this->manager = $manager;

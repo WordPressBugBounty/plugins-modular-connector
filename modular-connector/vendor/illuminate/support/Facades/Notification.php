@@ -7,13 +7,13 @@ use Modular\ConnectorDependencies\Illuminate\Notifications\ChannelManager;
 use Modular\ConnectorDependencies\Illuminate\Support\Testing\Fakes\NotificationFake;
 /**
  * @method static \Illuminate\Notifications\ChannelManager locale(string|null $locale)
- * @method static \Illuminate\Support\Collection sent(mixed $notifiable, string $notification, callable $callback = null)
+ * @method static \Illuminate\Support\Collection sent(mixed $notifiable, string $notification, ?callable $callback = null)
  * @method static bool hasSent(mixed $notifiable, string $notification)
  * @method static mixed channel(string|null $name = null)
- * @method static void assertNotSentTo(mixed $notifiable, string|\Closure $notification, callable $callback = null)
+ * @method static void assertNotSentTo(mixed $notifiable, string|\Closure $notification, ?callable $callback = null)
  * @method static void assertNothingSent()
- * @method static void assertSentOnDemand(string|\Closure $notification, callable $callback = null)
- * @method static void assertSentTo(mixed $notifiable, string|\Closure $notification, callable $callback = null)
+ * @method static void assertSentOnDemand(string|\Closure $notification, ?callable $callback = null)
+ * @method static void assertSentTo(mixed $notifiable, string|\Closure $notification, ?callable $callback = null)
  * @method static void assertSentOnDemandTimes(string $notification, int $times = 1)
  * @method static void assertSentToTimes(mixed $notifiable, string $notification, int $times = 1)
  * @method static void assertTimesSent(int $expectedCount, string $notification)

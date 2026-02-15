@@ -7,6 +7,7 @@ use Modular\ConnectorDependencies\Illuminate\Container\Container;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Bus\Dispatcher;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Cache\Repository as Cache;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache as CacheFacade;
 class PendingDispatch
 {
     /**
@@ -160,7 +161,15 @@ class PendingDispatch
     {
         if (!$this->shouldDispatch()) {
             return;
-        } elseif ($this->afterResponse) {
+        }
+        // Check if we should force synchronous dispatch
+        // This happens after response is sent but before terminate()
+        try {
+            $forceSync = CacheFacade::driver('array')->get('pending_dispatch_force_sync', \false);
+        } catch (\Throwable $e) {
+            $forceSync = \false;
+        }
+        if ($this->afterResponse && !$forceSync) {
             \Modular\ConnectorDependencies\app(Dispatcher::class)->dispatchAfterResponse($this->job);
         } else {
             \Modular\ConnectorDependencies\app(Dispatcher::class)->dispatch($this->job);

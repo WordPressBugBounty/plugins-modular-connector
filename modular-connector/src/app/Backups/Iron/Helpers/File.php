@@ -238,7 +238,7 @@ class File
             ->sortByType();
 
         return Collection::make($files)
-            ->map(fn($item) => static::mapItem($item, $disk, true))
+            ->map(fn($item) => static::mapItem($item, $disk, true, false))
             ->values();
     }
 
@@ -270,10 +270,17 @@ class File
      * @param \SplFileInfo $item
      * @param string $disk
      * @param bool $withParentPath
+     * @param bool $withChecksum Calculate file checksum (expensive I/O operation, default: true)
+     * @param ManifestHasher|null $hasher Custom hasher for optimized checksum calculation
      * @return array
      */
-    public static function mapItem(\SplFileInfo $item, string $disk, bool $withParentPath = false): array
-    {
+    public static function mapItem(
+        \SplFileInfo $item,
+        string $disk,
+        bool $withParentPath = false,
+        bool $withChecksum = true,
+        ?ManifestHasher $hasher = null
+    ): array {
         $type = $item->getType();
 
         if ($item->isLink()) {
@@ -282,8 +289,15 @@ class File
 
         $relativePath = File::getRelativePathToDisk($item, $disk);
 
+        // Checksum MUST be first field to maintain CSV format: checksum;type;size;timestamp;path
+        if ($withChecksum && !empty($hasher) && $type !== 'dir') {
+            $checksum = $hasher->computeHash($item);
+        } else {
+            $checksum = null;
+        }
+
         $data = [
-            'checksum' => $type !== 'dir' ? hash_file('sha256', $item->getRealPath()) : null,
+            'checksum' => $checksum,
             'type' => Str::substr($type, 0, 1),
             'size' => $item->getSize(),
             'timestamp' => $item->getMTime(),

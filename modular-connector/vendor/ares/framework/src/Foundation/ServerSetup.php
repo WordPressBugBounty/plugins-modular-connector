@@ -74,6 +74,7 @@ class ServerSetup
         if (!function_exists('wp_set_current_user')) {
             include_once \ABSPATH . '/wp-includes/pluggable.php';
         }
+        wp_cookie_constants();
         if (!$withCookies && is_user_logged_in()) {
             return [];
         }
@@ -83,7 +84,6 @@ class ServerSetup
         }
         $id = intval(\Modular\ConnectorDependencies\data_get($user, 'ID'));
         Log::debug('Login as user', ['user' => $id, 'login' => $user->user_login]);
-        wp_cookie_constants();
         wp_set_current_user($id, \Modular\ConnectorDependencies\data_get($user, 'user_login'));
         if ($withCookies) {
             LoginCompatibilities::afterLogin($id);
@@ -101,12 +101,7 @@ class ServerSetup
      */
     public static function getAdminUser()
     {
-        if (!function_exists('get_user_by')) {
-            require_once \ABSPATH . \WPINC . '/pluggable.php';
-        }
-        if (!function_exists('get_super_admins')) {
-            require_once \ABSPATH . \WPINC . '/capabilities.php';
-        }
+        static::ensureUserFunctionsLoaded();
         $userId = Cache::driver('wordpress')->get('user.login');
         if ($userId) {
             $user = get_user_by('id', $userId);
@@ -114,21 +109,7 @@ class ServerSetup
                 return $user;
             }
         }
-        if (is_multisite()) {
-            $users = get_super_admins();
-            if (!empty($users)) {
-                $user = \Modular\ConnectorDependencies\data_get($users, 0);
-                return get_user_by('login', $user);
-            }
-        }
-        global $wpdb;
-        $users = $wpdb->get_results("SELECT *\n\t\t\tFROM {$wpdb->users} u\n\t\t\tINNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id\n\t\t\tWHERE um.meta_key = '{$wpdb->prefix}capabilities'\n\t\t\tAND um.meta_value LIKE '%administrator%'\n\t\t\tLIMIT 1\n\t\t\t");
-        $user = \Modular\ConnectorDependencies\data_get($users, 0);
-        if ($user) {
-            return $user;
-        }
-        $users = get_users(['role' => 'administrator']);
-        return \Modular\ConnectorDependencies\data_get($users, 0);
+        return static::getAllAdminUsers(1)->first();
     }
     /**
      * Set cookies in $_COOKIE superglobal for internal verification.
@@ -169,7 +150,63 @@ class ServerSetup
     /**
      * @return array|false|mixed
      */
-    public static function getAllAdminUsers()
+    public static function getAllAdminUsers(?int $limit = null)
+    {
+        static::ensureUserFunctionsLoaded();
+        if (is_multisite()) {
+            $query = User::whereIn('user_login', get_super_admins());
+            if ($limit) {
+                $query->limit($limit);
+            }
+            return $query->get();
+        }
+        $query = User::whereHas('meta', function ($q) {
+            $q->where('meta_key', 'LIKE', '%capabilities%');
+            $q->where('meta_value', 'LIKE', '%administrator%');
+        });
+        if ($limit) {
+            $query->limit($limit);
+        }
+        $users = $query->get();
+        if ($users->isNotEmpty()) {
+            return $users;
+        }
+        $args = ['role' => 'administrator'];
+        if ($limit) {
+            $args['number'] = $limit;
+        }
+        return Collection::make(get_users($args))->map(fn(\WP_User $user) => (new User())->forceFill(get_object_vars($user->data)));
+    }
+    /**
+     * Determine if async signals are supported.
+     *
+     * Checks for PCNTL extension functions required for signal handling
+     * and verifies they are not disabled in php.ini.
+     *
+     * @return bool
+     */
+    public static function supportsAsyncSignals(): bool
+    {
+        $functions = ['pcntl_signal', 'pcntl_alarm', 'pcntl_async_signals', 'posix_kill'];
+        foreach ($functions as $function) {
+            if (!function_exists($function)) {
+                return \false;
+            }
+        }
+        $disabledFunctions = explode(',', @ini_get('disable_functions'));
+        foreach ($functions as $function) {
+            if (in_array($function, $disabledFunctions)) {
+                return \false;
+            }
+        }
+        return \true;
+    }
+    /**
+     * Ensure WordPress user functions are loaded.
+     *
+     * @return void
+     */
+    private static function ensureUserFunctionsLoaded(): void
     {
         if (!function_exists('get_user_by')) {
             require_once \ABSPATH . \WPINC . '/pluggable.php';
@@ -177,16 +214,5 @@ class ServerSetup
         if (!function_exists('get_super_admins')) {
             require_once \ABSPATH . \WPINC . '/capabilities.php';
         }
-        if (is_multisite()) {
-            return User::whereIn('user_login', get_super_admins())->get();
-        }
-        $users = User::whereHas('meta', function ($q) {
-            $q->where('meta_key', 'LIKE', '%capabilities%');
-            $q->where('meta_value', 'LIKE', '%administrator%');
-        })->get();
-        if (!empty($users)) {
-            return $users;
-        }
-        return Collection::make(get_users(['role' => 'administrator']))->map(fn(\WP_User $user) => (new User())->forceFill(get_object_vars($user->data)));
     }
 }

@@ -44,7 +44,7 @@ namespace Modular\ConnectorDependencies\Illuminate\Support\Facades;
  * @method static void bootstrapWith(array $bootstrappers)
  * @method static void loadDeferredProviders()
  * @method static void registerConfiguredProviders()
- * @method static void registerDeferredProvider(string $provider, string $service = null)
+ * @method static void registerDeferredProvider(string $provider, ?string $service = null)
  * @method static void setLocale(string $locale)
  * @method static void terminate()
  *

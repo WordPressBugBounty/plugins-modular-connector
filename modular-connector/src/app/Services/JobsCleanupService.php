@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Services;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -73,6 +74,10 @@ class JobsCleanupService
      */
     public function attemptCleanup(): bool
     {
+        if (HttpUtils::isDirectRequest() || HttpUtils::isCron()) {
+            return false;
+        }
+
         // Get last cleanup timestamp from cache
         $lastCleanup = Cache::get(self::LAST_CLEANUP_CACHE_KEY, 0);
 

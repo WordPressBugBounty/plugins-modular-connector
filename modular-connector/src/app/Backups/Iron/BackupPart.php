@@ -122,9 +122,11 @@ class BackupPart
     public int $batchMaxTimeout = 1800; // 30 minutes
 
     /**
+     * Resolved lazily from Config on access.
+     *
      * @var array
      */
-    public array $connection;
+    public array $connection = [];
 
     /**
      * @var int
@@ -135,6 +137,14 @@ class BackupPart
      * @var int
      */
     public int $lastWebhookSent = 0;
+
+    /**
+     * Hash algorithm to use for file checksums.
+     * Resolved from 'auto' to concrete algorithm (xxh128|md5|sha256) in setPayload()
+     *
+     * @var string
+     */
+    public string $hashAlgorithm = 'auto';
 
     public const INCLUDE_DATABASE = 'database';
     public const INCLUDE_CORE = 'core';
@@ -156,6 +166,51 @@ class BackupPart
     public function __construct(string $mrid)
     {
         $this->mrid = $mrid;
+    }
+
+    /**
+     * Resolve database connection from Config.
+     *
+     * @return array
+     */
+    private static function resolveConnection(): array
+    {
+        return [
+            'host' => Config::get('database.connections.wordpress.host'),
+            'port' => Config::get('database.connections.wordpress.port'),
+            'database' => Config::get('database.connections.wordpress.database'),
+            'username' => Config::get('database.connections.wordpress.username'),
+            'password' => Config::get('database.connections.wordpress.password'),
+            'socket' => Config::get('database.connections.wordpress.unix_socket'),
+        ];
+    }
+
+    /**
+     * Exclude connection credentials from serialized payload to prevent leaks in queue tables and logs.
+     *
+     * @return array
+     */
+    public function __serialize(): array
+    {
+        $data = get_object_vars($this);
+        unset($data['connection']);
+
+        return $data;
+    }
+
+    /**
+     * Restore object state and resolve connection from Config.
+     *
+     * @param array $data
+     * @return void
+     */
+    public function __unserialize(array $data): void
+    {
+        foreach ($data as $key => $value) {
+            $this->$key = $value;
+        }
+
+        $this->connection = static::resolveConnection();
     }
 
     /**
@@ -212,31 +267,55 @@ class BackupPart
             $this->limit = $payload->batch->max_files;
         }
 
-        $this->connection = [
-            'host' => Config::get('database.connections.wordpress.host'),
-            'port' => Config::get('database.connections.wordpress.port'),
-            'database' => Config::get('database.connections.wordpress.database'),
-            'username' => Config::get('database.connections.wordpress.username'),
-            'password' => Config::get('database.connections.wordpress.password'),
-            'socket' => Config::get('database.connections.wordpress.unix_socket'),
-        ];
+        $this->connection = static::resolveConnection();
 
         $this->timestamp = data_get($payload, 'timestamp', 0);
+
+        $algorithm = data_get($payload, 'batch.hash_algo', 'auto');
+        $this->hashAlgorithm = $this->getHashAlgorithm($algorithm);
 
         return $this;
     }
 
     /**
-     * Parses the DB_HOST setting to interpret it for mysqli_real_connect().
+     * Select the best available hash algorithm with validation and fallback.
      *
-     * @param string $host
-     * @return array
+     * If requested algorithm is unavailable, falls back automatically.
+     *
+     * @param string $preferred Preferred algorithm ('auto' or specific like 'sha256')
+     * @return string
      */
-    private function parseDbHost(string $host): array
+    private function getHashAlgorithm(string $preferred): string
     {
-        global $wpdb;
+        $available = hash_algos();
 
-        return $wpdb->parse_db_host($host);
+        // If a valid specific algorithm was requested, use it
+        if ($preferred !== 'auto' && in_array($preferred, $available, true)) {
+            return $preferred;
+        }
+
+        // Log fallback if specific algorithm was requested but not available
+        if ($preferred !== 'auto') {
+            Log::warning('BackupPart: Requested hash algorithm not available, using fallback', [
+                'requested' => $preferred,
+                'available_count' => count($available),
+            ]);
+        }
+
+        // Fallback priority: fastest to slowest
+        $fallback = ['xxh128', 'md5', 'sha256'];
+
+        foreach ($fallback as $algo) {
+            if (in_array($algo, $available, true)) {
+                return $algo;
+            }
+        }
+
+        throw new \RuntimeException(sprintf(
+            'No suitable hash algorithm available. Required one of: %s. Available: %s',
+            implode(', ', $fallback),
+            implode(', ', $available)
+        ));
     }
 
     /**

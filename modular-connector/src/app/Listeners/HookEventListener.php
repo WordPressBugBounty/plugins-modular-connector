@@ -22,7 +22,12 @@ class HookEventListener
         if ($event instanceof ShouldQueue) {
             app('log')->debug('Dispatching event to queue', ['event' => get_class($event)]);
 
-            dispatch(new HookSendEventJob($event));
+            /**
+             * Force immediate destruction when dispatching inside terminate()
+             * because in some hosts the garbage collector may not run properly
+             */
+            $pending = dispatch(new HookSendEventJob($event));
+            unset($pending);
         } else {
             app('log')->debug('Dispatching event synchronously', ['event' => get_class($event)]);
 

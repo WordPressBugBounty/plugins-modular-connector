@@ -643,7 +643,7 @@ final class ASCII
      * @return string
      *                <p>A string that contains only ASCII characters.</p>
      */
-    public static function to_ascii(string $str, string $language = self::ENGLISH_LANGUAGE_CODE, bool $remove_unsupported_chars = \true, bool $replace_extra_symbols = \false, bool $use_transliterate = \false, bool $replace_single_chars_only = null): string
+    public static function to_ascii(string $str, string $language = self::ENGLISH_LANGUAGE_CODE, bool $remove_unsupported_chars = \true, bool $replace_extra_symbols = \false, bool $use_transliterate = \false, ?bool $replace_single_chars_only = null): string
     {
         if ($str === '') {
             return '';

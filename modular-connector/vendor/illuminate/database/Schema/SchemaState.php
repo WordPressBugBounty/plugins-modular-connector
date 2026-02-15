@@ -45,7 +45,7 @@ abstract class SchemaState
      * @param  callable|null  $processFactory
      * @return void
      */
-    public function __construct(Connection $connection, Filesystem $files = null, callable $processFactory = null)
+    public function __construct(Connection $connection, ?Filesystem $files = null, ?callable $processFactory = null)
     {
         $this->connection = $connection;
         $this->files = $files ?: new Filesystem();

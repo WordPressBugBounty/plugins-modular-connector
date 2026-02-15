@@ -3,8 +3,8 @@
 namespace Modular\ConnectorDependencies\Illuminate\Support\Facades;
 
 /**
- * @method static \Psr\Log\LoggerInterface channel(string $channel = null)
- * @method static \Psr\Log\LoggerInterface stack(array $channels, string $channel = null)
+ * @method static \Psr\Log\LoggerInterface channel(?string $channel = null)
+ * @method static \Psr\Log\LoggerInterface stack(array $channels, ?string $channel = null)
  * @method static \Psr\Log\LoggerInterface build(array $config)
  * @method static \Illuminate\Log\Logger withContext(array $context = [])
  * @method static \Illuminate\Log\Logger withoutContext()

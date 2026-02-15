@@ -10,10 +10,12 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 /**
  * Force compatibility fixes for hosting providers and YITH plugins.
  *
- * This pipe handles three types of compatibility fixes:
+ * This pipe handles two types of compatibility fixes:
  * 1. YITH Upgrader - Forces registration of YITH upgrade system that initializes late
- * 2. User Login - Establishes user session via wp_set_current_user()
- * 3. Hosting Cookies - Sets hosting-specific cookies (WP Engine, etc.)
+ * 2. Hosting Cookies - Sets hosting-specific cookies (WP Engine, etc.)
+ *
+ * Note: User login is handled earlier by SetupAdminEnvironment so themes
+ * with authorization gates register their hooks during WordPress init.
  *
  * Runs AFTER BeforeLogin compatibility fixes are applied.
  */
@@ -34,31 +36,13 @@ class ForceCompatibilities
         } catch (\Throwable $e) {
             Log::warning('ForceCompatibilities: YITH upgrader failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
-        // 2. Login admin user
-        try {
-            $this->loginUser();
-        } catch (\Throwable $e) {
-            Log::warning('ForceCompatibilities: User login failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        }
-        // 3. Set hosting-specific cookies
+        // 2. Set hosting-specific cookies
         try {
             $this->setHostingCookies();
         } catch (\Throwable $e) {
             Log::warning('ForceCompatibilities: Hosting cookies failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
         return $next($request);
-    }
-    /**
-     * Login the admin user.
-     *
-     * Calls wp_set_current_user() to establish the user session.
-     *
-     * @return void
-     */
-    private function loginUser(): void
-    {
-        // Login user (calls wp_set_current_user internally)
-        ServerSetup::loginAs();
     }
     /**
      * Set hosting-specific cookies.

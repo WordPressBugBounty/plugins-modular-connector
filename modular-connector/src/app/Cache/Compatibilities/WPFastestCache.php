@@ -18,7 +18,7 @@ class WPFastestCache
         }
 
         try {
-            $wpfc = new WpFastestCache();
+            $wpfc = new \WpFastestCache();
             $wpfc->deleteCache();
         } catch (\Throwable $e) {
             Log::error($e, ['context' => 'WPSuperCache Clear']);

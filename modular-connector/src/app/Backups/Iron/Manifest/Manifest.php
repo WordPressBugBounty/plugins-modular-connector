@@ -6,6 +6,7 @@ use Modular\Connector\Backups\Iron\BackupPart;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
 use Modular\Connector\Backups\Iron\Helpers\File;
 use Modular\Connector\Backups\Iron\Helpers\HasMaxTime;
+use Modular\Connector\Backups\Iron\Helpers\ManifestHasher;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -163,11 +164,17 @@ class Manifest
 
         $offset = $this->part->offset;
 
+        // Create optimized hasher with configured algorithm
+        // Adaptive optimization is always applied automatically
+        $hasher = new ManifestHasher($this->part->hashAlgorithm);
+
         Log::debug('Try to Manifest', [
             'type' => $this->part->type,
             'status' => $this->part->status,
             'offset' => $this->part->offset,
             'limit' => $this->part->limit,
+            'hash_algorithm' => $hasher->getAlgorithm(),
+            'force_full_hash' => $hasher->isForceFullHash(),
         ]);
 
         /**
@@ -215,7 +222,7 @@ class Manifest
                 }
             }
 
-            $item = File::mapItem($file, $disk);
+            $item = File::mapItem($file, $disk, false, true, $hasher);
 
             // Scape the path to protect the delimiter
             $item['path'] = sprintf('"%s"', Str::replace('"', '""', $item['path']));

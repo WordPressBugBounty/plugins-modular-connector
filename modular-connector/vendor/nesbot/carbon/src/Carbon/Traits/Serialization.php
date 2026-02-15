@@ -27,7 +27,7 @@ use Throwable;
  *
  * Depends on the following methods:
  *
- * @method string|static locale(string $locale = null, string ...$fallbackLocales)
+ * @method string|static locale(?string $locale = null, string ...$fallbackLocales)
  * @method string        toJSON()
  */
 trait Serialization

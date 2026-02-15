@@ -3,6 +3,7 @@
 namespace Modular\Connector\Http;
 
 use Modular\Connector\Backups\Console\AutoCleanUpCommand;
+use Modular\Connector\Http\Middleware\CacheAuthorizationHeader;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Scheduling\Schedule;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Kernel as HttpKernel;
@@ -18,7 +19,9 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middlewareGroups = [
-        'api' => [],
+        'api' => [
+            CacheAuthorizationHeader::class,
+        ],
     ];
 
     /**

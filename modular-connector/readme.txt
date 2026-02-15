@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 2.7.0
+Stable tag: 2.7.3
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -183,6 +183,17 @@ The platform is continuously evolving, with frequent updates, improvements, and 
 9. Client report overview page
 
 == Changelog ==
+= v2.7.3 =
+Release date: 2026-02-15
+
+* Improved backup manifest I/O performance with adaptive hash algorithm selection
+* Improved PHP 8.4+ compatibility
+* FIXED: Loopback requests on sites with HTTP Basic Authentication
+* FIXED: Job termination signal on hosts with slow garbage collection
+* FIXED: WP Fastest Cache compatibility for cache clearing
+* FIXED: White-label maintenance mode state detection
+* FIXED: Plugin and theme update handling when no update is available
+
 = v2.7.0 =
 Release date: 2026-01-30
 

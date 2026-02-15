@@ -15,6 +15,7 @@ use Modular\ConnectorDependencies\Illuminate\Contracts\Http\Kernel as Illuminate
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Http\Response;
 use Modular\ConnectorDependencies\Illuminate\Pipeline\Pipeline;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Facade;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 /**
@@ -65,9 +66,20 @@ class Bootloader
     public function configRequest()
     {
         // Ensure the script continues to run even if the user aborts the connection.
+        $originalLimit = ini_get('max_execution_time');
+        $targetLimit = 600;
+        $methods = [];
         if (function_exists('set_time_limit')) {
-            @set_time_limit(600);
+            @set_time_limit($targetLimit);
+            $methods[] = 'set_time_limit';
         }
+        if (function_exists('ini_set')) {
+            @ini_set('max_execution_time', $targetLimit);
+            $methods[] = 'ini_set';
+        }
+        $newLimit = ini_get('max_execution_time');
+        $worked = $newLimit == $targetLimit || $newLimit == 0;
+        Log::debug('Bootloader: Execution time limit', ['original' => $originalLimit, 'new' => $newLimit, 'worked' => $worked, 'methods' => !empty($methods) ? implode(', ', $methods) : 'none']);
         if (function_exists('ignore_user_abort')) {
             @ignore_user_abort(\true);
         }
@@ -91,6 +103,13 @@ class Bootloader
          */
         $response = $kernel->handle($request);
         $body = $response->send();
+        /**
+         * Signal to PendingDispatch that we're about to terminate
+         * because in some hosts the garbage collection can run
+         * very slowly and cause the jobs to be dispatched
+         * after the exit
+         */
+        Cache::driver('array')->forever('pending_dispatch_force_sync', \true);
         $kernel->terminate($request, $body);
         exit((int) $response->isServerError());
     }
@@ -187,7 +206,7 @@ class Bootloader
             // Request Validation Pipeline: Execute BEFORE WordPress initialization
             $this->runRequestValidationPipeline($request);
         }
-        // Both direct requests and cron execute in plugins_loaded hook
+        // Both direct requests and cron execute in after_setup_theme hook
         add_action('after_setup_theme', function () use ($kernel, $request, $isDirectRequest, $isCron) {
             if ($isDirectRequest) {
                 // Request Handler Pipeline: Login and handler registration

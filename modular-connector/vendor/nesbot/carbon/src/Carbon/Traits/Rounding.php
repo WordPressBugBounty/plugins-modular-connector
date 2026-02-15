@@ -20,7 +20,7 @@ use Modular\ConnectorDependencies\Carbon\Exceptions\UnknownUnitException;
  * Depends on the following methods:
  *
  * @method static copy()
- * @method static startOfWeek(int $weekStartsAt = null)
+ * @method static startOfWeek(?int $weekStartsAt = null)
  */
 trait Rounding
 {

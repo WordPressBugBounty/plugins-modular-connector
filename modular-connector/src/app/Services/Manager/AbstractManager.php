@@ -49,7 +49,16 @@ abstract class AbstractManager implements ManagerContract
             $isSuccess = !is_wp_error($result) && !$result instanceof \Throwable;
 
             if ($action === 'upgrade') {
-                $isSuccess = $isSuccess && !empty($result['source']) || $result === true;
+                if ($result === true) {
+                    $result = new \WP_Error(
+                        'up_to_date',
+                        'No pending update was found for this item. The update information may have expired or been cleared before the update could run. Click "reload" on the updater to verify whether an update is still pending.'
+                    );
+
+                    $isSuccess = false;
+                } else {
+                    $isSuccess = $isSuccess && !empty($result['source']);
+                }
             } elseif ($action === 'install') {
                 $isSuccess = $isSuccess && !empty($result) && isset($result['basename']);
 

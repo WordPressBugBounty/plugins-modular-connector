@@ -319,7 +319,7 @@ class WordpressQueue extends Queue implements QueueContract, ClearableQueue
      * @param string|null $suffix
      * @return string
      */
-    public function getIdentifier(string $queue, string $suffix = null)
+    public function getIdentifier(string $queue, ?string $suffix = null)
     {
         return $this->prefix . '_' . $queue . ($suffix ?: '');
     }
