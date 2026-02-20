@@ -297,6 +297,16 @@ class HttpUtils
             \Modular\ConnectorDependencies\app('log')->debug('isDirectRequest: Rejected - code required for type=oauth');
             return \false;
         }
+        // Many social plugins use 'code' as a query parameter for their OAuth
+        // callbacks (e.g. Facebook, Instagram). To avoid conflicts with
+        // these plugins, we will ignore the 'code' parameter
+        // in the query string for type=oauth requests.
+        if (isset($_GET['code'])) {
+            unset($_GET['code']);
+        }
+        if (isset($_REQUEST['code'])) {
+            unset($_REQUEST['code']);
+        }
         return \true;
     }
     /**

@@ -24,6 +24,7 @@ class ServerSetup
         wp_update_plugins();
         array_pop($wp_current_filter);
         wp_update_plugins();
+        static::cacheUpdateTransient('plugins');
     }
     /**
      * Refresh theme updates check.
@@ -40,6 +41,7 @@ class ServerSetup
         wp_update_themes();
         array_pop($wp_current_filter);
         wp_update_themes();
+        static::cacheUpdateTransient('themes');
     }
     /**
      * Refresh WordPress core updates check.
@@ -63,6 +65,7 @@ class ServerSetup
         // Check with cache
         wp_version_check([], \true);
         // Force check (bypass transient)
+        static::cacheUpdateTransient('core');
     }
     /**
      * @param null $user
@@ -112,12 +115,12 @@ class ServerSetup
         return static::getAllAdminUsers(1)->first();
     }
     /**
-     * Set cookies in $_COOKIE superglobal for internal verification.
+     * Set cookies for hosting provider verification.
      *
-     * IMPORTANT: This does NOT use setcookie() because:
-     * 1. We're in background jobs/queue (no HTTP response to send cookies to)
-     * 2. WordPress may have already sent headers (setcookie() would fail)
-     * 3. Hosting providers check $_COOKIE directly, not HTTP headers
+     * Uses both setcookie() and $_COOKIE superglobal:
+     * - setcookie(): Required by hosting providers (e.g., WP Engine) that verify
+     *   cookies at a lower level than the PHP superglobal
+     * - $_COOKIE: Makes the cookie available to PHP code in the current request
      *
      * @param array<\Symfony\Component\HttpFoundation\Cookie> $cookies
      * @return void
@@ -129,7 +132,10 @@ class ServerSetup
         }
         foreach ($cookies as $cookie) {
             $_COOKIE[$cookie->getName()] = $cookie->getValue();
-            Log::debug('ServerSetup: Set cookie in $_COOKIE superglobal', ['name' => $cookie->getName(), 'value_length' => strlen($cookie->getValue()), 'secure' => $cookie->isSecure()]);
+            if (!headers_sent()) {
+                setcookie($cookie->getName(), $cookie->getValue(), $cookie->getExpiresTime(), $cookie->getPath(), $cookie->getDomain() ?: '', $cookie->isSecure(), $cookie->isHttpOnly());
+            }
+            Log::debug('ServerSetup: Set hosting cookie', ['name' => $cookie->getName(), 'setcookie' => !headers_sent()]);
         }
     }
     /**
@@ -200,6 +206,44 @@ class ServerSetup
             }
         }
         return \true;
+    }
+    /**
+     * Persist an update transient to the database via Cache::driver('wordpress').
+     *
+     * Sites with ext_object_cache enabled but no persistent backend (Redis/Memcached)
+     * lose transients between requests. This saves a copy to wp_options.
+     *
+     * @param string $type One of 'plugins', 'themes', 'core'
+     * @return void
+     */
+    private static function cacheUpdateTransient(string $type): void
+    {
+        $transient = get_site_transient("update_{$type}");
+        if (is_object($transient)) {
+            Cache::driver('wordpress')->put("transient_update_{$type}", $transient, 3 * 24 * 3600);
+        }
+    }
+    /**
+     * Hook into get_site_transient() to supply cached update data when WP's value is empty.
+     *
+     * Uses the "site_transient_update_{$type}" filter so we never overwrite WP's transient
+     * system — we only intercept the read and provide our persistent copy if needed.
+     *
+     * @param string $type One of 'plugins', 'themes', 'core'
+     * @return void
+     */
+    public static function restoreUpdateTransient(string $type): void
+    {
+        add_filter("site_transient_update_{$type}", function ($value) use ($type) {
+            if (is_object($value) && (!empty($value->response) || !empty($value->updates))) {
+                return $value;
+            }
+            $cached = Cache::driver('wordpress')->get("transient_update_{$type}");
+            if (is_object($cached)) {
+                return $cached;
+            }
+            return $value;
+        });
     }
     /**
      * Ensure WordPress user functions are loaded.

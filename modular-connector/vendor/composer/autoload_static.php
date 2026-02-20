@@ -4,30 +4,30 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit117d74cb38cf02066bc2c9688a2868a1
+class ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34
 {
     public static $files = array (
-        '340126c4b463d4cd77093b75d6be53ff' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
-        '02cc16c348156ca17fa55966af4db430' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        'f870ef195d0a78b1b481211843d33b10' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
-        '642b3acb92981ccffc056178fb12bbb2' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
-        'b00f03a42a88a3c691b5943a7bfc41f2' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        '5a5d0c2271c0dfc33545ea8aa0b87a88' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
-        '62f6e0090d473fc434a698f3e6a5399e' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        '8e13de7b739bbde9274356558df14d74' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
-        '61b74648830364e23d41ec0ba74e6a98' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
-        '115210a2d0ef9b186f05082240fbad09' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        '288e6e6bfde4342b548fb046fcda07b7' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        'b4f7b94a23c1f95f3ea7a4ec5e8a0941' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        '68db0a21c8d7ed70834144a92960b7b0' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
-        '37849918ea0c5f7cb29b5e580c097039' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-        '2f5c24a396e7aa996a8bb10d10915c0e' => __DIR__ . '/..' . '/illuminate/events/functions.php',
-        '14ed68b495ed93cdc96dad52be389c41' => __DIR__ . '/..' . '/opis/closure/functions.php',
-        'de8cdde3b0d5cb7eda91c596404713be' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        '705c6699c8ad8021cb7a6ac2ed3b4aa5' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        '1e51ce378153deb141e662dca26cc876' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
-        '549c90b19bd903dbef5f688f2838dc82' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
-        'd325548b06f42c9935a85516c7b3940d' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        'f7bdb3a7e5168be6b2296341a551c941' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        '8d764bbc374e0bfed92c1789195abd5c' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+        '0832b0a8d6e6ebe76fd057119effb2a0' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        'a51fc554c4c38d4e9528fc20f0978efa' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
+        '25db774af5da7b4e87d67157b4aaaa0d' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
+        '54016e32c460d49efb6527963069b2cb' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        'dc00c1c6c60813ac34f9742ad3d12ed1' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
+        '4526e7a4f7e42c3579350e297d716ec0' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
+        '086579bef21030bb6f619ee9f30c37a8' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
+        '01c2b216bc13fe9b8db907a3d282966e' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        '7051fd93322b029a7168c98d3dfa77f8' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
+        'e63791f987c810b0b59bc2fb9494bab7' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
+        '35df9f76ca4cd4d65d1f3230c4add94b' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        '1d37c54a1c5cde3976df54b86e0139ce' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
+        '2cde5eef38650bfd3de0c9a477e86df8' => __DIR__ . '/..' . '/illuminate/events/functions.php',
+        'c72752461ef0ff32ef83950c4a234c55' => __DIR__ . '/..' . '/opis/closure/functions.php',
+        '6aaa134de442deabcf3dc512130f7d04' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        '199e1d11a880c4f5da746e3cf52551f7' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        '3fd066a9f2a41683e788b229abc361eb' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
+        '751f75f4641aabcd3dc6fa515b0143b9' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
+        'dacff81f10f6b9f5e70876d2497652b6' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -430,6 +430,7 @@ class ComposerStaticInit117d74cb38cf02066bc2c9688a2868a1
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\CustomTimestamps' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Concerns/CustomTimestamps.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\MetaFields' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Concerns/MetaFields.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\OrderScopes' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Concerns/OrderScopes.php',
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\ResolvesCustomTable' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Concerns/ResolvesCustomTable.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DatabaseServiceProvider' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/DatabaseServiceProvider.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DetectsLostConnections' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/DetectsLostConnections.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Models\\Meta\\Meta' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Models/Meta/Meta.php',
@@ -2775,9 +2776,9 @@ class ComposerStaticInit117d74cb38cf02066bc2c9688a2868a1
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit117d74cb38cf02066bc2c9688a2868a1::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit117d74cb38cf02066bc2c9688a2868a1::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit117d74cb38cf02066bc2c9688a2868a1::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34::$classMap;
 
         }, null, ClassLoader::class);
     }

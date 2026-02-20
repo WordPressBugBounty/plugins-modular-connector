@@ -5,6 +5,7 @@ namespace Modular\Connector\Models;
 use Modular\Connector\Models\Concerns\MetaFields;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\Aliases;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\OrderScopes;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\Concerns\ResolvesCustomTable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Auth\Authenticatable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Auth\CanResetPassword;
 use Modular\ConnectorDependencies\Illuminate\Database\Eloquent\Model;
@@ -17,10 +18,25 @@ class User extends Model implements Authenticatable, CanResetPassword
     use Aliases;
     use MetaFields;
     use OrderScopes;
+    use ResolvesCustomTable;
 
     protected $table = 'users';
 
     protected $primaryKey = 'ID';
+
+    /**
+     * Resolve the table name, respecting WordPress CUSTOM_USER_TABLE constant.
+     *
+     * @return string
+     */
+    public function getTable()
+    {
+        if (defined('CUSTOM_USER_TABLE')) {
+            return $this->resolveCustomTable(CUSTOM_USER_TABLE);
+        }
+
+        return parent::getTable();
+    }
 
     protected $hidden = ['user_pass'];
 

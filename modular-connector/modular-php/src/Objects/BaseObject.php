@@ -625,6 +625,7 @@ class BaseObject extends BaseObjectFactory implements \JsonSerializable, \ArrayA
         return isset($this->attributes[$offset]);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
         return $this->{$offset};

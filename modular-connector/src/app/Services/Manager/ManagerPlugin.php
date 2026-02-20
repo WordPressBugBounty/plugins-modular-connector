@@ -211,6 +211,8 @@ class ManagerPlugin extends AbstractManager
             $skin = new \WP_Ajax_Upgrader_Skin();
             $upgrader = new ModularPluginUpgrader($skin);
 
+            ServerSetup::restoreUpdateTransient('plugins');
+
             $response = $upgrader->bulk_upgrade($items);
         } catch (\Throwable $e) {
             $response = Collection::make($items)

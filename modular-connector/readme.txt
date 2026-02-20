@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 2.7.3
+Stable tag: 2.7.4
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -183,6 +183,15 @@ The platform is continuously evolving, with frequent updates, improvements, and 
 9. Client report overview page
 
 == Changelog ==
+= v2.7.4 =
+Release date: 2026-02-20
+
+* Patchstack plugin white label support
+* WordPress custom user tables support
+* Improved PHP 8.1+ compatibility
+* FIXED: Bulk updates error when update transients were missing
+* FIXED: Backup manifest timeout on restrictive hosting environments
+
 = v2.7.3 =
 Release date: 2026-02-15
 

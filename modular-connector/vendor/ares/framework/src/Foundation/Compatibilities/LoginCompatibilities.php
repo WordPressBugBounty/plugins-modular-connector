@@ -40,31 +40,6 @@ class LoginCompatibilities
         static::fixDuoFactor();
         // WP 2FA - Bypass 2FA enforcement
         static::fixWp2Fa();
-        // WPO365 - Disable SSO authentication redirect
-        static::fixWpo365Login();
-        // Post SMTP - Bypass Office365 OAuth handling
-        static::fixOffice365forPostSMTPExtension();
-    }
-    /**
-     * @return void
-     */
-    public static function fixWpo365Login()
-    {
-        if (!class_exists('\Wpo\Services\Authentication_Service')) {
-            return;
-        }
-        Log::debug('LoginCompatibilities: Disabling Wpo365 SSO authentication');
-        // Disables possible redirect caused by Wpo365's SSO options
-        remove_action('init', '\Wpo\Services\Authentication_Service::authenticate_request', 1);
-    }
-    public static function fixOffice365forPostSMTPExtension()
-    {
-        if (!class_exists('Post_Smtp_Office365')) {
-            return;
-        }
-        Log::debug('LoginCompatibilities: Disabling Post SMTP Office365 OAuth handling');
-        // Disabled "Authorization code should be in the "code" query param"
-        Compatibilities::removeFilterByClassName('post_smtp_handle_oauth', \Post_Smtp_Office365::class, 'handle_oauth');
     }
     /**
      * Apply compatibility fixes AFTER login.

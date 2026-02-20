@@ -94,6 +94,8 @@ class ManagerCore extends AbstractManager
         $skin = new \WP_Ajax_Upgrader_Skin();
         $core = new \Core_Upgrader($skin);
 
+        ServerSetup::restoreUpdateTransient('core');
+
         $result = @$core->upgrade($this->getLatestUpdate());
 
         return $this->parseActionResponse('core', $result, 'upgrade', 'core');

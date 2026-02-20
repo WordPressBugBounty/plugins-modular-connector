@@ -103,11 +103,12 @@ class ServerController extends Controller
 
         $action = app()->getScheduleHook();
 
-        dispatch(function () use ($action) {
+        $job = dispatch(function () use ($action) {
             Log::debug('Running schedule hook', ['hook' => $action]);
 
             do_action($action);
         })->afterResponse(); // For AJAX request, we need to force close the connection to avoid the server hanging.
+        unset($job);
 
         return Response::json([
             'message' => 'Schedule hook is being processed',

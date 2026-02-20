@@ -43,7 +43,7 @@ class Manifest
      *
      * @var int
      */
-    protected int $maxTime = 90;
+    protected int $maxTime = 25;
 
     /**
      * @param BackupPart $part

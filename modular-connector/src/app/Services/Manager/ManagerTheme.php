@@ -144,6 +144,8 @@ class ManagerTheme extends AbstractManager
         $skin = new \WP_Ajax_Upgrader_Skin();
         $upgrader = new \Theme_Upgrader($skin);
 
+        ServerSetup::restoreUpdateTransient('themes');
+
         $response = @$upgrader->bulk_upgrade($themes);
 
         return $this->parseBulkActionResponse($themes, $response, 'upgrade', self::THEME);
