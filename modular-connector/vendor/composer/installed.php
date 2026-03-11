@@ -3,7 +3,7 @@
         'name' => 'modular/connector',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '09fdf3a3358ed4ddd46368cc9c4fea3c3d279300',
+        'reference' => '8c5c17fd8866aa20e47cc95b93857babf30f2d09',
         'type' => 'wordpres-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         'ares/framework' => array(
-            'pretty_version' => '3.8.9',
-            'version' => '3.8.9.0',
-            'reference' => '963d805ae273041c5a812a4e426f1aba60e8576d',
+            'pretty_version' => '3.8.13',
+            'version' => '3.8.13.0',
+            'reference' => 'cfa7c65eb750a1720d6f97027550046419c46606',
             'type' => 'library',
             'install_path' => __DIR__ . '/../ares/framework',
             'aliases' => array(),
@@ -301,7 +301,7 @@
         'modular/connector' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '09fdf3a3358ed4ddd46368cc9c4fea3c3d279300',
+            'reference' => '8c5c17fd8866aa20e47cc95b93857babf30f2d09',
             'type' => 'wordpres-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -2229,6 +2229,7 @@ return array(
     'Modular\\Connector\\Cache\\Compatibilities\\Kinsta' => $baseDir . '/src/app/Cache/Compatibilities/Kinsta.php',
     'Modular\\Connector\\Cache\\Compatibilities\\LiteSpeed' => $baseDir . '/src/app/Cache/Compatibilities/LiteSpeed.php',
     'Modular\\Connector\\Cache\\Compatibilities\\NitroPack' => $baseDir . '/src/app/Cache/Compatibilities/NitroPack.php',
+    'Modular\\Connector\\Cache\\Compatibilities\\Raidboxes' => $baseDir . '/src/app/Cache/Compatibilities/Raidboxes.php',
     'Modular\\Connector\\Cache\\Compatibilities\\Varnish' => $baseDir . '/src/app/Cache/Compatibilities/Varnish.php',
     'Modular\\Connector\\Cache\\Compatibilities\\W3TotalCache' => $baseDir . '/src/app/Cache/Compatibilities/W3TotalCache.php',
     'Modular\\Connector\\Cache\\Compatibilities\\WPFastestCache' => $baseDir . '/src/app/Cache/Compatibilities/WPFastestCache.php',

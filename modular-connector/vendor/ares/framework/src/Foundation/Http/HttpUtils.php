@@ -426,11 +426,11 @@ class HttpUtils
         \$upgrading = {$upgradingValue};
         
         // Allow Modular Connector communications during maintenance
-        // Helper function to get header value (case-insensitive)
-        function getHeader(\$name) {
+        // Closure to get header value (case-insensitive), avoids redeclaration on multiple includes
+        \$getHeader = function(\$name) {
             \$name = "HTTP_" . strtoupper(str_replace("-", "_", \$name));
             return isset(\$_SERVER[\$name]) ? \$_SERVER[\$name] : null;
-        }
+        };
         
         // Validate entry point (wp-load.php only)
         \$scriptName = isset(\$_SERVER["SCRIPT_NAME"]) ? \$_SERVER["SCRIPT_NAME"] : (isset(\$_SERVER["PHP_SELF"]) ? \$_SERVER["PHP_SELF"] : "");
@@ -463,7 +463,7 @@ class HttpUtils
         if (\$origin === "mo") {
             // Get type (query XOR header, never both)
             \$typeQuery = isset(\$_GET["type"]) ? \$_GET["type"] : null;
-            \$typeHeader = getHeader("x-mo-type");
+            \$typeHeader = \$getHeader("x-mo-type");
             \$hasTypeQuery = \$typeQuery !== null;
             \$hasTypeHeader = \$typeHeader !== null;
         
@@ -481,7 +481,7 @@ class HttpUtils
             if (\$type === "request") {
                 // Get mrid (query XOR header)
                 \$mridQuery = isset(\$_GET["mrid"]) ? \$_GET["mrid"] : null;
-                \$mridHeader = getHeader("x-mo-mrid");
+                \$mridHeader = \$getHeader("x-mo-mrid");
                 \$hasMridQuery = \$mridQuery !== null;
                 \$hasMridHeader = \$mridHeader !== null;
         
@@ -500,7 +500,7 @@ class HttpUtils
                     // We do not validate JWT signature here (no client_secret access)
                     // Plugin will validate authentication after bypass
                     \$hasSig = isset(\$_GET["sig"]);
-                    \$hasAuthHeader = getHeader("x-mo-authentication") !== null;
+                    \$hasAuthHeader = \$getHeader("x-mo-authentication") !== null;
         
                     if (\$hasSig || \$hasAuthHeader) {
                         \$upgrading = 0; // Bypass maintenance for valid Modular request
@@ -513,7 +513,7 @@ class HttpUtils
                 // Validate 32 hex characters
                 if (\$lbn && preg_match("/^[a-f0-9]{32}\$/i", \$lbn)) {
                     // Check for authentication header presence
-                    \$hasAuthHeader = getHeader("x-mo-authentication") !== null;
+                    \$hasAuthHeader = \$getHeader("x-mo-authentication") !== null;
         
                     if (\$hasAuthHeader) {
                         \$upgrading = 0; // Bypass maintenance for valid Modular loopback
@@ -522,7 +522,7 @@ class HttpUtils
             } elseif (\$type === "oauth") {
                 // type=oauth requires code (query XOR header) and state (query only, can be empty)
                 \$codeQuery = isset(\$_GET["code"]) ? \$_GET["code"] : null;
-                \$codeHeader = getHeader("x-mo-code");
+                \$codeHeader = \$getHeader("x-mo-code");
                 \$hasCodeQuery = \$codeQuery !== null;
                 \$hasCodeHeader = \$codeHeader !== null;
         
@@ -541,7 +541,7 @@ class HttpUtils
                 // Validate code exists and state parameter exists
                 if (\$code !== null && \$code !== "" && \$hasState) {
                     // Check for authentication header presence
-                    \$hasAuthHeader = getHeader("x-mo-authentication") !== null;
+                    \$hasAuthHeader = \$getHeader("x-mo-authentication") !== null;
         
                     if (\$hasAuthHeader) {
                         \$upgrading = 0; // Bypass maintenance for valid OAuth callback

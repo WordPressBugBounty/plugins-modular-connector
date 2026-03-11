@@ -3,6 +3,7 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\LoginCompatibilities;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Closure;
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
@@ -38,9 +39,15 @@ class ForceCompatibilities
         }
         // 2. Set hosting-specific cookies
         try {
-            $this->setHostingCookies();
+            $this->registerDiviUpgrader();
         } catch (\Throwable $e) {
-            Log::warning('ForceCompatibilities: Hosting cookies failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::warning('ForceCompatibilities: Divi upgrader failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
+        // 3. Register YITH upgrade system that initializes late on wp_loaded priority 99
+        try {
+            $this->registerYithUpgrader();
+        } catch (\Throwable $e) {
+            Log::warning('ForceCompatibilities: YITH upgrader failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
         return $next($request);
     }
@@ -88,6 +95,21 @@ class ForceCompatibilities
                 call_user_func($callback['function']);
             }
         }
+    }
+    /**
+     * Register Divi upgrader if it hasn't been registered yet.
+     *
+     * Divi's upgrade system is registered on init, but we execute before that,
+     * so we need to call their registration function manually.
+     *
+     * @return void
+     */
+    private function registerDiviUpgrader(): void
+    {
+        if (HttpUtils::isCron() || !function_exists('et_register_updates_component')) {
+            return;
+        }
+        add_action('init', 'et_register_updates_component');
     }
     /**
      * Check if a callback belongs to a YITH plugin.

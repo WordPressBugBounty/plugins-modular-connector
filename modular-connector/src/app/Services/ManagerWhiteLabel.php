@@ -317,6 +317,12 @@ class ManagerWhiteLabel
             return;
         }
 
+        $data = $this->getAllWhiteLabeledData();
+
+        if (empty($data)) {
+            return;
+        }
+
         $selectors = [];
 
         foreach ($data as $basename => $whiteLabel) {

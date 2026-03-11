@@ -24,7 +24,7 @@ class ModularClient implements ModularClientInterface
     /**
      * @var string default base URL for Modular's API
      */
-    public const LOCAL_API_BASE = 'https://api.modulards.dev';
+    public const LOCAL_API_BASE = 'https://api.modulards.local';
 
     /**
      * @var string default base URL for Modular's API

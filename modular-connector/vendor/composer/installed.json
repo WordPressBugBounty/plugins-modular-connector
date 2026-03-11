@@ -2,17 +2,17 @@
     "packages": [
         {
             "name": "ares/framework",
-            "version": "3.8.9",
-            "version_normalized": "3.8.9.0",
+            "version": "3.8.13",
+            "version_normalized": "3.8.13.0",
             "source": {
                 "type": "git",
                 "url": "git@gitlab.modulards.com:modular/connector/ares.git",
-                "reference": "963d805ae273041c5a812a4e426f1aba60e8576d"
+                "reference": "cfa7c65eb750a1720d6f97027550046419c46606"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://gitlab.modulards.com/api/v4/projects/modular%2Fconnector%2Fares/repository/archive.zip?sha=963d805ae273041c5a812a4e426f1aba60e8576d",
-                "reference": "963d805ae273041c5a812a4e426f1aba60e8576d",
+                "url": "https://gitlab.modulards.com/api/v4/projects/modular%2Fconnector%2Fares/repository/archive.zip?sha=cfa7c65eb750a1720d6f97027550046419c46606",
+                "reference": "cfa7c65eb750a1720d6f97027550046419c46606",
                 "shasum": ""
             },
             "require": {
@@ -41,7 +41,7 @@
                 "filp/whoops": "^2.12",
                 "symfony/var-dumper": "^5.1"
             },
-            "time": "2026-02-20T14:30:11+01:00",
+            "time": "2026-03-10T19:17:01+01:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -68,7 +68,7 @@
                 "wordpress"
             ],
             "support": {
-                "source": "https://gitlab.modulards.com/modular/connector/ares/-/tree/3.8.9",
+                "source": "https://gitlab.modulards.com/modular/connector/ares/-/tree/3.8.13",
                 "issues": "https://gitlab.modulards.com/modular/connector/ares/-/issues"
             },
             "install-path": "../ares/framework"

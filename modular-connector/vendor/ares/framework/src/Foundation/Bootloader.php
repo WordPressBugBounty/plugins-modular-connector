@@ -144,7 +144,7 @@ class Bootloader
      */
     protected function runRequestValidationPipeline(Request $request): Request
     {
-        return \Modular\ConnectorDependencies\app(Pipeline::class)->send($request)->through([AuthenticateRequest::class, FetchModularRequest::class, ValidateRoute::class, SetupAdminEnvironment::class])->then(fn(Request $request) => $request);
+        return \Modular\ConnectorDependencies\app(Pipeline::class)->send($request)->through([AuthenticateRequest::class, FetchModularRequest::class, ValidateRoute::class, SetupAdminEnvironment::class, BeforeLogin::class])->then(fn(Request $request) => $request);
     }
     /**
      * Run request handler pipeline for direct requests.
@@ -167,7 +167,7 @@ class Bootloader
      */
     protected function runRequestHandlerPipeline(IlluminateHttpKernel $kernel, Request $request): bool
     {
-        return \Modular\ConnectorDependencies\app(Pipeline::class)->send($request)->through([BeforeLogin::class, ForceCompatibilities::class])->then(function (Request $request) use ($kernel) {
+        return \Modular\ConnectorDependencies\app(Pipeline::class)->send($request)->through([ForceCompatibilities::class])->then(function (Request $request) use ($kernel) {
             // Register handler on wp_loaded hook
             add_action('wp_loaded', fn() => $this->handleRequest($kernel, $request));
             return \true;

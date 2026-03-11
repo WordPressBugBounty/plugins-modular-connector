@@ -8,6 +8,7 @@ use Modular\Connector\Cache\Compatibilities\Flywheel;
 use Modular\Connector\Cache\Compatibilities\Kinsta;
 use Modular\Connector\Cache\Compatibilities\LiteSpeed;
 use Modular\Connector\Cache\Compatibilities\NitroPack;
+use Modular\Connector\Cache\Compatibilities\Raidboxes;
 use Modular\Connector\Cache\Compatibilities\Varnish;
 use Modular\Connector\Cache\Compatibilities\W3TotalCache;
 use Modular\Connector\Cache\Compatibilities\WPFastestCache;
@@ -40,6 +41,7 @@ class CacheClearJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         'w3totalcache' => W3TotalCache::class,
         'wpsupercache' => WPSuperCache::class,
         'varnish' => Varnish::class,
+        'raidboxes' => Raidboxes::class,
         'wp_fastest_cache' => WPFastestCache::class,
     ];
 

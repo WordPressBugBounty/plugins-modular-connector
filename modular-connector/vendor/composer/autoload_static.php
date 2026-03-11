@@ -7,31 +7,31 @@ namespace Composer\Autoload;
 class ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34
 {
     public static $files = array (
-        'f7bdb3a7e5168be6b2296341a551c941' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
-        '8d764bbc374e0bfed92c1789195abd5c' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        '0832b0a8d6e6ebe76fd057119effb2a0' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
-        'a51fc554c4c38d4e9528fc20f0978efa' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
-        '25db774af5da7b4e87d67157b4aaaa0d' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        '54016e32c460d49efb6527963069b2cb' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
-        'dc00c1c6c60813ac34f9742ad3d12ed1' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        '4526e7a4f7e42c3579350e297d716ec0' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
-        '086579bef21030bb6f619ee9f30c37a8' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
-        '01c2b216bc13fe9b8db907a3d282966e' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        '7051fd93322b029a7168c98d3dfa77f8' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        'e63791f987c810b0b59bc2fb9494bab7' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        '35df9f76ca4cd4d65d1f3230c4add94b' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
-        '1d37c54a1c5cde3976df54b86e0139ce' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-        '2cde5eef38650bfd3de0c9a477e86df8' => __DIR__ . '/..' . '/illuminate/events/functions.php',
-        'c72752461ef0ff32ef83950c4a234c55' => __DIR__ . '/..' . '/opis/closure/functions.php',
-        '6aaa134de442deabcf3dc512130f7d04' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        '199e1d11a880c4f5da746e3cf52551f7' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        '3fd066a9f2a41683e788b229abc361eb' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
-        '751f75f4641aabcd3dc6fa515b0143b9' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
-        'dacff81f10f6b9f5e70876d2497652b6' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        'dbd33935781838a5fb676a5839c4345c' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        '7370176c8e111e32ba43706f0d04904b' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+        '77d6aeacf99e43c4383aabe854a20394' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        '12bd8311af9622de5785bca2a4c14b52' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
+        '215d95776be5b665c1c3395061e8f281' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
+        '28ec45f9bd3f3d5ba752cbfbe3db8abb' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        'c39e83ecef216fe0b9ce04957a4a7f63' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
+        '5c9971bada6bf571846636bf4cc25897' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
+        '5643770d4761b1e0e65f62b5e7c11bf4' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
+        '8be550e5b13aba27ca0f3ef16fa6d57a' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        '96e722042a0cb324d0c84c0de2f44ddf' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
+        'f4b6cc08b425a06c4e63a5862e2e6dba' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
+        '01ccec83b387ee53ec118d7bbbc242bc' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        'a39b3b2c3e16e8f4717a96f3cb62db59' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
+        'fee325a3b9e4937ddc988a11cba5d49b' => __DIR__ . '/..' . '/illuminate/events/functions.php',
+        '8e780886aa4835c3dfcac4cfd907ea3b' => __DIR__ . '/..' . '/opis/closure/functions.php',
+        'a3db4d9e7c0523a3eae42b326918ce7b' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        '2970081c6d087e184512464a1363685b' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        'd55a4e5fc5bed15fc299c8435a2fc647' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
+        '5f044363f6fc267d4b7525af2e87e93d' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
+        'ce5d23164b7c8398db3423842ef168e8' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
-        'S' => 
+        'S' =>
         array (
             'Symfony\\Polyfill\\Php81\\' => 23,
             'Symfony\\Polyfill\\Php80\\' => 23,
@@ -42,7 +42,7 @@ class ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34
             'Symfony\\Polyfill\\Intl\\Grapheme\\' => 31,
             'Symfony\\Polyfill\\Ctype\\' => 23,
         ),
-        'M' => 
+        'M' =>
         array (
             'Modular\\SDK\\' => 12,
             'Modular\\Connector\\' => 18,
@@ -112,294 +112,294 @@ class ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34
     );
 
     public static $prefixDirsPsr4 = array (
-        'Symfony\\Polyfill\\Php81\\' => 
+        'Symfony\\Polyfill\\Php81\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php81',
         ),
-        'Symfony\\Polyfill\\Php80\\' => 
+        'Symfony\\Polyfill\\Php80\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php80',
         ),
-        'Symfony\\Polyfill\\Php73\\' => 
+        'Symfony\\Polyfill\\Php73\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php73',
         ),
-        'Symfony\\Polyfill\\Mbstring\\' => 
+        'Symfony\\Polyfill\\Mbstring\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
         ),
-        'Symfony\\Polyfill\\Intl\\Normalizer\\' => 
+        'Symfony\\Polyfill\\Intl\\Normalizer\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer',
         ),
-        'Symfony\\Polyfill\\Intl\\Idn\\' => 
+        'Symfony\\Polyfill\\Intl\\Idn\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-intl-idn',
         ),
-        'Symfony\\Polyfill\\Intl\\Grapheme\\' => 
+        'Symfony\\Polyfill\\Intl\\Grapheme\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme',
         ),
-        'Symfony\\Polyfill\\Ctype\\' => 
+        'Symfony\\Polyfill\\Ctype\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-ctype',
         ),
-        'Modular\\SDK\\' => 
+        'Modular\\SDK\\' =>
         array (
             0 => __DIR__ . '/../..' . '/modular-php/src',
         ),
-        'Modular\\Connector\\' => 
+        'Modular\\Connector\\' =>
         array (
             0 => __DIR__ . '/../..' . '/src/app',
         ),
-        'Modular\\ConnectorDependencies\\voku\\' => 
+        'Modular\\ConnectorDependencies\\voku\\' =>
         array (
             0 => __DIR__ . '/..' . '/voku/portable-ascii/src/voku',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Contracts\\Translation\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Contracts\\Translation\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/translation-contracts',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Contracts\\Service\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Contracts\\Service\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/service-contracts',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Contracts\\EventDispatcher\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Contracts\\EventDispatcher\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/event-dispatcher-contracts',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\VarDumper\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\VarDumper\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/var-dumper',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\Translation\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\Translation\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/translation',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\String\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\String\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/string',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\Routing\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\Routing\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/routing',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\Process\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\Process\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/process',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\Mime\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\Mime\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/mime',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\HttpKernel\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\HttpKernel\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/http-kernel',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\HttpFoundation\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\HttpFoundation\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/http-foundation',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\Finder\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\Finder\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/finder',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\EventDispatcher\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\EventDispatcher\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/event-dispatcher',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\ErrorHandler\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\ErrorHandler\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/error-handler',
         ),
-        'Modular\\ConnectorDependencies\\Symfony\\Component\\Console\\' => 
+        'Modular\\ConnectorDependencies\\Symfony\\Component\\Console\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/console',
         ),
-        'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\' => 
+        'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\' =>
         array (
             0 => __DIR__ . '/..' . '/spatie/db-dumper/src',
         ),
-        'Modular\\ConnectorDependencies\\Ramsey\\Uuid\\' => 
+        'Modular\\ConnectorDependencies\\Ramsey\\Uuid\\' =>
         array (
             0 => __DIR__ . '/..' . '/ramsey/uuid/src',
         ),
-        'Modular\\ConnectorDependencies\\Ramsey\\Collection\\' => 
+        'Modular\\ConnectorDependencies\\Ramsey\\Collection\\' =>
         array (
             0 => __DIR__ . '/..' . '/ramsey/collection/src',
         ),
-        'Modular\\ConnectorDependencies\\Psr\\SimpleCache\\' => 
+        'Modular\\ConnectorDependencies\\Psr\\SimpleCache\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/simple-cache/src',
         ),
-        'Modular\\ConnectorDependencies\\Psr\\Log\\' => 
+        'Modular\\ConnectorDependencies\\Psr\\Log\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/log/Psr/Log',
         ),
-        'Modular\\ConnectorDependencies\\Psr\\Http\\Message\\' => 
+        'Modular\\ConnectorDependencies\\Psr\\Http\\Message\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/http-factory/src',
             1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
-        'Modular\\ConnectorDependencies\\Psr\\Http\\Client\\' => 
+        'Modular\\ConnectorDependencies\\Psr\\Http\\Client\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/http-client/src',
         ),
-        'Modular\\ConnectorDependencies\\Psr\\EventDispatcher\\' => 
+        'Modular\\ConnectorDependencies\\Psr\\EventDispatcher\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/event-dispatcher/src',
         ),
-        'Modular\\ConnectorDependencies\\Psr\\Container\\' => 
+        'Modular\\ConnectorDependencies\\Psr\\Container\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/container/src',
         ),
-        'Modular\\ConnectorDependencies\\Psr\\Clock\\' => 
+        'Modular\\ConnectorDependencies\\Psr\\Clock\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/clock/src',
         ),
-        'Modular\\ConnectorDependencies\\PhpOption\\' => 
+        'Modular\\ConnectorDependencies\\PhpOption\\' =>
         array (
             0 => __DIR__ . '/..' . '/phpoption/phpoption/src/PhpOption',
         ),
-        'Modular\\ConnectorDependencies\\Opis\\Closure\\' => 
+        'Modular\\ConnectorDependencies\\Opis\\Closure\\' =>
         array (
             0 => __DIR__ . '/..' . '/opis/closure/src',
         ),
-        'Modular\\ConnectorDependencies\\Monolog\\' => 
+        'Modular\\ConnectorDependencies\\Monolog\\' =>
         array (
             0 => __DIR__ . '/..' . '/monolog/monolog/src/Monolog',
         ),
-        'Modular\\ConnectorDependencies\\League\\MimeTypeDetection\\' => 
+        'Modular\\ConnectorDependencies\\League\\MimeTypeDetection\\' =>
         array (
             0 => __DIR__ . '/..' . '/league/mime-type-detection/src',
         ),
-        'Modular\\ConnectorDependencies\\League\\Flysystem\\' => 
+        'Modular\\ConnectorDependencies\\League\\Flysystem\\' =>
         array (
             0 => __DIR__ . '/..' . '/league/flysystem/src',
         ),
-        'Modular\\ConnectorDependencies\\Laravel\\SerializableClosure\\' => 
+        'Modular\\ConnectorDependencies\\Laravel\\SerializableClosure\\' =>
         array (
             0 => __DIR__ . '/..' . '/laravel/serializable-closure/src',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\View\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\View\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/view',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Support\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Support\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/support',
             1 => __DIR__ . '/..' . '/illuminate/collections',
             2 => __DIR__ . '/..' . '/illuminate/macroable',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Session\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Session\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/session',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Routing\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Routing\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/routing',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Queue\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Queue\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/queue',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Pipeline\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Pipeline\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/pipeline',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Log\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Log\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/log',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Http\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Http\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/http',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Filesystem\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Filesystem\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/filesystem',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Events\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Events\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/events',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Database\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Database\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/database',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Contracts\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Contracts\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/contracts',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Container\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Container\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/container',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Console\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Console\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/console',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Config\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Config\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/config',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Cache\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Cache\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/cache',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\Bus\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\Bus\\' =>
         array (
             0 => __DIR__ . '/..' . '/illuminate/bus',
         ),
-        'Modular\\ConnectorDependencies\\Illuminate\\' => 
+        'Modular\\ConnectorDependencies\\Illuminate\\' =>
         array (
             0 => __DIR__ . '/..' . '/ares/framework/illuminate',
         ),
-        'Modular\\ConnectorDependencies\\Ifsnop\\' => 
+        'Modular\\ConnectorDependencies\\Ifsnop\\' =>
         array (
             0 => __DIR__ . '/..' . '/ifsnop/mysqldump-php/src/Ifsnop',
         ),
-        'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\' => 
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\' =>
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/psr7/src',
         ),
-        'Modular\\ConnectorDependencies\\GuzzleHttp\\Promise\\' => 
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Promise\\' =>
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/promises/src',
         ),
-        'Modular\\ConnectorDependencies\\GuzzleHttp\\' => 
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\' =>
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
         ),
-        'Modular\\ConnectorDependencies\\GrahamCampbell\\ResultType\\' => 
+        'Modular\\ConnectorDependencies\\GrahamCampbell\\ResultType\\' =>
         array (
             0 => __DIR__ . '/..' . '/graham-campbell/result-type/src',
         ),
-        'Modular\\ConnectorDependencies\\Dotenv\\' => 
+        'Modular\\ConnectorDependencies\\Dotenv\\' =>
         array (
             0 => __DIR__ . '/..' . '/vlucas/phpdotenv/src',
         ),
-        'Modular\\ConnectorDependencies\\Doctrine\\Inflector\\' => 
+        'Modular\\ConnectorDependencies\\Doctrine\\Inflector\\' =>
         array (
             0 => __DIR__ . '/..' . '/doctrine/inflector/src',
         ),
-        'Modular\\ConnectorDependencies\\Cron\\' => 
+        'Modular\\ConnectorDependencies\\Cron\\' =>
         array (
             0 => __DIR__ . '/..' . '/dragonmantank/cron-expression/src/Cron',
         ),
-        'Modular\\ConnectorDependencies\\Carbon\\Doctrine\\' => 
+        'Modular\\ConnectorDependencies\\Carbon\\Doctrine\\' =>
         array (
             0 => __DIR__ . '/..' . '/carbonphp/carbon-doctrine-types/src/Carbon/Doctrine',
         ),
-        'Modular\\ConnectorDependencies\\Carbon\\' => 
+        'Modular\\ConnectorDependencies\\Carbon\\' =>
         array (
             0 => __DIR__ . '/..' . '/nesbot/carbon/src/Carbon',
         ),
-        'Modular\\ConnectorDependencies\\Brick\\Math\\' => 
+        'Modular\\ConnectorDependencies\\Brick\\Math\\' =>
         array (
             0 => __DIR__ . '/..' . '/brick/math/src',
         ),
-        'Modular\\ConnectorDependencies\\Ares\\Framework\\' => 
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\' =>
         array (
             0 => __DIR__ . '/..' . '/ares/framework/src',
         ),
@@ -2629,6 +2629,7 @@ class ComposerStaticInit5e51cace1f96c3dafca087e7fde88d34
         'Modular\\Connector\\Cache\\Compatibilities\\Kinsta' => __DIR__ . '/../..' . '/src/app/Cache/Compatibilities/Kinsta.php',
         'Modular\\Connector\\Cache\\Compatibilities\\LiteSpeed' => __DIR__ . '/../..' . '/src/app/Cache/Compatibilities/LiteSpeed.php',
         'Modular\\Connector\\Cache\\Compatibilities\\NitroPack' => __DIR__ . '/../..' . '/src/app/Cache/Compatibilities/NitroPack.php',
+        'Modular\\Connector\\Cache\\Compatibilities\\Raidboxes' => __DIR__ . '/../..' . '/src/app/Cache/Compatibilities/Raidboxes.php',
         'Modular\\Connector\\Cache\\Compatibilities\\Varnish' => __DIR__ . '/../..' . '/src/app/Cache/Compatibilities/Varnish.php',
         'Modular\\Connector\\Cache\\Compatibilities\\W3TotalCache' => __DIR__ . '/../..' . '/src/app/Cache/Compatibilities/W3TotalCache.php',
         'Modular\\Connector\\Cache\\Compatibilities\\WPFastestCache' => __DIR__ . '/../..' . '/src/app/Cache/Compatibilities/WPFastestCache.php',

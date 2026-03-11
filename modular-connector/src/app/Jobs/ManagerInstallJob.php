@@ -61,7 +61,7 @@ class ManagerInstallJob implements ShouldQueue
 
             $toActivate = [
                 'network_wide' => false,
-                'silent' => true,
+                'silent' => false,
             ];
 
             $payload = (object)[
