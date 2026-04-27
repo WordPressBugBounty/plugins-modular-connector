@@ -6,7 +6,7 @@ use Modular\Connector\Events\ManagerItemsInstalled;
 use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Jobs\ManagerManageItemJob;
 use Modular\Connector\Jobs\ManagerUpgradeDatabaseJob;
-use Modular\Connector\Services\Manager\ManagerPlugin;
+use Modular\Connector\Services\Manager\AbstractManager;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -38,13 +38,17 @@ class PostUpgradeEventListener
             'payload' => $event->payload,
         ]);
 
-        if (!array_key_exists('translations', $event->payload)) {
-            $payload = [
-                'type' => 'translation',
-                'items' => [],
-            ];
+        // Translation upgrades never fire events, so this listener never receives them.
+        // Always dispatch a translation upgrade after any plugin/theme/core upgrade.
+        $hasTranslations = Collection::make($event->payload)
+            ->contains(fn($item) => data_get($item, 'type') === AbstractManager::TRANSLATION);
 
-            dispatch(new ManagerManageItemJob($event->mrid, $payload, 'upgrade'));
+        if (!$hasTranslations) {
+            dispatch(new ManagerManageItemJob($event->mrid, [
+                'type' => AbstractManager::TRANSLATION,
+                'items' => [],
+                'extra' => [],
+            ], 'upgrade'));
         }
 
         Log::debug('Try to search plugins with Database');
@@ -84,7 +88,7 @@ class PostUpgradeEventListener
         $type = data_get($event->payload, 'type');
         $basename = data_get($event->payload, 'item.basename');
 
-        if ($type === ManagerPlugin::PLUGIN && in_array($basename, $this->pluginsWithDatabase)) {
+        if ($type === AbstractManager::PLUGIN && in_array($basename, $this->pluginsWithDatabase)) {
             $this->dispatchUpgradeDatabase($event, $basename);
         }
     }
@@ -95,18 +99,18 @@ class PostUpgradeEventListener
      */
     public function handleUpgrade(ManagerItemsUpgraded $event)
     {
-        if (array_key_exists('plugins', $event->payload)) {
-            Collection::make(data_get($event->payload, 'plugins', []))
-                ->filter(fn($plugin) => data_get($plugin, 'success', false))
-                ->pluck('item')
-                ->filter(fn($plugin) => in_array($plugin, $this->pluginsWithDatabase))
-                ->each(function ($basename) use ($event) {
-                    $this->dispatchUpgradeDatabase($event, $basename);
-                });
-        }
+        $items = Collection::make($event->payload);
 
-        if (data_get($event->payload, 'core.success', false)) {
-            $this->dispatchUpgradeDatabase($event, ManagerPlugin::CORE);
-        }
+        // Plugin upgrades: check for database-dependent plugins
+        $items->filter(fn($item) => data_get($item, 'type') === AbstractManager::PLUGIN)
+            ->filter(fn($item) => data_get($item, 'success', false))
+            ->pluck('item')
+            ->filter(fn($basename) => in_array($basename, $this->pluginsWithDatabase))
+            ->each(fn($basename) => $this->dispatchUpgradeDatabase($event, $basename));
+
+        // Core upgrade: always run database upgrade
+        $items->filter(fn($item) => data_get($item, 'type') === AbstractManager::CORE)
+            ->filter(fn($item) => data_get($item, 'success', false))
+            ->each(fn() => $this->dispatchUpgradeDatabase($event, AbstractManager::CORE));
     }
 }

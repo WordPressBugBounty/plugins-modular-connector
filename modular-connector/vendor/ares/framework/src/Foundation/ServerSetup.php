@@ -88,8 +88,8 @@ class ServerSetup
         $id = intval(\Modular\ConnectorDependencies\data_get($user, 'ID'));
         Log::debug('Login as user', ['user' => $id, 'login' => $user->user_login]);
         wp_set_current_user($id, \Modular\ConnectorDependencies\data_get($user, 'user_login'));
+        LoginCompatibilities::afterLogin($id);
         if ($withCookies) {
-            LoginCompatibilities::afterLogin($id);
             try {
                 wp_set_auth_cookie($id);
                 return LoginCompatibilities::hostingCookies(is_ssl());

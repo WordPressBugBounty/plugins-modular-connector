@@ -56,6 +56,8 @@ class LoginCompatibilities
         static::fixAllInOneSecurity($userId);
         // WP 2FA - Set grace period for the user
         static::fixWp2FaGracePeriod($userId);
+        // All-In-One Intranet - Set last activity time
+        static::fixAllInOneIntranet($userId);
     }
     /**
      * Get hosting-specific cookies required for filesystem operations.
@@ -84,13 +86,13 @@ class LoginCompatibilities
      */
     private static function fixWpSimpleFirewall(): void
     {
-        if (!class_exists('ICWP_WPSF_Shield_Security')) {
-            return;
-        }
-        if (!class_exists('ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth', \false)) {
-            require_once __DIR__ . '/Stubs/ShieldTwoFactorAuthStub.php';
-            Log::debug('LoginCompatibilities: Created dummy Shield 2FA class');
-        }
+        add_action('plugins_loaded', function () {
+            if (!class_exists('ICWP_WPSF_Shield_Security')) {
+                return;
+            }
+            Compatibilities::removeFilterByClassName('after_setup_theme', \FernleafSystems\Wordpress\Plugin\Shield\Controller\Controller::class, 'onWpAfterSetupTheme', \PHP_INT_MIN);
+            Log::debug('LoginCompatibilities: Shield Security');
+        }, \PHP_INT_MAX);
     }
     /**
      * Shield Security - Mark visitor as whitelisted.
@@ -184,5 +186,20 @@ class LoginCompatibilities
         }
         update_user_meta($userId, 'aiowps_last_login_time', Carbon::now()->format('Y-m-d H:i:s'));
         Log::debug('LoginCompatibilities: AIOS last login time updated', ['user_id' => $userId]);
+    }
+    /**
+     * All-In-One Intranet - Set last activity time.
+     *
+     * @param int $userId
+     */
+    private static function fixAllInOneIntranet(int $userId): void
+    {
+        add_action('plugins_loaded', function () use ($userId) {
+            if (!class_exists('core_all_in_one_intranet')) {
+                return;
+            }
+            update_user_meta($userId, 'aioi_last_activity_time', time());
+            Log::debug('LoginCompatibilities: All-In-One Intranet last activity updated', ['user_id' => $userId]);
+        }, \PHP_INT_MAX);
     }
 }

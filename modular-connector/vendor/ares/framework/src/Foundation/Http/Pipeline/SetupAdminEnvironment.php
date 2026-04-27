@@ -27,15 +27,11 @@ class SetupAdminEnvironment
      */
     public function handle(Request $request, Closure $next)
     {
-        // Setup admin constants (WP_ADMIN, WP_NETWORK_ADMIN, etc.)
-        $this->setupAdminConstants();
-        // Simulate wp-admin environment
-        $this->simulateAdminEnvironment();
-        // Disable WordPress automatic actions during our operations
-        $this->disableWordPressAutoActions();
         // Login admin user early so themes loading during WordPress init
         // can pass authorization gates and register their hooks
         $this->loginAdminUser();
+        // Disable WordPress automatic actions during our operations
+        $this->disableWordPressAutoActions();
         return $next($request);
     }
     /**
@@ -130,18 +126,22 @@ class SetupAdminEnvironment
     private function loginAdminUser(): void
     {
         if (empty($GLOBALS['modular_is_mu_plugin'])) {
-            self::doLogin();
-            return;
+            $this->doLogin();
+        } else {
+            add_action('muplugins_loaded', [$this, 'doLogin']);
         }
-        add_action('muplugins_loaded', [self::class, 'doLogin']);
     }
     /**
      * @internal Called directly or via muplugins_loaded hook.
      */
-    public static function doLogin(): void
+    public function doLogin(): void
     {
         try {
             ServerSetup::loginAs();
+            // Setup admin constants (WP_ADMIN, WP_NETWORK_ADMIN, etc.)
+            $this->setupAdminConstants();
+            // Simulate wp-admin environment
+            $this->simulateAdminEnvironment();
         } catch (\Throwable $e) {
             Log::warning('SetupAdminEnvironment: Early login failed', ['error' => $e->getMessage()]);
         }

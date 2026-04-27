@@ -4,11 +4,11 @@ namespace Modular\Connector\Jobs;
 
 use Modular\Connector\Events\ManagerItemsInstalled;
 use Modular\Connector\Facades\Manager;
-use Modular\Connector\Services\Manager\ManagerPlugin;
-use Modular\Connector\Services\Manager\ManagerTheme;
+use Modular\Connector\Services\Manager\AbstractManager;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
+use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
 
@@ -23,9 +23,9 @@ class ManagerInstallJob implements ShouldQueue
     protected string $mrid;
 
     /**
-     * @var mixed
+     * @var array{type: string|null, name: string|null, download_link: string|null, overwrite: bool, activate: bool, clean_cache: bool, patchstack_license_key: string|null}
      */
-    protected $payload;
+    protected array $payload;
 
     /**
      * The number of seconds after which the job's unique lock will be released.
@@ -36,9 +36,9 @@ class ManagerInstallJob implements ShouldQueue
 
     /**
      * @param string $mrid
-     * @param $payload
+     * @param array{type: string|null, name: string|null, download_link: string|null, overwrite: bool, activate: bool, clean_cache: bool, patchstack_license_key: string|null} $payload
      */
-    public function __construct(string $mrid, $payload)
+    public function __construct(string $mrid, array $payload)
     {
         $this->mrid = $mrid;
         $this->payload = $payload;
@@ -46,35 +46,36 @@ class ManagerInstallJob implements ShouldQueue
 
     public function handle(): void
     {
-        $payload = $this->payload;
+        $type = data_get($this->payload, 'type');
+        $downloadLink = data_get($this->payload, 'download_link');
+        $overwrite = (bool)data_get($this->payload, 'overwrite', true);
 
-        if ($payload->type === ManagerTheme::THEME) {
-            $result = Manager::driver(ManagerTheme::THEME)->install($payload->downloadLink, $payload->overwrite);
+        if ($type === AbstractManager::THEME) {
+            $result = Manager::driver(AbstractManager::THEME)->install($downloadLink, $overwrite);
         } else {
-            $result = Manager::driver(ManagerPlugin::PLUGIN)->install($payload->downloadLink, $payload->overwrite);
+            $result = Manager::driver(AbstractManager::PLUGIN)->install($downloadLink, $overwrite);
         }
 
-        $result['name'] = $payload->name ?? 'unknown';
+        $result['name'] = data_get($this->payload, 'name', 'unknown');
 
-        if ($payload->activate && $result['success'] === true) {
-            $key = $payload->type . 's';
-
-            $toActivate = [
-                'network_wide' => false,
-                'silent' => false,
+        if (data_get($this->payload, 'activate') && $result['success'] === true) {
+            $items = (object)[
+                $result['item']['basename'] => (object)[
+                    'network_wide' => false,
+                    'silent' => false,
+                ],
             ];
 
-            $payload = (object)[
-                $key => (object)[
-                    $result['item']['basename'] => (object)$toActivate,
-                ],
+            $normalizedPayload = [
+                'type' => $type,
+                'items' => $items,
                 'extra' => [
-                    'clean_cache' => $payload->cleanCache ?? false,
-                    'patchstackLicenseKey' => $payload->patchstackLicenseKey ?? null,
+                    'clean_cache' => (bool)data_get($this->payload, 'clean_cache', false),
+                    'patchstackLicenseKey' => data_get($this->payload, 'patchstack_license_key'),
                 ],
             ];
 
-            dispatch(new ManagerManageItemJob($this->mrid, $payload, 'activate'));
+            dispatch(new ManagerManageItemJob($this->mrid, $normalizedPayload, 'activate'));
         }
 
         event(new ManagerItemsInstalled($this->mrid, $result));

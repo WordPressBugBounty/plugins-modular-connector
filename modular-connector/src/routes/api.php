@@ -9,8 +9,10 @@ use Modular\Connector\Http\Controllers\BackupController;
 use Modular\Connector\Http\Controllers\CacheController;
 use Modular\Connector\Http\Controllers\ManagerController;
 use Modular\Connector\Http\Controllers\OptimizationController;
+use Modular\Connector\Http\Controllers\RestorationController;
 use Modular\Connector\Http\Controllers\SafeUpgradeController;
 use Modular\Connector\Http\Controllers\ServerController;
+use Modular\Connector\Http\Controllers\UserController;
 use Modular\Connector\Http\Controllers\WooCommerceController;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Route;
@@ -26,8 +28,19 @@ Route::get('/schedule/run', [ServerController::class, 'getLoopback'])
 Route::get('/login/{modular_request}', [AuthController::class, 'getLogin'])
     ->name('login');
 
-Route::get('/users/{modular_request}', [AuthController::class, 'getUsers'])
+#region Users
+Route::get('/users/{modular_request}', [UserController::class, 'index'])
     ->name('manager.users.index');
+
+Route::get('/users/{modular_request}/store', [UserController::class, 'store'])
+    ->name('manager.users.store');
+
+Route::get('/users/{modular_request}/update', [UserController::class, 'update'])
+    ->name('manager.users.update');
+
+Route::get('/users/{modular_request}/delete', [UserController::class, 'destroy'])
+    ->name('manager.users.delete');
+#endregion
 
 Route::get('/server-information/{modular_request}', [ServerController::class, 'getInformation'])
     ->name('manager.server.information');
@@ -108,6 +121,11 @@ Route::get('/backup/{modular_request}/remove', [BackupController::class, 'destro
 
 Route::get('/woocommerce/{modular_request}', WooCommerceController::class)
     ->name('manager.woocommerce.stats');
+#endregion
+
+#region Restoration
+Route::get('/restoration/{modular_request}/setup', RestorationController::class)
+    ->name('manager.restoration.setup');
 #endregion
 
 Route::get('default', function () {

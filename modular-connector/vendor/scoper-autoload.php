@@ -14,7 +14,7 @@ $loader = (static function () {
     // Restore the backup and ensure the excluded files are properly marked as loaded
     $GLOBALS['__composer_autoload_files'] = \array_merge(
         $existingComposerAutoloadFiles,
-        \array_fill_keys(['c39e83ecef216fe0b9ce04957a4a7f63', '9eaa6b0f3f04e58e17ae5ecb754ea313', '96e722042a0cb324d0c84c0de2f44ddf', 'acbe0d033c55cd0a032b415e08d14f4c', '01ccec83b387ee53ec118d7bbbc242bc', 'b48cbeb76a71e226a23fa64ac2b94dc6', '5643770d4761b1e0e65f62b5e7c11bf4', '36dfd6ed9dd74e8062aa61f09caf8554', '7370176c8e111e32ba43706f0d04904b', '5928a00fa978807cf85d90ec3f4b0147', '5c9971bada6bf571846636bf4cc25897', 'dbd33935781838a5fb676a5839c4345c', 'a39b3b2c3e16e8f4717a96f3cb62db59', 'b178954ba4692b8876c08a4a97e6ce23', '28099935d0ea91a1b5e09408e356eacb', 'c5e5dfa7f2077b89dbc43523332b50aa', '674e404d8857dd99db32bc218bb5643a', '83cc8b953df9a6f7e51f674d84d57730', '9250916e8af80e0d1bb31401fd2e15a7', '99b27172349c9ec3abea78f62e2938bb', 'a875add15ea9a7df1a6c0c26cc9e4590', '1cbb53d50065225a14c2360be2ccbf6f', '54b9ab13bc86d8251a04a939888e357e', 'a89966141ddd51b9b7e868bc3b2f9bb0', '7bdb062931f6e7102434c3ad28423eb6', 'f49032536fdd06afd9df7191c3f21453', '18e965175c6bcd96deba6bc791a44373', '51421aa3e5e8003b70a289762d146a2a', '7edcabe1b67fbb38f4972a722bbbb429', '7b0b5d7b98f96ad751222ae5cc98cfcb', 'd1fb64fd99fc22e28e29a95cc0ea533a'], true)
+        \array_fill_keys(['ba3d62a20bc28082c3a66f3d23cb15ce', '9eaa6b0f3f04e58e17ae5ecb754ea313', 'aca8f3f4d4eee4f45a57b1c5289ef5a8', 'acbe0d033c55cd0a032b415e08d14f4c', '755d3a147af96777214f10b57eff9cdf', 'b48cbeb76a71e226a23fa64ac2b94dc6', 'f1b7e23929a3b927dae5a4c8da2419a7', '36dfd6ed9dd74e8062aa61f09caf8554', '46a2883cda4f53694b528fcbeb435c50', '5928a00fa978807cf85d90ec3f4b0147', '37e322e6acce15237f9dc8de5be6cb80', 'a90483d36529644bdc4dcd17653c2f12', '7fbbe666030ff5b38fe931a208688395', 'b178954ba4692b8876c08a4a97e6ce23', '28099935d0ea91a1b5e09408e356eacb', 'c5e5dfa7f2077b89dbc43523332b50aa', '674e404d8857dd99db32bc218bb5643a', '83cc8b953df9a6f7e51f674d84d57730', '9250916e8af80e0d1bb31401fd2e15a7', '99b27172349c9ec3abea78f62e2938bb', 'a875add15ea9a7df1a6c0c26cc9e4590', '1cbb53d50065225a14c2360be2ccbf6f', '54b9ab13bc86d8251a04a939888e357e', 'a89966141ddd51b9b7e868bc3b2f9bb0', '7bdb062931f6e7102434c3ad28423eb6', 'f49032536fdd06afd9df7191c3f21453', '18e965175c6bcd96deba6bc791a44373', '51421aa3e5e8003b70a289762d146a2a', '7edcabe1b67fbb38f4972a722bbbb429', '7b0b5d7b98f96ad751222ae5cc98cfcb', 'd1fb64fd99fc22e28e29a95cc0ea533a'], true)
     );
 
     return $loader;
@@ -38,7 +38,6 @@ humbug_phpscoper_expose_class('Attribute', 'Modular\ConnectorDependencies\Attrib
 humbug_phpscoper_expose_class('PhpToken', 'Modular\ConnectorDependencies\PhpToken');
 humbug_phpscoper_expose_class('UnhandledMatchError', 'Modular\ConnectorDependencies\UnhandledMatchError');
 humbug_phpscoper_expose_class('JsonException', 'Modular\ConnectorDependencies\JsonException');
-humbug_phpscoper_expose_class('ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth', 'Modular\ConnectorDependencies\ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth');
 
 // Function aliases. For more information see:
 // https://github.com/humbug/php-scoper/blob/master/docs/further-reading.md#function-aliases

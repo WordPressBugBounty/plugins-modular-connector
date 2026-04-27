@@ -13,6 +13,11 @@ use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Events\ManagerSafeUpgradeBackedUp;
 use Modular\Connector\Events\ManagerSafeUpgradeCleanedUp;
 use Modular\Connector\Events\ManagerSafeUpgradeRolledBack;
+use Modular\Connector\Events\RestorationSetupUpdated;
+use Modular\Connector\Events\ManagerUserCreated;
+use Modular\Connector\Events\ManagerUserDeleted;
+use Modular\Connector\Events\ManagerUserIndexed;
+use Modular\Connector\Events\ManagerUserUpdated;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Listeners\HookEventListener;
 use Modular\Connector\Listeners\PostUpgradeEventListener;
@@ -46,6 +51,13 @@ class EventServiceProvider extends ServiceProvider
         Event::listen(ManagerSafeUpgradeBackedUp::class, HookEventListener::class);
         Event::listen(ManagerSafeUpgradeCleanedUp::class, HookEventListener::class);
         Event::listen(ManagerSafeUpgradeRolledBack::class, HookEventListener::class);
+
+        Event::listen(RestorationSetupUpdated::class, HookEventListener::class);
+
+        Event::listen(ManagerUserIndexed::class, HookEventListener::class);
+        Event::listen(ManagerUserCreated::class, HookEventListener::class);
+        Event::listen(ManagerUserUpdated::class, HookEventListener::class);
+        Event::listen(ManagerUserDeleted::class, HookEventListener::class);
 
         Event::listen(WorkerStopping::class, function (WorkerStopping $event) {
             Server::maintenanceMode(false);

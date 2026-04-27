@@ -66,7 +66,7 @@ class ManagerPatchstackActivationJob implements ShouldQueue, ShouldBeUniqueUntil
             $patchstack->api->update_license_status();
         }
 
-        data_set($this->result, '0.success', $success, false);
+        data_set($this->result, 'plugins.0.success', $success, false);
 
         event(new ManagerItemsActivated($this->mrid, $this->result));
     }

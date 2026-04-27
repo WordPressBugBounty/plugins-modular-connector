@@ -2,10 +2,12 @@
 
 namespace Modular\Connector\Optimizer;
 
+use Modular\Connector\Concerns\FormatsErrors;
 use Modular\Connector\Optimizer\Interfaces\OptimizationInterface;
 
 abstract class Optimization implements OptimizationInterface
 {
+    use FormatsErrors;
     /**
      * Total weeks to retain data
      *
@@ -41,24 +43,4 @@ abstract class Optimization implements OptimizationInterface
         }
     }
 
-    /**
-     * Receives a WordPress error as $error parameters and returns it in our desired format.
-     *
-     * @param \WP_Error|mixed $error
-     * @return array[]
-     * @throws \Exception
-     * @depreacted Pending error handler
-     */
-    final protected function formatError(\Throwable $error)
-    {
-        return [
-            'code' => $error->getCode(),
-            'message' => sprintf(
-                '%s in %s on line %s',
-                $error->getMessage(),
-                $error->getFile(),
-                $error->getLine()
-            ),
-        ];
-    }
 }

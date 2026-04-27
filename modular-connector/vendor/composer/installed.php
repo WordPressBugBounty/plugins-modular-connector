@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'modular/connector',
-        'pretty_version' => 'dev-master',
-        'version' => 'dev-master',
-        'reference' => '8c5c17fd8866aa20e47cc95b93857babf30f2d09',
+        'pretty_version' => 'dev-develop',
+        'version' => 'dev-develop',
+        'reference' => '031dcf222ecf5abce71ff354e4eddb6ec8b66465',
         'type' => 'wordpres-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,12 +11,14 @@
     ),
     'versions' => array(
         'ares/framework' => array(
-            'pretty_version' => '3.8.13',
-            'version' => '3.8.13.0',
-            'reference' => 'cfa7c65eb750a1720d6f97027550046419c46606',
+            'pretty_version' => 'dev-master',
+            'version' => 'dev-master',
+            'reference' => '88091aea1c4be613696868b612499693e8ec38b6',
             'type' => 'library',
             'install_path' => __DIR__ . '/../ares/framework',
-            'aliases' => array(),
+            'aliases' => array(
+                0 => '9999999-dev',
+            ),
             'dev_requirement' => false,
         ),
         'brick/math' => array(
@@ -83,9 +85,9 @@
             'dev_requirement' => false,
         ),
         'guzzlehttp/psr7' => array(
-            'pretty_version' => '2.8.0',
-            'version' => '2.8.0.0',
-            'reference' => '21dc724a0583619cd1652f673303492272778051',
+            'pretty_version' => '2.9.0',
+            'version' => '2.9.0.0',
+            'reference' => '7d0ed42f28e42d61352a7a79de682e5e67fec884',
             'type' => 'library',
             'install_path' => __DIR__ . '/../guzzlehttp/psr7',
             'aliases' => array(),
@@ -299,9 +301,9 @@
             'dev_requirement' => false,
         ),
         'modular/connector' => array(
-            'pretty_version' => 'dev-master',
-            'version' => 'dev-master',
-            'reference' => '8c5c17fd8866aa20e47cc95b93857babf30f2d09',
+            'pretty_version' => 'dev-develop',
+            'version' => 'dev-develop',
+            'reference' => '031dcf222ecf5abce71ff354e4eddb6ec8b66465',
             'type' => 'wordpres-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

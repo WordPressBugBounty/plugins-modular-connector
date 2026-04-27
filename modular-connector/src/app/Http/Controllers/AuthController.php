@@ -130,15 +130,4 @@ class AuthController
             ->withCookies($cookies);
     }
 
-    /**
-     * @param SiteRequest $modularRequest
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getUsers(SiteRequest $modularRequest)
-    {
-        $users = ServerSetup::getAllAdminUsers();
-
-        return Response::json($users);
-    }
 }

@@ -32,6 +32,11 @@ class ModularClient implements ModularClientInterface
     public const STG_API_BASE = 'https://api.staging.modulards.com';
 
     /**
+     * @var string
+     */
+    private string $apiBaseUrl;
+
+    /**
      * @var Client
      */
     private Client $client;
@@ -66,13 +71,14 @@ class ModularClient implements ModularClientInterface
 
         $this->oauthClient = $config['oauth_client'];
         $this->oauthToken = $config['oauth_token'];
+        $this->apiBaseUrl = rtrim($config['base_uri'], '/');
 
         // Only disable for local/staging development
         $isDevEnvironment = in_array($config['env'] ?? 'production', ['local', 'stg', 'dev', 'testing'], true);
 
         $this->client = new Client([
             'verify' => !$isDevEnvironment,
-            'base_uri' => rtrim($config['base_uri'], '/'),
+            'base_uri' => $this->apiBaseUrl,
             'headers' => [
                 'Accept' => 'application/json',
                 'User-Agent' => sprintf('ModularConnectorPluginWP/%s', Server::connectorVersion()),
@@ -101,6 +107,14 @@ class ModularClient implements ModularClientInterface
         }
 
         return $this->coreServiceFactory->{$name};
+    }
+
+    /**
+     * @return string
+     */
+    public function getApiBaseUrl(): string
+    {
+        return $this->apiBaseUrl;
     }
 
     /**

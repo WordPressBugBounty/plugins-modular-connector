@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Http\Controllers;
 
+use Modular\Connector\Concerns\NormalizesManagerPayload;
 use Modular\Connector\Jobs\ManagerInstallJob;
 use Modular\Connector\Jobs\ManagerManageItemJob;
 use Modular\Connector\Jobs\ManagerUpdateJob;
@@ -12,6 +13,8 @@ use function Modular\ConnectorDependencies\dispatch;
 
 class ManagerController
 {
+    use NormalizesManagerPayload;
+
     /**
      * @param SiteRequest $modularRequest
      * @return \Illuminate\Http\JsonResponse
@@ -32,7 +35,9 @@ class ManagerController
      */
     public function store(SiteRequest $modularRequest)
     {
-        dispatch(new ManagerInstallJob($modularRequest->request_id, $modularRequest->body));
+        $payload = $this->normalizeInstallPayload($modularRequest->body);
+
+        dispatch(new ManagerInstallJob($modularRequest->request_id, $payload));
 
         return Response::json([
             'success' => 'OK',
@@ -45,9 +50,10 @@ class ManagerController
      */
     public function update(SiteRequest $modularRequest)
     {
-        $type = Str::replace('manager.', '', $modularRequest->type);
+        $action = Str::replace('manager.', '', $modularRequest->type);
+        $payload = $this->normalizeManagePayload($modularRequest->body);
 
-        dispatch(new ManagerManageItemJob($modularRequest->request_id, $modularRequest->body, $type));
+        dispatch(new ManagerManageItemJob($modularRequest->request_id, $payload, $action));
 
         return Response::json([
             'success' => 'OK',

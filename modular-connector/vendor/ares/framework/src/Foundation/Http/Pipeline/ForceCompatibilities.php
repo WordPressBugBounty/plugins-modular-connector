@@ -43,11 +43,13 @@ class ForceCompatibilities
         } catch (\Throwable $e) {
             Log::warning('ForceCompatibilities: Divi upgrader failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
-        // 3. Register YITH upgrade system that initializes late on wp_loaded priority 99
+        // 3. Fix YITH download: their upgrader_pre_download reads $_POST['plugin']
+        // which doesn't exist in our context. Fire pre_auto_update so YITH sets
+        // plugin_upgrading before its own upgrader_pre_download handler runs.
         try {
-            $this->registerYithUpgrader();
+            $this->registerYithDownloadCompat();
         } catch (\Throwable $e) {
-            Log::warning('ForceCompatibilities: YITH upgrader failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::warning('ForceCompatibilities: YITH download compat failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
         return $next($request);
     }
@@ -110,6 +112,62 @@ class ForceCompatibilities
             return;
         }
         add_action('init', 'et_register_updates_component');
+    }
+    /**
+     * Fix YITH plugin downloads in non-AJAX contexts.
+     *
+     * YITH's upgrader_pre_download (priority 10) identifies the plugin being
+     * upgraded via get_plugin_upgrading(). For WP_Ajax_Upgrader_Skin it reads
+     * $_POST['plugin'], which doesn't exist in our programmatic context.
+     *
+     * However, YITH also checks $this->plugin_upgrading first, which is set by
+     * the pre_auto_update action via catch_plugin_upgrading(). We hook
+     * upgrader_pre_download at priority 9 to resolve the plugin basename from
+     * skin->plugin_info['Name'] (the only reliable data available) and fire
+     * pre_auto_update so YITH sets plugin_upgrading before its handler runs.
+     *
+     * Uses the same Name-matching approach YITH uses for WP-CLI support.
+     *
+     * @return void
+     */
+    private function registerYithDownloadCompat(): void
+    {
+        add_filter('upgrader_pre_download', function ($reply, $package, $upgrader) {
+            if (!class_exists('YITH\PluginUpgrade\Licences', \false)) {
+                return $reply;
+            }
+            if (!$upgrader instanceof \Plugin_Upgrader) {
+                return $reply;
+            }
+            $pluginName = $upgrader->skin->plugin_info['Name'] ?? '';
+            if (empty($pluginName)) {
+                return $reply;
+            }
+            // Resolve basename by matching Name against YITH registered products,
+            // same approach YITH uses for WP-CLI in get_plugin_upgrading().
+            $plugin = $this->resolveYithPluginBasename($pluginName);
+            if (empty($plugin)) {
+                return $reply;
+            }
+            do_action('pre_auto_update', 'plugin', (object) ['plugin' => $plugin], \ABSPATH);
+            return $reply;
+        }, 9, 3);
+    }
+    /**
+     * Resolve a YITH plugin basename from its display name.
+     *
+     * @param string $pluginName The plugin display name from plugin_info['Name']
+     * @return string The plugin basename (e.g. 'yith-.../init.php') or empty if not found
+     */
+    private function resolveYithPluginBasename(string $pluginName): string
+    {
+        $products = \YITH\PluginUpgrade\Licences::instance()->get_products();
+        foreach ($products as $init => $info) {
+            if (html_entity_decode($pluginName) === html_entity_decode($info['Name'])) {
+                return $init;
+            }
+        }
+        return '';
     }
     /**
      * Check if a callback belongs to a YITH plugin.

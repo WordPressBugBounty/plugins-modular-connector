@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\data_get;
@@ -34,55 +35,114 @@ abstract class AbstractManager implements ManagerContract
     }
 
     /**
-     * Parsing the upgrade response of the item
+     * Parse the response of a single action (upgrade, install, activate, deactivate, delete)
+     * and return a normalized result array.
+     *
+     * Note: For successful installs, `item` is the mapped plugin/theme data array
+     * (containing `basename`, `Name`, `Version`, etc.) instead of a string identifier.
      *
      * @param string $item
-     * @param $result
+     * @param mixed $result
      * @param string $action
-     * @param $type
-     * @return mixed
-     * @throws \Exception
+     * @param string $type
+     * @return array{item: string|array, type: string, success: bool, response: mixed}
      */
     final protected function parseActionResponse(string $item, $result, $action, $type)
     {
-        if (!in_array($item, [self::CORE, self::TRANSLATION, 'translations'])) {
-            $isSuccess = !is_wp_error($result) && !$result instanceof \Throwable;
-
-            if ($action === 'upgrade') {
-                if ($result === true) {
-                    $result = new \WP_Error(
-                        'up_to_date',
-                        'No pending update was found for this item. The update information may have expired or been cleared before the update could run. Click "reload" on the updater to verify whether an update is still pending.'
-                    );
-
-                    $isSuccess = false;
-                } else {
-                    $isSuccess = $isSuccess && !empty($result['source']);
-                }
-            } elseif ($action === 'install') {
-                $isSuccess = $isSuccess && !empty($result) && isset($result['basename']);
-
-                if ($isSuccess) {
-                    $item = $result;
-                    $result = null;
-                }
-            } elseif (in_array($action, ['activate', 'deactivate'])) {
-                $isSuccess = $isSuccess && !empty($result) && isset($result['status']) && $result['status'] === 'success';
-            }
-
-            if ($isSuccess && isset($result['source_files'])) {
-                unset($result['source_files']);
-            }
-        } else {
-            $isSuccess = !is_wp_error($result) && !$result instanceof \Throwable || $result === true;
+        if (in_array($item, [self::CORE, self::TRANSLATION, 'translations'])) {
+            return $this->buildResponse($item, $result, $type, $this->isCoreSuccess($result));
         }
 
+        if ($action === 'upgrade') {
+            [$item, $result, $isSuccess] = $this->parseUpgradeResult($item, $result, $type);
+        } elseif ($action === 'install') {
+            [$item, $result, $isSuccess] = $this->parseInstallResult($item, $result);
+        } elseif ($action === 'activate' || $action === 'deactivate') {
+            $isSuccess = $this->isToggleSuccess($result);
+        } else {
+            $isSuccess = $this->isResultOk($result);
+        }
+
+        if ($isSuccess && is_array($result)) {
+            unset($result['source_files']);
+        }
+
+        return $this->buildResponse($item, $result, $type, $isSuccess);
+    }
+
+    /**
+     * @param string|array $item String identifier, or mapped plugin/theme data on successful install.
+     * @param mixed $result
+     * @param string $type
+     * @param bool $isSuccess
+     * @return array{item: string|array, type: string, success: bool, response: mixed}
+     */
+    private function buildResponse($item, $result, string $type, bool $isSuccess): array
+    {
         return [
             'item' => $item,
             'type' => $type,
             'success' => $isSuccess,
             'response' => $this->formatWordPressError($result),
         ];
+    }
+
+    private function isResultOk($result): bool
+    {
+        return !is_wp_error($result) && !$result instanceof \Throwable;
+    }
+
+    private function isCoreSuccess($result): bool
+    {
+        return $this->isResultOk($result) || $result === true;
+    }
+
+    /**
+     * @return array{0: string, 1: mixed, 2: bool}
+     */
+    private function parseUpgradeResult(string $item, $result, string $type): array
+    {
+        if ($result === true) {
+            // WordPress returned true = "no update found in transient".
+            // Premium plugins sometimes clear transient data even when the update didn't run.
+            // Verify by comparing the installed version on disk against the expected version.
+            if ($this->verifyInstalledVersion($item, $type)) {
+                return [$item, null, true];
+            }
+
+            return [
+                $item,
+                new \WP_Error(
+                    'up_to_date',
+                    'No pending update was found for this item. The update information may have expired or been cleared before the update could run. Click "reload" on the updater to verify whether an update is still pending.'
+                ),
+                false,
+            ];
+        }
+
+        return [$item, $result, $this->isResultOk($result) && !empty($result['source'])];
+    }
+
+    /**
+     * @return array{0: mixed, 1: mixed, 2: bool}
+     */
+    private function parseInstallResult(string $item, $result): array
+    {
+        $isSuccess = $this->isResultOk($result) && !empty($result) && isset($result['basename']);
+
+        if ($isSuccess) {
+            return [$result, null, true];
+        }
+
+        return [$item, $result, false];
+    }
+
+    private function isToggleSuccess($result): bool
+    {
+        return $this->isResultOk($result)
+            && !empty($result)
+            && isset($result['status'])
+            && $result['status'] === 'success';
     }
 
     /**
@@ -252,6 +312,42 @@ abstract class AbstractManager implements ManagerContract
         }
 
         return $updatableItems;
+    }
+
+    /**
+     * Verify if the installed version on disk meets or exceeds the expected version from the update transient.
+     *
+     * @param string $item The plugin basename (e.g. 'akismet/akismet.php') or theme slug.
+     * @param string $type One of self::PLUGIN or self::THEME.
+     * @return bool True if installed version >= expected version, false otherwise.
+     */
+    private function verifyInstalledVersion(string $item, string $type): bool
+    {
+        $transient = Cache::driver('wordpress')->get("transient_update_{$type}s");
+
+        if ($type === self::PLUGIN) {
+            $expectedVersion = $transient->response[$item]->new_version ?? null;
+
+            $pluginFile = WP_PLUGIN_DIR . '/' . $item;
+
+            if (!file_exists($pluginFile)) {
+                return false;
+            }
+
+            $installedVersion = get_plugin_data($pluginFile, false, false)['Version'] ?? null;
+        } elseif ($type === self::THEME) {
+            $expectedVersion = $transient->response[$item]['new_version'] ?? null;
+
+            $installedVersion = wp_get_theme($item)->get('Version');
+        } else {
+            return true;
+        }
+
+        if (!$expectedVersion || !$installedVersion) {
+            return false;
+        }
+
+        return version_compare($installedVersion, $expectedVersion, '>=');
     }
 
     /**
