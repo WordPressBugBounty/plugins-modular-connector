@@ -51,40 +51,39 @@ function modular_connector_register_storage(Application $app)
             }
         }
 
-        $subFolders = ['views', 'logs', 'cache', 'upgrades'];
+        $subFolders = ['views', 'logs', 'cache', 'upgrades', 'scans'];
 
         foreach ($subFolders as $subFolder) {
             $subPath = $storagePath . DIRECTORY_SEPARATOR . $subFolder;
 
             if (!file_exists($subPath)) {
-                $created = @mkdir($subPath, 0775, true);
+                $created = @mkdir($subPath, 0755, true);
 
                 if (!$created) {
-                    @rmdir($storagePath . DIRECTORY_SEPARATOR . 'views'); // Remove the storage path
-                    @rmdir($storagePath . DIRECTORY_SEPARATOR . 'logs'); // Remove the storage path
-                    @rmdir($storagePath . DIRECTORY_SEPARATOR . 'cache'); // Remove the storage path
-                    @rmdir($storagePath . DIRECTORY_SEPARATOR . 'upgrades'); // Remove the storage path
-                    @rmdir($storagePath); // Remove the storage path
+                    foreach ($subFolders as $cleanup) {
+                        @rmdir($storagePath . DIRECTORY_SEPARATOR . $cleanup);
+                    }
+                    @rmdir($storagePath);
 
                     return;
                 }
             }
 
-            // Create index.php, index.html and .htaccess files
-            $indexPhp = $subPath . DIRECTORY_SEPARATOR . 'index.php';
-            $indexHtml = $subPath . DIRECTORY_SEPARATOR . 'index.html';
-            $htaccess = $subPath . DIRECTORY_SEPARATOR . '.htaccess';
+            // Protect each subfolder against directory listing and direct access
+            // (Apache/Nginx via .htaccess + index files, IIS via web.config).
+            $protectors = [
+                'index.php' => '<?php // Silence is golden.',
+                'index.html' => '',
+                '.htaccess' => 'deny from all',
+                'web.config' => '<configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>',
+            ];
 
-            if (!file_exists($indexPhp)) {
-                @file_put_contents($indexPhp, '<?php // Silence is golden.');
-            }
+            foreach ($protectors as $name => $content) {
+                $file = $subPath . DIRECTORY_SEPARATOR . $name;
 
-            if (!file_exists($indexHtml)) {
-                @file_put_contents($indexHtml, '');
-            }
-
-            if (!file_exists($htaccess)) {
-                @file_put_contents($htaccess, 'deny from all');
+                if (!file_exists($file)) {
+                    @file_put_contents($file, $content);
+                }
             }
         }
 

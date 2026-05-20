@@ -13,6 +13,7 @@ use Modular\SDK\Support\ApiHelper;
  * @property \Modular\SDK\Services\WordPressService $wordpress
  * @property \Modular\SDK\Services\BackupService $backup
  * @property \Modular\SDK\Services\LinkingService $linking
+ * @property \Modular\SDK\Services\BrokenLinksService $brokenLinks
  */
 class ModularClient implements ModularClientInterface
 {
@@ -89,7 +90,7 @@ class ModularClient implements ModularClientInterface
                 'max' => 5,
                 'strict' => true,
                 'referer' => false,
-                'protocols' => ['http', 'https'],
+                'protocols' => ['https'],
                 'track_redirects' => false,
             ],
         ]);

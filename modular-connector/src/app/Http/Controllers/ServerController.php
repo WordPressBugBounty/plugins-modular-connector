@@ -3,9 +3,16 @@
 namespace Modular\Connector\Http\Controllers;
 
 use Modular\Connector\Cache\Jobs\CacheClearJob;
+use Modular\Connector\Events\ManagerServerInformationUpdated;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Facades\WhiteLabel;
-use Modular\Connector\Jobs\Health\ManagerHealthDataJob;
+use Modular\Connector\Health\Jobs\HealthTestJob;
+use Modular\Connector\Health\Tests\AuthorizationHeaderTest;
+use Modular\Connector\Health\Tests\BackgroundUpdatesTest;
+use Modular\Connector\Health\Tests\DotorgCommunicationTest;
+use Modular\Connector\Health\Tests\HttpsStatusTest;
+use Modular\Connector\Health\Tests\LoopbackRequestsTest;
+use Modular\Connector\Health\Tests\RestAvailabilityTest;
 use Modular\Connector\Optimizer\Jobs\ManagerOptimizationInformationUpdateJob;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
@@ -15,18 +22,36 @@ use Modular\SDK\Objects\SiteRequest;
 use function Modular\ConnectorDependencies\app;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
+use function Modular\ConnectorDependencies\event;
 
 class ServerController extends Controller
 {
+    /**
+     * @var array
+     */
+    protected static $healthTests = [
+        DotorgCommunicationTest::class,
+        BackgroundUpdatesTest::class,
+        LoopbackRequestsTest::class,
+        RestAvailabilityTest::class,
+        HttpsStatusTest::class,
+        AuthorizationHeaderTest::class,
+    ];
+
     /**
      * @param SiteRequest $modularRequest
      * @return \Illuminate\Http\JsonResponse
      */
     public function getInformation(SiteRequest $modularRequest)
     {
-        $information = Server::information();
+        $response = Server::information();
 
-        return Response::json($information);
+        if (data_get($modularRequest->body, 'async', false)) {
+            event(new ManagerServerInformationUpdated($modularRequest->request_id, $response));
+            $response = ['success' => 'OK'];
+        }
+
+        return Response::json($response);
     }
 
     /**
@@ -35,18 +60,8 @@ class ServerController extends Controller
      */
     public function getHealth(SiteRequest $modularRequest)
     {
-        $health = \WP_Site_Health::get_tests();
-
-        $syncTests = $health['direct'];
-        $syncTests = array_keys($syncTests);
-
-        dispatch(new ManagerHealthDataJob($modularRequest->request_id, 'direct', $syncTests));
-
-        $asyncTests = $health['async'];
-        $asyncTests = array_keys($asyncTests);
-
-        foreach ($asyncTests as $test) {
-            dispatch(new ManagerHealthDataJob($modularRequest->request_id, 'async', [$test]));
+        foreach (static::$healthTests as $testClass) {
+            dispatch(new HealthTestJob($modularRequest->request_id, $testClass));
         }
 
         dispatch(new ManagerOptimizationInformationUpdateJob($modularRequest->request_id, $modularRequest->body));

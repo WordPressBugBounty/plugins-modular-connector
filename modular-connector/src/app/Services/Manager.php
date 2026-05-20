@@ -112,6 +112,10 @@ class Manager extends IlluminateManager
             error_log(sprintf('Error flushing cache: %s', $e->getMessage()));
         }
 
+        // Delegate to the service so the cache key and driver-selection policy
+        // stay in one place (RedirectService::invalidateCache already logs on failure).
+        RedirectService::invalidateCache();
+
         // 3. Clean all pending jobs
         try {
             $this->clearQueue('default');

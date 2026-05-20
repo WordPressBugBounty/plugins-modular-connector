@@ -8,6 +8,8 @@ use Modular\Connector\Backups\Iron\Jobs\ProcessFilesJob;
 use Modular\Connector\Backups\Iron\Jobs\ProcessUploadJob;
 use Modular\Connector\Backups\Iron\Manifest\Manifest;
 use Modular\Connector\Facades\Manager;
+use Modular\Connector\Manifest\Contracts\ManifestablePartContract;
+use Modular\Connector\Manifest\Contracts\ManifestContract;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
@@ -19,7 +21,7 @@ use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
 
-class BackupPart
+class BackupPart implements ManifestablePartContract
 {
     /**
      * @var string
@@ -465,6 +467,22 @@ class BackupPart
     }
 
     /**
+     * @return ManifestContract
+     */
+    public function createManifest()
+    {
+        return Manifest::create($this);
+    }
+
+    /**
+     * @return string
+     */
+    public function getManifestFailedStatus()
+    {
+        return ManagerBackupPartUpdated::STATUS_FAILED_EXPORT_MANIFEST;
+    }
+
+    /**
      * @param $status
      * @param bool $emitEvent
      * @param array $extra
@@ -545,17 +563,18 @@ class BackupPart
     {
         $this->cleanFiles(true);
 
-        $this->markAs(
-            $status,
-            true,
-            [
+        $extra = [];
+        if ($e !== null) {
+            $extra = [
                 'error' => [
                     'message' => $e->getMessage(),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                 ],
-            ]
-        );
+            ];
+        }
+
+        $this->markAs($status, true, $extra);
     }
 
     /**

@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 2.8.1
+Stable tag: 3.0.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -170,6 +170,10 @@ Modular DS also stands out for its friendly and responsive support, delivered by
 
 The platform is continuously evolving, with frequent updates, improvements, and new features released regularly.
 
+= Where do I report security bugs found in this plugin? =
+
+Please report security bugs found in the source code of the Modular DS plugin through the [Patchstack Vulnerability Disclosure Program](https://patchstack.com/database/vdp/df399a2a-2df6-4510-8067-5b200a312687). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
+
 == Screenshots ==
 
 1. Modular DS dashboard
@@ -183,6 +187,15 @@ The platform is continuously evolving, with frequent updates, improvements, and 
 9. Client report overview page
 
 == Changelog ==
+= v3.0.0 =
+Release date: 2026-05-19
+
+* New broken link checker: automatically find broken links and outdated redirects across your posts and pages, with support for the noindex setting from Yoast, Rank Math, AIOSEO and SEOPress
+* New redirects manager: create and apply redirect rules from Modular DS to keep your visitors and SEO traffic on track
+* New malware scanner for files and database, powered by Imunify
+* Improved site health checks with more accurate, up-to-date results
+* Improved automatic cleanup of leftover files from interrupted operations
+
 = v2.8.1 =
 Release date: 2026-04-27
 

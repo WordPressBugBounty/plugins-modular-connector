@@ -6,11 +6,14 @@ if (!defined('ABSPATH')) {
 
 use Modular\Connector\Http\Controllers\AuthController;
 use Modular\Connector\Http\Controllers\BackupController;
+use Modular\Connector\Http\Controllers\BrokenLinkController;
 use Modular\Connector\Http\Controllers\CacheController;
 use Modular\Connector\Http\Controllers\ManagerController;
 use Modular\Connector\Http\Controllers\OptimizationController;
+use Modular\Connector\Http\Controllers\RedirectsController;
 use Modular\Connector\Http\Controllers\RestorationController;
 use Modular\Connector\Http\Controllers\SafeUpgradeController;
+use Modular\Connector\Http\Controllers\SecurityController;
 use Modular\Connector\Http\Controllers\ServerController;
 use Modular\Connector\Http\Controllers\UserController;
 use Modular\Connector\Http\Controllers\WooCommerceController;
@@ -126,6 +129,28 @@ Route::get('/woocommerce/{modular_request}', WooCommerceController::class)
 #region Restoration
 Route::get('/restoration/{modular_request}/setup', RestorationController::class)
     ->name('manager.restoration.setup');
+#endregion
+
+#region Security
+Route::get('/security/scan/{modular_request}', [SecurityController::class, 'scan'])
+    ->name('manager.security.scan');
+
+Route::get('/security/scan/{modular_request}/action', [SecurityController::class, 'action'])
+    ->name('manager.security.scan.action');
+
+Route::get('/security/scan/{modular_request}/cancel', [SecurityController::class, 'cancel'])
+    ->name('manager.security.scan.cancel');
+#endregion
+
+#region Broken Links
+Route::get('/broken-links/scan/{modular_request}', [BrokenLinkController::class, 'scan'])
+    ->name('manager.broken-link.scan');
+
+Route::get('/broken-links/scan/{modular_request}/cancel', [BrokenLinkController::class, 'cancel'])
+    ->name('manager.broken-link.cancel');
+
+Route::get('/broken-links/redirects/sync/{modular_request}', [RedirectsController::class, 'sync'])
+    ->name('manager.broken-link.redirects.sync');
 #endregion
 
 Route::get('default', function () {

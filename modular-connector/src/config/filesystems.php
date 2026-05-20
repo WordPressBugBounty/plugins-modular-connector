@@ -73,5 +73,10 @@ return [
             'root' => MODULAR_CONNECTOR_STORAGE_PATH . DIRECTORY_SEPARATOR . 'upgrades',
             'visibility' => 'public',
         ],
+        'scans' => [
+            'driver' => 'local',
+            'root' => MODULAR_CONNECTOR_STORAGE_PATH . DIRECTORY_SEPARATOR . 'scans',
+            'visibility' => 'public',
+        ],
     ],
 ];

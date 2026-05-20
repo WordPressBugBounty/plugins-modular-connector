@@ -128,19 +128,18 @@ class Bootloader
     /**
      * Run request validation pipeline for direct requests.
      *
-     * This pipeline executes BEFORE WordPress initializes and validates:
+     * This pipeline executes BEFORE WordPress initializes:
      * 1. AuthenticateRequest - JWT signature, claims (exp/iat), client_id, lbn
-     * 2. SetupAdminEnvironment - Admin constants, disable auto-actions
+     * 2. FetchModularRequest - Fetch request from Modular API (type=request only)
+     * 3. ValidateRoute - Route must exist (abort 404 if not)
+     * 4. SetupAdminEnvironment - Admin constants, disable auto-actions, early login
+     * 5. BeforeLogin - Pre-login hosting compatibility fixes
      *
-     * Note: Entry point validation (wp-load.php, User-Agent, params) is done in
-     * bootHttp() via HttpUtils::isDirectRequest() before running this pipeline.
-     *
-     * IMPORTANT: Uses ->then() instead of ->thenReturn() to ensure all pipes
-     * execute correctly. If any pipe fails to return $next($request), the
-     * callback won't execute and the pipeline will fail silently.
+     * Entry point validation (wp-load.php, User-Agent, params) is done in
+     * bootHttp() via HttpUtils::isDirectRequest() before this pipeline runs.
      *
      * @param Request $request
-     * @return void
+     * @return Request
      */
     protected function runRequestValidationPipeline(Request $request): Request
     {
@@ -149,21 +148,13 @@ class Bootloader
     /**
      * Run request handler pipeline for direct requests.
      *
-     * This pipeline executes AFTER WordPress plugins_loaded and handles:
-     * 1. FetchModularRequest - Fetch request data from Modular API (type=request only)
-     * 2. ValidateRoute - Route validation (abort if route is 'default')
-     * 3. BeforeLogin - Pre-login compatibility fixes
-     * 4. ForceCompatibilities - Force premium plugins + user login
-     * 5. Then execute request handler via wp_loaded hook
-     *
-     * IMPORTANT: ValidateRoute runs here (not in validation pipeline) because:
-     * - Route resolution requires WordPress to be fully loaded
-     * - At this point we already validated this is a Modular request
-     * - A route MUST exist - if not, it's a 404 from our application
+     * This pipeline executes on after_setup_theme (PHP_INT_MAX):
+     * 1. ForceCompatibilities - YITH/Divi upgraders + hosting cookies
+     * 2. then() - Register Laravel handler on wp_loaded hook
      *
      * @param IlluminateHttpKernel $kernel
      * @param Request $request
-     * @return void
+     * @return bool
      */
     protected function runRequestHandlerPipeline(IlluminateHttpKernel $kernel, Request $request): bool
     {

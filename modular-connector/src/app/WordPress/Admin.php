@@ -4,6 +4,7 @@ namespace Modular\Connector\WordPress;
 
 use Modular\Connector\Helper\OauthClient;
 use Modular\Connector\Services\JobsCleanupService;
+use Modular\Connector\Services\RedirectService;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -22,6 +23,7 @@ class Admin
         add_action('admin_menu', [self::class, 'addMenu']);
         add_action('admin_notices', [self::class, 'addAdminNotice']);
         add_action('template_redirect', [self::class, 'addMaintenanceMode'], 99);
+        add_action('template_redirect', [RedirectService::class, 'handleRedirect'], 10);
         add_action('admin_init', [self::class, 'addJobsCleanup'], PHP_INT_MAX);
     }
 

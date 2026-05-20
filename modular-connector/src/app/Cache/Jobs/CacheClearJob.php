@@ -97,7 +97,8 @@ class CacheClearJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         }
 
         if ($this->eventClass && $this->mrid) {
-            event(new ($this->eventClass)($this->mrid, $this->eventPayload));
+            $eventClass = $this->eventClass;
+            event(new $eventClass($this->mrid, $this->eventPayload));
         }
     }
 }

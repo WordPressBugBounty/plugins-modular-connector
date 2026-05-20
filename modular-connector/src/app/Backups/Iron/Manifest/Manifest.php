@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Backups\Iron\Manifest;
 
+use Modular\Connector\Manifest\Contracts\ManifestContract;
 use Modular\Connector\Backups\Iron\BackupPart;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
 use Modular\Connector\Backups\Iron\Helpers\File;
@@ -14,7 +15,7 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\dispatch;
 
-class Manifest
+class Manifest implements ManifestContract
 {
     use HasMaxTime;
 
@@ -164,8 +165,6 @@ class Manifest
 
         $offset = $this->part->offset;
 
-        // Create optimized hasher with configured algorithm
-        // Adaptive optimization is always applied automatically
         $hasher = new ManifestHasher($this->part->hashAlgorithm);
 
         Log::debug('Try to Manifest', [

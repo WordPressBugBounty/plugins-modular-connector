@@ -2,8 +2,7 @@
 
 namespace Modular\Connector\Backups\Iron\Manifest;
 
-use Modular\Connector\Backups\Iron\BackupPart;
-use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
+use Modular\Connector\Manifest\Contracts\ManifestablePartContract;
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
@@ -15,14 +14,14 @@ class CalculateManifestJob implements ShouldQueue
     use Queueable;
 
     /**
-     * @var BackupPart
+     * @var ManifestablePartContract
      */
-    protected BackupPart $part;
+    protected $part;
 
     /**
-     * @param BackupPart $part
+     * @param ManifestablePartContract $part
      */
-    public function __construct(BackupPart $part)
+    public function __construct(ManifestablePartContract $part)
     {
         $this->part = $part;
         $this->queue = 'backups';
@@ -33,27 +32,16 @@ class CalculateManifestJob implements ShouldQueue
      */
     public function handle()
     {
-        $part = $this->part;
-        $isCancelled = $part->isCancelled();
-
-        if ($isCancelled) {
+        if ($this->part->isCancelled()) {
             return;
         }
 
         try {
-            Manifest::create($part)->calculate();
+            $this->part->createManifest()->calculate();
         } catch (\Throwable $e) {
             Log::error($e);
 
-            $part->markAsFailed(ManagerBackupPartUpdated::STATUS_FAILED_EXPORT_MANIFEST, $e);
+            $this->part->markAsFailed($this->part->getManifestFailedStatus(), $e);
         }
-    }
-
-    /**
-     * Get the unique ID for the job.
-     */
-    public function uniqueId(): string
-    {
-        return $this->part->mrid;
     }
 }

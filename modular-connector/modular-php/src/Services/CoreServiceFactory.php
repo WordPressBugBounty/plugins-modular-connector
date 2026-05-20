@@ -7,6 +7,8 @@ namespace Modular\SDK\Services;
  * @property \Modular\SDK\Services\WordPressService $wordpress
  * @property \Modular\SDK\Services\BackupService $backup
  * @property \Modular\SDK\Services\LinkingService $linking
+ * @property \Modular\SDK\Services\SecurityService $security
+ * @property \Modular\SDK\Services\BrokenLinksService $brokenLinks
  */
 class CoreServiceFactory extends AbstractServiceFactory
 {
@@ -18,6 +20,8 @@ class CoreServiceFactory extends AbstractServiceFactory
         'wordpress' => WordPressService::class,
         'backup' => BackupService::class,
         'linking' => LinkingService::class,
+        'security' => SecurityService::class,
+        'brokenLinks' => BrokenLinksService::class,
     ];
 
     /**

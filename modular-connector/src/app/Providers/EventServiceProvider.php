@@ -3,7 +3,10 @@
 namespace Modular\Connector\Providers;
 
 use Modular\Connector\Backups\Facades\Backup;
+use Modular\Connector\BrokenLinks\Facades\BrokenLink;
 use Modular\Connector\Events\ManagerHealthUpdated;
+use Modular\Connector\Events\ManagerRedirectionSynced;
+use Modular\Connector\Events\ManagerServerInformationUpdated;
 use Modular\Connector\Events\ManagerItemsActivated;
 use Modular\Connector\Events\ManagerItemsDeactivated;
 use Modular\Connector\Events\ManagerItemsDeleted;
@@ -13,16 +16,17 @@ use Modular\Connector\Events\ManagerItemsUpgraded;
 use Modular\Connector\Events\ManagerSafeUpgradeBackedUp;
 use Modular\Connector\Events\ManagerSafeUpgradeCleanedUp;
 use Modular\Connector\Events\ManagerSafeUpgradeRolledBack;
-use Modular\Connector\Events\RestorationSetupUpdated;
 use Modular\Connector\Events\ManagerUserCreated;
 use Modular\Connector\Events\ManagerUserDeleted;
 use Modular\Connector\Events\ManagerUserIndexed;
 use Modular\Connector\Events\ManagerUserUpdated;
+use Modular\Connector\Events\RestorationSetupUpdated;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Listeners\HookEventListener;
 use Modular\Connector\Listeners\PostUpgradeEventListener;
 use Modular\Connector\Optimizer\Events\ManagerOptimizationInformation;
 use Modular\Connector\Optimizer\Events\ManagerOptimizationUpdated;
+use Modular\Connector\Security\Facades\Scan;
 use Modular\ConnectorDependencies\Illuminate\Queue\Events\WorkerStopping;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Event;
 use Modular\ConnectorDependencies\Illuminate\Support\ServiceProvider;
@@ -47,6 +51,8 @@ class EventServiceProvider extends ServiceProvider
         Event::listen(ManagerItemsInstalled::class, HookEventListener::class);
         Event::listen(ManagerItemsDeleted::class, HookEventListener::class);
         Event::listen(ManagerHealthUpdated::class, HookEventListener::class);
+        Event::listen(ManagerServerInformationUpdated::class, HookEventListener::class);
+        Event::listen(ManagerRedirectionSynced::class, HookEventListener::class);
 
         Event::listen(ManagerSafeUpgradeBackedUp::class, HookEventListener::class);
         Event::listen(ManagerSafeUpgradeCleanedUp::class, HookEventListener::class);
@@ -67,5 +73,9 @@ class EventServiceProvider extends ServiceProvider
         Event::listen(ManagerOptimizationUpdated::class, HookEventListener::class);
 
         Backup::listeners();
+
+        Scan::listeners();
+
+        BrokenLink::listeners();
     }
 }

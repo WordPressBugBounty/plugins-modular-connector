@@ -63,13 +63,4 @@ class DatabaseDumpJob implements ShouldQueue
 
             $part->markAsFailed(ManagerBackupPartUpdated::STATUS_FAILED_EXPORT_DATABASE, $e);
         }
-    }
-
-    /**
-     * @return string
-     */
-    public function uniqueId(): string
-    {
-        return $this->part->mrid . '-' . $this->part->type . '-' . $this->part->batch;
-    }
-}
+    }}

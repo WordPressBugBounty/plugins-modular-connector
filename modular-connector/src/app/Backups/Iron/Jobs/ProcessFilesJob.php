@@ -30,7 +30,7 @@ class ProcessFilesJob implements ShouldQueue
      *
      * @var int
      */
-    protected int $maxTime = 90;
+    protected int $maxTime = 25;
 
     /**
      * @param BackupPart $part
@@ -225,13 +225,4 @@ class ProcessFilesJob implements ShouldQueue
 
             $this->part->markAs(ManagerBackupPartUpdated::STATUS_IN_PROGRESS, true, ['force_redispatch' => true]);
         }
-    }
-
-    /**
-     * @return string
-     */
-    public function uniqueId(): string
-    {
-        return $this->part->mrid . '-' . $this->part->type . '-' . $this->part->batch;
-    }
-}
+    }}

@@ -429,6 +429,10 @@ class ManagerServer
             'ALLOW_UNFILTERED_UPLOADS' => defined('ALLOW_UNFILTERED_UPLOADS') ? ALLOW_UNFILTERED_UPLOADS : null,
             'DISALLOW_UNFILTERED_HTML' => defined('DISALLOW_UNFILTERED_HTML') ? DISALLOW_UNFILTERED_HTML : null,
 
+            // HTTP request controls
+            'WP_HTTP_BLOCK_EXTERNAL' => defined('WP_HTTP_BLOCK_EXTERNAL') ? WP_HTTP_BLOCK_EXTERNAL : null,
+            'WP_ACCESSIBLE_HOSTS' => defined('WP_ACCESSIBLE_HOSTS') ? WP_ACCESSIBLE_HOSTS : null,
+
             // Cron
             'WP_CRON_LOCK_TIMEOUT' => defined('WP_CRON_LOCK_TIMEOUT') ? WP_CRON_LOCK_TIMEOUT : null,
 
@@ -670,6 +674,11 @@ class ManagerServer
             'signal' => ServerSetup::supportsAsyncSignals(),
             'disabled_functions' => $this->disabledFunctions(),
             'runtime' => $this->getRuntimeData(),
+            'sessions' => [
+                'status' => session_status(),
+                'save_handler' => ini_get('session.save_handler'),
+                'use_cookies' => (bool) ini_get('session.use_cookies'),
+            ],
         ];
     }
 
@@ -697,6 +706,22 @@ class ManagerServer
             'proxy' => $this->getProxyData(),
             'object_cache' => $this->getObjectCacheData(),
             'cron' => $this->getCronHealthData(),
+            'auto_updates' => $this->safe(fn() => $this->getAutoUpdatesData(), null),
+        ];
+    }
+
+    /**
+     * @return array|null
+     */
+    private function getAutoUpdatesData()
+    {
+        if (!function_exists('wp_is_auto_update_enabled_for_type')) {
+            return null;
+        }
+
+        return [
+            'plugins_enabled' => wp_is_auto_update_enabled_for_type('plugin'),
+            'themes_enabled' => wp_is_auto_update_enabled_for_type('theme'),
         ];
     }
 

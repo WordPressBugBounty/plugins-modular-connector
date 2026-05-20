@@ -1,0 +1,651 @@
+<?php
+
+namespace Modular\Connector\Security\Imunify\Jobs;
+
+use Modular\Connector\Backups\Iron\Helpers\HasMaxTime;
+use Modular\Connector\Security\Facades\Scan;
+use Modular\Connector\Security\Imunify\Events\ManagerScanPartUpdated;
+use Modular\Connector\Security\Imunify\Events\ManagerScanProgressUpdated;
+use Modular\Connector\Security\Imunify\Helpers\ConsolidatedManifest;
+use Modular\Connector\Security\Imunify\ImunifyClient;
+use Modular\ConnectorDependencies\Carbon\Carbon;
+use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
+use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use function Modular\ConnectorDependencies\dispatch;
+use function Modular\ConnectorDependencies\event;
+
+/**
+ * Drives the Imunify scan by polling, replacing the webhook-driven design.
+ *
+ * Pattern (mirrors the reference plugin imunify-malware-scanner/scanner.php::process_scan):
+ *   1. GET /jobs/{id}/results — returns the full file list with per-file `action`.
+ *   2. Iterate `files`:
+ *        - up to 50 with `action=needs_sha256` → batch POST to /jobs/{id}/hashes
+ *        - 1 with `action=needs_upload`        → POST file content to /jobs/{id}/content
+ *   3. If `is_complete` → emit `ManagerScanCompleted` and stop.
+ *   4. Else → emit `ManagerScanProgressUpdated::inProgress` (throttled) and re-dispatch.
+ *
+ * Imunify's response IS the work queue: files needing action carry the action tag,
+ * processed files don't. The plugin never tracks "what I've already submitted"
+ * locally — it trusts Imunify's view of state on every poll.
+ *
+ * SHA256 values come from the consolidated NDJSON manifest (precomputed by
+ * ScanManifest) — no per-file re-hashing on disk.
+ */
+class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
+{
+    use Dispatchable;
+    use Queueable;
+    use HasMaxTime;
+
+    /**
+     * @var int
+     */
+    public $tries = 3;
+
+    /**
+     * @var int TTL (seconds) for the unique lock. Long enough to span the
+     *          typical inter-tick window (wp-cron firing) so a queued-but-not-
+     *          yet-processed tick keeps the lock; short enough that if the
+     *          chain dies, the kick endpoint can revive it after this window.
+     */
+    public $uniqueFor = 600;
+
+    /**
+     * @var int Wall-clock budget per tick, aligned with Backup's manifest/merge
+     *          jobs. Bounds the number of `/jobs/{id}/upload` calls we squeeze
+     *          into a single poll (each upload is one multipart POST, the API
+     *          has no batch endpoint).
+     */
+    protected $maxTime = 25;
+
+    /**
+     * @var string
+     */
+    protected $mrid;
+
+    /**
+     * @var string
+     */
+    protected $name;
+
+    /**
+     * @var int
+     */
+    protected $siteScan;
+
+    /**
+     * @var string
+     */
+    protected $imunifyJobId;
+
+    /**
+     * @var string
+     */
+    protected $manifestPath;
+
+    /**
+     * @var int Total files in the consolidated manifest — propagated to the
+     *          `done` event for API.
+     */
+    protected $totalItems;
+
+    /**
+     * @var int Unix timestamp of the last `ManagerScanProgressUpdated` webhook
+     *          emitted in this poll chain. Travels in the constructor across
+     *          re-dispatches so the throttle window survives the queue payload.
+     *          `0` means "no webhook emitted yet" → next poll emits the "start".
+     */
+    protected $lastWebhookAt;
+
+    /**
+     * @var int Unix timestamp after which the poll chain auto-cancels with
+     *          motive `poll_timeout`. Hard upper bound against Imunify never
+     *          flipping `is_complete`. Configured per scan by API via the
+     *          `max_poll_hours` site request field; fallback 24 h applied at
+     *          SubmitToImunifyJob when the field is missing or invalid. `0`
+     *          means "no deadline" — kept for forward-compat with payloads
+     *          that may legitimately want no cap, but no caller produces 0
+     *          today.
+     */
+    protected $pollDeadlineAt;
+
+    /**
+     * @var int Matches the reference plugin (BATCH_SIZE = 50).
+     */
+    private $hashBatchSize = 50;
+
+    /**
+     * @var int Minimum seconds between two consecutive progress webhooks.
+     *          2 minutes — short enough for the UI to feel live, long enough
+     *          to avoid hammering API on fast-completing scans.
+     */
+    private const PROGRESS_WEBHOOK_THROTTLE_SECONDS = 120;
+
+    /**
+     * @param string $mrid
+     * @param string $name
+     * @param int $siteScan
+     * @param string $imunifyJobId
+     * @param string $manifestPath Consolidated manifest path on the `scans` disk.
+     * @param int $totalItems
+     * @param int $lastWebhookAt Cursor for the progress-webhook throttle. Defaults
+     *                           to 0 on the first dispatch (start case).
+     * @param int $pollDeadlineAt Unix timestamp upper bound; 0 disables the cap.
+     */
+    public function __construct(
+        $mrid,
+        $name,
+        $siteScan,
+        $imunifyJobId,
+        $manifestPath,
+        $totalItems,
+        $lastWebhookAt = 0,
+        $pollDeadlineAt = 0
+    )
+    {
+        $this->mrid = $mrid;
+        $this->name = $name;
+        $this->siteScan = (int)$siteScan;
+        $this->imunifyJobId = (string)$imunifyJobId;
+        $this->manifestPath = $manifestPath;
+        $this->totalItems = (int)$totalItems;
+        $this->lastWebhookAt = (int)$lastWebhookAt;
+        $this->pollDeadlineAt = (int)$pollDeadlineAt;
+        $this->queue = 'backups';
+    }
+
+    /**
+     * @return void
+     */
+    public function handle()
+    {
+        if (Scan::isFilesCancelled($this->name)) {
+            return;
+        }
+
+        if (!Storage::disk('scans')->exists($this->manifestPath)) {
+            Log::error('PollImunifyJob: Consolidated manifest missing', [
+                'mrid' => $this->mrid,
+                'path' => $this->manifestPath,
+            ]);
+
+            Scan::cancelFiles(
+                $this->mrid,
+                $this->name,
+                $this->siteScan,
+                'consolidated_manifest_missing'
+            );
+
+            return;
+        }
+
+        // Bump mtime so AutoCleanUpCommand does not sweep the manifest of a
+        // long scan as "orphan". We only read this file during polling — no
+        // fwrite to refresh mtime implicitly.
+        @touch(Storage::disk('scans')->path($this->manifestPath));
+
+        // Hard ceiling: abort the chain if Imunify never reports is_complete
+        // within the budget. Prevents the re-dispatch loop from running
+        // forever against a stuck/buggy job on the provider side.
+        if ($this->pollDeadlineAt > 0 && Carbon::now()->timestamp > $this->pollDeadlineAt) {
+            Log::warning('PollImunifyJob: poll deadline exceeded, cancelling scan', [
+                'mrid' => $this->mrid,
+                'imunify_job_id' => $this->imunifyJobId,
+                'poll_deadline_at' => $this->pollDeadlineAt,
+            ]);
+
+            Scan::cancelFiles($this->mrid, $this->name, $this->siteScan, 'poll_timeout');
+            Cache::forget('_scan_imunify_job_' . $this->siteScan);
+
+            return;
+        }
+
+        $startTime = $this->getCurrentTime();
+
+        try {
+            $client = ImunifyClient::make();
+
+            $results = $client->getJobResults($this->imunifyJobId);
+        } catch (\Throwable $e) {
+            Log::error('PollImunifyJob: getJobResults failed', [
+                'mrid' => $this->mrid,
+                'imunify_job_id' => $this->imunifyJobId,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Let the queue retry ($tries=3). On final failure the failed() handler
+            // emits the terminal failure event and cleans up.
+            throw $e;
+        }
+
+        $files = isset($results['files']) && is_array($results['files']) ? $results['files'] : [];
+        $providerStatus = isset($results['status']) ? (string)$results['status'] : '';
+
+        // Imunify can mark the job as terminally failed even before is_complete
+        // flips (e.g. internal worker error mid-scan). Treat it as a cancellation:
+        // emit ManagerScanCancelled, drop the cached job id, and stop polling.
+        // Same exit shape as a network-level failure so the API sees a single
+        // terminal signal per scan regardless of where the failure originated.
+        if ($providerStatus === 'failed') {
+            Log::error('PollImunifyJob: Imunify reports job failed', [
+                'mrid' => $this->mrid,
+                'imunify_job_id' => $this->imunifyJobId,
+                'completed_files' => isset($results['completed_files']) ? (int)$results['completed_files'] : null,
+                'total_files' => isset($results['total_files']) ? (int)$results['total_files'] : null,
+                'error' => isset($results['error']) ? (string)$results['error'] : null,
+            ]);
+
+            Scan::cancelFiles(
+                $this->mrid,
+                $this->name,
+                $this->siteScan,
+                isset($results['error']) && $results['error'] !== '' ? (string)$results['error'] : 'imunify_job_failed'
+            );
+
+            Cache::forget('_scan_imunify_job_' . $this->siteScan);
+
+            return;
+        }
+
+        // Imunify's view is the source of truth on completion. Stop polling.
+        // Only ManagerScanCompleted is emitted — it is the richer terminal signal
+        // (carries `summary`); ProgressUpdated reports in-flight state only.
+        if (!empty($results['is_complete']) && $providerStatus !== 'processing') {
+            $this->emitDone($files);
+
+            Cache::forget('_scan_imunify_job_' . $this->siteScan);
+
+            return;
+        }
+
+        $rowsByIndex = ConsolidatedManifest::rowsByIndex($this->manifestPath);
+
+        // Order matters: hashes first (cheap batch op, unblocks many files at
+        // once) then uploads (one multipart POST per file). Both share the
+        // same time budget; if hashes consume it all, uploads pick up next
+        // tick — that's the correct priority anyway.
+        $this->processNeedsSha256($client, $files, $rowsByIndex, $startTime);
+        $this->processNeedsUpload($client, $files, $rowsByIndex, $startTime);
+
+        // Emit progress on the first poll (start) and afterwards only every
+        // PROGRESS_WEBHOOK_THROTTLE_SECONDS — avoids spamming API on every tick.
+        $now = Carbon::now()->timestamp;
+
+        if ($this->shouldEmitProgress($now)) {
+            $this->emitProgress($files);
+            $this->lastWebhookAt = $now;
+        }
+
+        // Re-dispatch for the next poll tick, carrying the updated webhook cursor
+        // and the original deadline so the cap survives across runs.
+        dispatch(new self(
+            $this->mrid,
+            $this->name,
+            $this->siteScan,
+            $this->imunifyJobId,
+            $this->manifestPath,
+            $this->totalItems,
+            $this->lastWebhookAt,
+            $this->pollDeadlineAt
+        ));
+    }
+
+    /**
+     * Emit "start" on the first run; afterwards only when the throttle window
+     * has elapsed since the previous emit.
+     *
+     * @param int $now Unix timestamp.
+     * @return bool
+     */
+    private function shouldEmitProgress($now)
+    {
+        if ($this->lastWebhookAt === 0) {
+            return true;
+        }
+
+        return ($now - $this->lastWebhookAt) >= self::PROGRESS_WEBHOOK_THROTTLE_SECONDS;
+    }
+
+    /**
+     * Build counts from Imunify's `files` array and emit
+     * `manager.scan.progress.updated` (in-flight progress).
+     *
+     * @param array $files
+     * @return void
+     */
+    private function emitProgress(array $files)
+    {
+        $needsSha256 = 0;
+        $needsUpload = 0;
+        $hasVerdict = 0;
+
+        foreach ($files as $file) {
+            $action = isset($file['action']) ? $file['action'] : '';
+            switch ($action) {
+                case 'needs_sha256':
+                    $needsSha256++;
+                    break;
+                case 'needs_upload':
+                    $needsUpload++;
+                    break;
+                case 'has_verdict':
+                    $hasVerdict++;
+                    break;
+            }
+        }
+
+        event(ManagerScanProgressUpdated::inProgress(
+            $this->mrid,
+            $this->siteScan,
+            ManagerScanPartUpdated::TYPE_FILES,
+            $this->totalItems,
+            $needsSha256,
+            $needsUpload,
+            $hasVerdict
+        ));
+    }
+
+    /**
+     * Submit SHA256 batches (`hashBatchSize` files per `/jobs/{id}/hashes` POST,
+     * matching the API contract) until the per-tick time budget is exhausted.
+     * Hashes come from the precomputed manifest, no re-hashing on disk.
+     *
+     * Same philosophy as `processNeedsUpload`: the reference plugin caps at one
+     * batch per AJAX tick because of PHP timeout pressure on the frontend; we
+     * run from a queue worker, so we can chain several batches inside a single
+     * tick and shrink wall-clock by the same factor.
+     *
+     * @param ImunifyClient $client
+     * @param array $files
+     * @param array<int, array> $rowsByIndex
+     * @param float $startTime From `getCurrentTime()` at the top of `handle()`.
+     * @return void
+     */
+    private function processNeedsSha256(ImunifyClient $client, array $files, array $rowsByIndex, $startTime)
+    {
+        $toSubmit = [];
+        $totalSubmitted = 0;
+
+        foreach ($files as $file) {
+            if ($this->isTimeExceeded($startTime, $this->maxTime)) {
+                break;
+            }
+
+            if (!isset($file['action']) || $file['action'] !== 'needs_sha256') {
+                continue;
+            }
+
+            $fileIndex = isset($file['file_index']) ? (int)$file['file_index'] : -1;
+            $fileId = isset($file['file_id']) ? (string)$file['file_id'] : null;
+
+            if ($fileIndex < 0 || $fileId === null || !isset($rowsByIndex[$fileIndex])) {
+                continue;
+            }
+
+            $checksum = $rowsByIndex[$fileIndex]['checksum'];
+            if ($checksum === '') {
+                continue;
+            }
+
+            $toSubmit[] = [
+                'file_id' => $fileId,
+                'sha256' => $checksum,
+            ];
+
+            if (count($toSubmit) >= $this->hashBatchSize) {
+                $client->submitHashes($this->imunifyJobId, $toSubmit);
+                $totalSubmitted += count($toSubmit);
+                $toSubmit = [];
+            }
+        }
+
+        // Flush the trailing partial batch — Imunify accepts < hashBatchSize.
+        if (!empty($toSubmit)) {
+            $client->submitHashes($this->imunifyJobId, $toSubmit);
+            $totalSubmitted += count($toSubmit);
+        }
+
+        if ($totalSubmitted > 0) {
+            Log::debug('PollImunifyJob: Hashes submitted', [
+                'mrid' => $this->mrid,
+                'imunify_job_id' => $this->imunifyJobId,
+                'count' => $totalSubmitted,
+            ]);
+        }
+    }
+
+    /**
+     * Upload files Imunify flagged as `needs_upload` until the per-tick time
+     * budget (`$maxTime`) is exhausted. Imunify's `/jobs/{id}/upload` only
+     * accepts one file per multipart POST (verified against the reference
+     * plugin), so we sequence them inside the tick: as many as the budget
+     * allows, then the next dispatch picks up the rest.
+     *
+     * Reference (scanner.php) caps at 1/tick because it runs from AJAX (PHP
+     * timeout pressure on the frontend); ours runs in a queue worker, so we
+     * can extract more uploads per dispatch and shrink wall-clock from
+     * minutes-per-tick × N files down to N/uploads-per-tick.
+     *
+     * @param ImunifyClient $client
+     * @param array $files
+     * @param array<int, array> $rowsByIndex
+     * @param float $startTime From `getCurrentTime()` at the top of `handle()`.
+     * @return void
+     */
+    private function processNeedsUpload(ImunifyClient $client, array $files, array $rowsByIndex, $startTime)
+    {
+        $uploaded = 0;
+
+        foreach ($files as $file) {
+            if ($this->isTimeExceeded($startTime, $this->maxTime)) {
+                break;
+            }
+
+            if (!isset($file['action']) || $file['action'] !== 'needs_upload') {
+                continue;
+            }
+
+            $fileIndex = isset($file['file_index']) ? (int)$file['file_index'] : -1;
+            $fileId = isset($file['file_id']) ? (string)$file['file_id'] : null;
+
+            if ($fileIndex < 0 || $fileId === null || !isset($rowsByIndex[$fileIndex])) {
+                continue;
+            }
+
+            $diskPath = $rowsByIndex[$fileIndex]['path'];
+            [$disk, $relative] = ConsolidatedManifest::splitDiskPath($diskPath);
+
+            if ($disk === null) {
+                Log::warning('PollImunifyJob: Cannot resolve disk', [
+                    'mrid' => $this->mrid,
+                    'path' => $diskPath,
+                ]);
+
+                continue;
+            }
+
+            try {
+                $absolute = ConsolidatedManifest::resolveSafePath($disk, $relative);
+            } catch (\Throwable $e) {
+                Log::warning('PollImunifyJob: Path validation failed', [
+                    'mrid' => $this->mrid,
+                    'path' => $diskPath,
+                    'error' => $e->getMessage(),
+                ]);
+
+                continue;
+            }
+
+            if (!file_exists($absolute) || !is_readable($absolute)) {
+                Log::warning('PollImunifyJob: File missing for upload', [
+                    'mrid' => $this->mrid,
+                    'path' => $absolute,
+                ]);
+
+                continue;
+            }
+
+            try {
+                $client->uploadFile($this->imunifyJobId, $absolute, $fileId);
+                $uploaded++;
+            } catch (\Throwable $e) {
+                Log::warning('PollImunifyJob: Upload failed', [
+                    'mrid' => $this->mrid,
+                    'file_id' => $fileId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($uploaded > 0) {
+            Log::debug('PollImunifyJob: Files uploaded', [
+                'mrid' => $this->mrid,
+                'imunify_job_id' => $this->imunifyJobId,
+                'count' => $uploaded,
+            ]);
+        }
+    }
+
+    /**
+     * Build the verdict summary, stream-write the per-file NDJSON to the `scans`
+     * disk, and dispatch `ProcessScanResultsUploadJob` to upload it to API
+     * storage. The terminal `ManagerScanCompleted` is emitted by the upload job
+     * once API has received the file — keeping "scan complete" and "results
+     * available" in the same atomic signal from API's perspective.
+     *
+     * The NDJSON carries only **findings** (non-clean verdicts): the webhook
+     * stays small (just counters in `summary`) and API derives the clean count
+     * from `summary.clean`. Memory is bounded by the size of `rowsByIndex`
+     * already used by the polling loop.
+     *
+     * @param array $files
+     * @return void
+     */
+    private function emitDone(array $files)
+    {
+        $summary = ['clean' => 0, 'malicious' => 0, 'suspicious' => 0, 'infected' => 0];
+
+        foreach ($files as $file) {
+            $verdict = isset($file['verdict']) ? $file['verdict'] : '';
+            if (isset($summary[$verdict])) {
+                $summary[$verdict]++;
+            }
+        }
+
+        $resultsPath = ConsolidatedManifest::resultsPathFor($this->name);
+        $written = $this->writeResultsNdjson($files, $resultsPath);
+
+        if (!$written) {
+            Log::error('PollImunifyJob: Failed to write scan results NDJSON', [
+                'mrid' => $this->mrid,
+                'results_path' => $resultsPath,
+            ]);
+
+            Scan::cancelFiles(
+                $this->mrid,
+                $this->name,
+                $this->siteScan,
+                'results_write_failed'
+            );
+
+            return;
+        }
+
+        dispatch(new ProcessScanResultsUploadJob(
+            $this->mrid,
+            $this->name,
+            $this->siteScan,
+            $resultsPath,
+            $this->totalItems,
+            $summary
+        ));
+    }
+
+    /**
+     * Stream-write the per-finding NDJSON. One JSON line per non-clean file,
+     * joining Imunify's verdict with the manifest row (`path`, `checksum`,
+     * `size`) by `file_index`. fopen/fwrite — never buffers more than one
+     * line in memory beyond `rowsByIndex` itself.
+     *
+     * @param array $files Imunify's final `files[]` (every entry has `verdict`).
+     * @param string $resultsPath Target path on the `scans` disk.
+     * @return bool
+     */
+    private function writeResultsNdjson(array $files, $resultsPath)
+    {
+        $rowsByIndex = ConsolidatedManifest::rowsByIndex($this->manifestPath);
+        $absolute = Storage::disk('scans')->path($resultsPath);
+        $handle = fopen($absolute, 'w');
+
+        if (!$handle) {
+            return false;
+        }
+
+        try {
+            foreach ($files as $file) {
+                $fileIndex = isset($file['file_index']) ? (int)$file['file_index'] : -1;
+                $verdict = isset($file['verdict']) ? (string)$file['verdict'] : '';
+
+                // Skip clean and missing-verdict entries: the NDJSON is the
+                // findings audit, not the full inventory. API can derive
+                // `clean = total_files - lines(NDJSON)` from `summary.clean`.
+                if ($verdict === '' || $verdict === 'clean') {
+                    continue;
+                }
+
+                if ($fileIndex < 0 || !isset($rowsByIndex[$fileIndex])) {
+                    continue;
+                }
+
+                $row = $rowsByIndex[$fileIndex];
+
+                fwrite($handle, json_encode([
+                        'file_index' => $fileIndex,
+                        'path' => $row['path'],
+                        'checksum' => $row['checksum'],
+                        'size' => $row['size'],
+                        'verdict' => $verdict,
+                    ]) . "\n");
+            }
+        } finally {
+            fclose($handle);
+        }
+
+        return true;
+    }
+
+    /**
+     * Called by the queue worker after the final retry has failed. Emits
+     * `ManagerScanCancelled::forFiles` via `Scan::cancelFiles()` so API gets a
+     * terminal signal and the per-flow cache is wiped by ScanCleanupListener.
+     *
+     * @param \Throwable|null $e
+     * @return void
+     */
+    public function failed(\Throwable $e = null)
+    {
+        Scan::cancelFiles(
+            $this->mrid,
+            $this->name,
+            $this->siteScan,
+            $e ? $e->getMessage() : 'poll_failed'
+        );
+    }
+
+    /**
+     * Lock key per `site_scan` — two parallel scans on different sites are
+     * independent, two ticks on the same scan are not.
+     *
+     * @return string
+     */
+    public function uniqueId()
+    {
+        return (string)$this->siteScan;
+    }
+}

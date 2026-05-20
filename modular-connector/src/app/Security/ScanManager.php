@@ -1,0 +1,327 @@
+<?php
+
+namespace Modular\Connector\Security;
+
+use Modular\Connector\Security\Imunify\Events\ManagerScanCancelled;
+use Modular\Connector\Security\Imunify\ImunifyDriver;
+use Modular\ConnectorDependencies\Carbon\Carbon;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Manager;
+use function Modular\ConnectorDependencies\event;
+
+/**
+ * Files and database are independent flows. Every per-flow operation (cancel
+ * marker, cache cleanup, abort emission) has a `*Files` / `*Database` variant
+ * so failing one flow does not stop the other.
+ *
+ * The user-initiated full cancel (`cancel()`) marks the scan name on the
+ * shared `_cancelled_scan` list, which both `isFilesCancelled()` and
+ * `isDatabaseCancelled()` honour. Imunify-side / internal failures use the
+ * per-flow methods so the surviving flow keeps running.
+ */
+class ScanManager extends Manager
+{
+    /**
+     * @return string
+     */
+    public function getDefaultDriver()
+    {
+        return 'imunify';
+    }
+
+    /**
+     * @return ImunifyDriver
+     */
+    public function createImunifyDriver()
+    {
+        return new ImunifyDriver();
+    }
+
+    /**
+     * True when the user issued a full cancel for this scan name. Both flows
+     * honour this signal — see `isFilesCancelled()` / `isDatabaseCancelled()`.
+     *
+     * @param string|null $name
+     * @return bool
+     */
+    public function isCancelled($name)
+    {
+        if (!$name) {
+            return false;
+        }
+
+        return in_array($name, Cache::get('_cancelled_scan', []), true);
+    }
+
+    /**
+     * True when the files flow is cancelled — either by a user-initiated full
+     * cancel or by an Imunify/internal failure that aborted only the files flow.
+     *
+     * @param string|null $name
+     * @return bool
+     */
+    public function isFilesCancelled($name)
+    {
+        if (!$name) {
+            return false;
+        }
+
+        if ($this->isCancelled($name)) {
+            return true;
+        }
+
+        return in_array($name, Cache::get('_cancelled_scan_files', []), true);
+    }
+
+    /**
+     * True when the database flow is cancelled — either by a user-initiated
+     * full cancel or by a failure that aborted only the database flow.
+     *
+     * @param string|null $name
+     * @return bool
+     */
+    public function isDatabaseCancelled($name)
+    {
+        if (!$name) {
+            return false;
+        }
+
+        if ($this->isCancelled($name)) {
+            return true;
+        }
+
+        return in_array($name, Cache::get('_cancelled_scan_database', []), true);
+    }
+
+    /**
+     * Read the Imunify site_key. Imunify issues a single physical key per
+     * site (not per scan) that authenticates every flow — file scans, database
+     * scans and every post-scan action. There is therefore one cache slot for
+     * the whole site (no `site_scan` suffix), stored on the WordPress driver
+     * for durability across requests.
+     *
+     * Single read point — every job that needs to authenticate to Imunify
+     * goes through this method instead of touching the cache directly.
+     *
+     * @return string|null
+     */
+    public function siteKey()
+    {
+        $siteKey = Cache::driver('wordpress')->get('_scan_imunify_site_key');
+
+        return !empty($siteKey) ? (string)$siteKey : null;
+    }
+
+    /**
+     * Persist the Imunify site_key in cache. Keeps the API key out of the
+     * serialized job payload (which is stored in wp_modular_jobs.payload and
+     * logged on failure).
+     *
+     * Global per site (no `site_scan` keying): every new `manager.security.scan`
+     * — and every post-scan action — re-stamps the slot, and downstream jobs
+     * read it through `siteKey()`. Stored on the WordPress driver with no TTL
+     * so it survives the inter-request gap between dispatch (HTTP request that
+     * runs the controller) and execution (wp-cron tick that picks up the job
+     * from the queue).
+     *
+     * @param string $siteKey
+     * @return void
+     */
+    public function storeSiteKey($siteKey)
+    {
+        Cache::driver('wordpress')->forever('_scan_imunify_site_key', (string)$siteKey);
+    }
+
+    /**
+     * Drop the cached site_key. Called by post-action jobs (quarantine, db
+     * cleanup, db restore) once they have authenticated to Imunify and no
+     * follow-up call is expected, and by `cancel()` on a full cancel. The next
+     * `manager.security.scan` request will re-stamp the slot with a fresh key
+     * from API.
+     *
+     * @return void
+     */
+    public function forgetSiteKey()
+    {
+        Cache::driver('wordpress')->forget('_scan_imunify_site_key');
+    }
+
+    /**
+     * Persist scan-time options that travel from API's `manager.security.scan`
+     * payload all the way to the Imunify `/scan/start` (and `/scan/database/start`)
+     * call. Kept out of the serialized job payload — these may include sensitive
+     * material (`webhook_secret`) and are looked up by `site_scan` from the
+     * jobs that actually need them (`SubmitToImunifyJob`, `ScanDbJob`).
+     *
+     * @param int $siteScan
+     * @param array $options Whitelisted to `{force_rescan, webhook_url, webhook_secret, max_poll_hours}`.
+     * @return void
+     */
+    public function storeScanOptions($siteScan, array $options)
+    {
+        $clean = [];
+
+        if (isset($options['force_rescan'])) {
+            $clean['force_rescan'] = (bool)$options['force_rescan'];
+        }
+
+        if (!empty($options['webhook_url'])) {
+            $clean['webhook_url'] = (string)$options['webhook_url'];
+        }
+
+        if (!empty($options['webhook_secret'])) {
+            $clean['webhook_secret'] = (string)$options['webhook_secret'];
+        }
+
+        // Hard ceiling for the PollImunifyJob re-dispatch chain. API sends this
+        // per scan so we can tune behaviour without releasing a new plugin
+        // version; positive ints only, fallback applied at the consumer.
+        if (isset($options['max_poll_hours']) && (int)$options['max_poll_hours'] > 0) {
+            $clean['max_poll_hours'] = (int)$options['max_poll_hours'];
+        }
+
+        if (empty($clean)) {
+            return;
+        }
+
+        // Forever on the WordPress driver: a long-running scan may submit to
+        // Imunify (where these are consumed) well after a 24h window — same
+        // rationale as `storeSiteKey()`. Explicit cleanup on terminal events.
+        Cache::forever(
+            '_scan_options_' . (int)$siteScan,
+            $clean
+        );
+    }
+
+    /**
+     * Read the stored scan options. Always returns an array (empty when no
+     * options were persisted) so callers can spread it directly into the
+     * Imunify client call without `isset` dance.
+     *
+     * @param int $siteScan
+     * @return array
+     */
+    public function scanOptions($siteScan)
+    {
+        $stored = Cache::get('_scan_options_' . (int)$siteScan);
+
+        return is_array($stored) ? $stored : [];
+    }
+
+    /**
+     * User-initiated full cancel: mark the scan name on `_cancelled_scan` so
+     * in-flight jobs of **both** flows exit early, and (when `$siteScan` is
+     * known) wipe every per-scan cache key. No event is emitted — the UI that
+     * triggered the cancel already knows.
+     *
+     * @param string|null $name
+     * @param int|null $siteScan
+     * @return void
+     */
+    public function cancel($name, $siteScan = null)
+    {
+        if (!$name) {
+            return;
+        }
+
+        $value = Cache::get('_cancelled_scan', []);
+        $value[] = $name;
+
+        Cache::put('_cancelled_scan', array_unique($value), Carbon::now()->addDay());
+
+        if ($siteScan !== null) {
+            $this->forgetFilesCache((int)$siteScan);
+            $this->forgetDatabaseCache((int)$siteScan);
+        }
+
+        // The per-flow cleanups intentionally leave the shared site_key in
+        // place (post-actions need it). A full cancel is terminal — no
+        // post-action will run, so drop it now. The site_key is global, so
+        // this runs even when $siteScan is unknown.
+        $this->forgetSiteKey();
+    }
+
+    /**
+     * Cancel only the files flow — emits `ManagerScanCancelled::forFiles(...)`
+     * so API can mark this flow terminal, and adds the scan name to the
+     * per-flow cancel list so straggler files jobs exit via `isFilesCancelled()`.
+     *
+     * Cache cleanup is delegated to `ScanCleanupListener` reacting to the event.
+     *
+     * @param string $mrid
+     * @param string $name
+     * @param int $siteScan
+     * @param string $error Short tag or message included in the event payload.
+     * @return void
+     */
+    public function cancelFiles($mrid, $name, $siteScan, $error)
+    {
+        $this->markFlowCancelled('_cancelled_scan_files', $name);
+
+        event(ManagerScanCancelled::forFiles($mrid, (int)$siteScan, $error));
+    }
+
+    /**
+     * Cancel only the database flow. Same shape as `cancelFiles()`.
+     *
+     * @param string $mrid
+     * @param string $name
+     * @param int $siteScan
+     * @param string $error
+     * @return void
+     */
+    public function cancelDatabase($mrid, $name, $siteScan, $error)
+    {
+        $this->markFlowCancelled('_cancelled_scan_database', $name);
+
+        event(ManagerScanCancelled::forDatabase($mrid, (int)$siteScan, $error));
+    }
+
+    /**
+     * Wipe every cache key scoped to the files flow. Called by `ScanCleanupListener`
+     * on `ManagerScanCancelled` / `ManagerScanCompleted` with `type=files`.
+     *
+     * @param int $siteScan
+     * @return void
+     */
+    public function forgetFilesCache($siteScan)
+    {
+        Cache::forget('_scan_imunify_job_' . (int)$siteScan);
+        // `_scan_options_` is written via the `wordpress` driver (durable
+        // across the dispatch/wp-cron gap, same rationale as `storeSiteKey()`),
+        // so the forget must target the same store.
+        Cache::forget('_scan_options_' . (int)$siteScan);
+        Cache::forget(sprintf('_scan_parts_status_%s', (int)$siteScan));
+        Cache::forget(sprintf('_scan_parts_expected_%s', (int)$siteScan));
+    }
+
+    /**
+     * Wipe every cache key scoped to the database flow.
+     *
+     * @param int $siteScan
+     * @return void
+     */
+    public function forgetDatabaseCache($siteScan)
+    {
+        Cache::forget('_scan_db_imunify_job_' . (int)$siteScan);
+        Cache::forget('_scan_db_scan_config_' . (int)$siteScan);
+        Cache::forget('_scan_db_tables_' . (int)$siteScan);
+        // `_scan_options_` is shared with the files flow; forgetting it here is
+        // a no-op once the other flow's cleanup ran (both routes are safe).
+        // Same driver as the matching `storeScanOptions()` write.
+        Cache::forget('_scan_options_' . (int)$siteScan);
+    }
+
+    /**
+     * @param string $cacheKey
+     * @param string $name
+     * @return void
+     */
+    private function markFlowCancelled($cacheKey, $name)
+    {
+        $value = Cache::get($cacheKey, []);
+        $value[] = $name;
+
+        Cache::put($cacheKey, array_unique($value), Carbon::now()->addDay());
+    }
+}

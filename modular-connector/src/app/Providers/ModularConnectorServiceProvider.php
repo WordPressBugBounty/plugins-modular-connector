@@ -4,10 +4,12 @@ namespace Modular\Connector\Providers;
 
 use Modular\Connector\Backups\BackupManager;
 use Modular\Connector\Backups\LocalDriver;
+use Modular\Connector\BrokenLinks\BrokenLinkManager;
 use Modular\Connector\Facades\Manager as ManagerFacade;
 use Modular\Connector\Facades\WhiteLabel;
 use Modular\Connector\Helper\OauthClient;
 use Modular\Connector\Http\ModularRouteResolver;
+use Modular\Connector\Security\ScanManager;
 use Modular\Connector\Services\Manager;
 use Modular\Connector\Services\Manager\ManagerSafeUpgrade;
 use Modular\Connector\Services\Manager\ManagerWooCommerce;
@@ -37,6 +39,8 @@ class ModularConnectorServiceProvider extends ServiceProvider
     protected function registerFacades()
     {
         $this->app->bind(BackupManager::class, fn($app) => new BackupManager($app));
+        $this->app->singleton(ScanManager::class, fn($app) => new ScanManager($app));
+        $this->app->singleton(BrokenLinkManager::class, fn($app) => new BrokenLinkManager($app));
 
         $this->app->singleton(Manager::class, fn($app) => new Manager($app));
         $this->app->singleton(ManagerServer::class, fn() => new ManagerServer());

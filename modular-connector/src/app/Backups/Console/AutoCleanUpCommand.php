@@ -18,7 +18,8 @@ class AutoCleanUpCommand extends Command
      * @var string
      */
     protected $signature = 'modular:cleanup {--max-files=10: Maximum files to clean}
-                                            {--max-age=1 : The number of days to keep the files}';
+                                            {--max-age=1 : The number of days to keep the files}
+                                            {--max-age-scans=3 : The number of days to keep orphan scan artifacts}';
 
     protected $description = 'Remove orphan backup files';
 
@@ -65,6 +66,29 @@ class AutoCleanUpCommand extends Command
                 ->each(fn($dir) => FileFacade::deleteDirectory($dir));
         } catch (\Throwable $e) {
             // Silence is golden
+            Log::error($e);
+        }
+
+        // Sweep orphan scan artifacts (BLC NDJSON, Imunify per-disk manifests
+        // and consolidated NDJSON). Active scans keep their manifest fresh via
+        // touch() each tick, so a larger window here avoids cancelling long
+        // scans that legitimately exceed the default backups window.
+        try {
+            $path = Storage::disk('scans')->path('*');
+
+            $files = Collection::make(FileFacade::glob($path))
+                ->filter(
+                    fn($file) => FileFacade::isFile($file) &&
+                        !in_array(FileFacade::basename($file), ['index.html', 'index.php', '.htaccess', 'web.config']) &&
+                        FileFacade::lastModified($file) < Carbon::now()->subDays($this->option('max-age-scans'))->timestamp
+                );
+
+            $files = $files->slice(0, $maxFilesToClean)->toArray();
+
+            if (!empty($files)) {
+                FileFacade::delete($files);
+            }
+        } catch (\Throwable $e) {
             Log::error($e);
         }
 

@@ -69,10 +69,17 @@ class ProcessUploadJob implements ShouldQueue
         $uploadingStatus = $this->isManifest ? ManagerBackupPartUpdated::STATUS_MANIFEST_UPLOADING : ManagerBackupPartUpdated::STATUS_UPLOADING;
         $part->markAs($uploadingStatus);
 
+        $resource = null;
+
         try {
             $uploadUri = $this->getUploadUri();
 
             $resource = fopen($realPath, 'r');
+
+            if (!is_resource($resource)) {
+                throw new \RuntimeException(sprintf('Cannot open backup part for upload: %s', $realPath));
+            }
+
             $stream = Utils::streamFor($resource);
 
             $guzzle = new Client();
@@ -85,6 +92,13 @@ class ProcessUploadJob implements ShouldQueue
             Log::error($e);
 
             $part->markAsFailed(ManagerBackupPartUpdated::STATUS_FAILED_UPLOADED, $e);
+        } finally {
+            // Close the fd on both success and failure: Guzzle owns it on
+            // success but does not free it before this catch reaches us when
+            // request() throws, so we ensure release in either path.
+            if (is_resource($resource)) {
+                @fclose($resource);
+            }
         }
     }
 
@@ -104,13 +118,5 @@ class ProcessUploadJob implements ShouldQueue
             'batch' => $this->part->batch,
             'collection' => $this->isManifest ? 'manifest' : 'backups',
         ]);
-    }
-
-    /**
-     * @return string
-     */
-    public function uniqueId(): string
-    {
-        return $this->part->mrid . '-' . $this->part->type . '-' . $this->part->batch;
     }
 }
