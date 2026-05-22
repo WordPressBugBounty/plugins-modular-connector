@@ -3,7 +3,7 @@
         'name' => 'modular/connector',
         'pretty_version' => 'dev-develop',
         'version' => 'dev-develop',
-        'reference' => '06962c2a8e219851e48379747ca93209f4a00e87',
+        'reference' => '767f2fbe1aab20c9d02a1a1097a3c9b5d8d9b33a',
         'type' => 'wordpres-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -301,7 +301,7 @@
         'modular/connector' => array(
             'pretty_version' => 'dev-develop',
             'version' => 'dev-develop',
-            'reference' => '06962c2a8e219851e48379747ca93209f4a00e87',
+            'reference' => '767f2fbe1aab20c9d02a1a1097a3c9b5d8d9b33a',
             'type' => 'wordpres-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

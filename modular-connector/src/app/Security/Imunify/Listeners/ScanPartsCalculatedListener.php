@@ -3,6 +3,7 @@
 namespace Modular\Connector\Security\Imunify\Listeners;
 
 use Modular\Connector\Backups\Iron\Manifest\CalculateManifestJob;
+use Modular\Connector\Security\Facades\Scan;
 use Modular\Connector\Security\Imunify\Events\ManagerScanPartsCalculated;
 use Modular\Connector\Security\Imunify\Events\ManagerScanPartUpdated;
 use Modular\Connector\Security\Imunify\Jobs\ScanDbJob;
@@ -41,6 +42,11 @@ class ScanPartsCalculatedListener
         );
 
         if ($manifestPending->isNotEmpty()) {
+            // Mark the files flow as active BEFORE any dispatch so the DB flow's
+            // cleanup (if it terminates first) can see it and keep `_scan_options_`
+            // in place for the still-running files flow.
+            Scan::markFilesActive((int)$event->payload['site_scan']);
+
             Log::debug('ScanPartsCalculatedListener: File scan triggered', [
                 'mrid' => $event->mrid,
                 'parts' => $manifestPending->pluck('type')->all(),
@@ -59,6 +65,8 @@ class ScanPartsCalculatedListener
             ->first();
 
         if ($databasePart) {
+            Scan::markDatabaseActive((int)$databasePart->siteScan);
+
             Log::debug('ScanPartsCalculatedListener: DB scan triggered', [
                 'mrid' => $event->mrid,
                 'site_scan' => $databasePart->siteScan,

@@ -105,13 +105,31 @@ class RedirectService
         // sync() and Manager::uninstall(), which are the only paths that change
         // the table state.
         $compute = static function (): array {
-            $model = new Redirect();
-
-            if (!Schema::connection($model->getConnectionName())->hasTable($model->getTable())) {
+            // Same shape ManagerServer::getPhpData() reports to the manager —
+            // skip the schema lookup entirely on shared hosts missing pdo /
+            // pdo_mysql so we never reach Connection::run() and never throw a
+            // QueryException on the public template_redirect hook.
+            if (!extension_loaded('pdo') || !extension_loaded('pdo_mysql')) {
                 return ['exact' => [], 'regex' => []];
             }
 
-            return static::buildRulesFromDatabase();
+            try {
+                $model = new Redirect();
+
+                if (!Schema::connection($model->getConnectionName())->hasTable($model->getTable())) {
+                    return ['exact' => [], 'regex' => []];
+                }
+
+                return static::buildRulesFromDatabase();
+            } catch (\Throwable $e) {
+                // DB unreachable for any other reason — degrade to no-op so
+                // template_redirect doesn't 500 the public site.
+                Log::warning('RedirectService: DB unavailable, skipping redirect rules', [
+                    'error' => $e->getMessage(),
+                ]);
+
+                return ['exact' => [], 'regex' => []];
+            }
         };
 
         try {

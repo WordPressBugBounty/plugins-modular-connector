@@ -2,8 +2,8 @@
 Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
-Tested up to: 6.9
-Stable tag: 3.0.0
+Tested up to: 7.0
+Stable tag: 3.0.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -187,8 +187,14 @@ Please report security bugs found in the source code of the Modular DS plugin th
 9. Client report overview page
 
 == Changelog ==
+= v3.0.1 =
+Release date: 2026-05-22
+
+* FIXED: Malware scan results not delivered back when the database scan finished before the file scan
+* FIXED: Public site error on hosts without the PDO MySQL extension
+
 = v3.0.0 =
-Release date: 2026-05-19
+Release date: 2026-05-20
 
 * New broken link checker: automatically find broken links and outdated redirects across your posts and pages, with support for the noindex setting from Yoast, Rank Math, AIOSEO and SEOPress
 * New redirects manager: create and apply redirect rules from Modular DS to keep your visitors and SEO traffic on track

@@ -184,13 +184,10 @@ class ScanManager extends Manager
             return;
         }
 
-        // Forever on the WordPress driver: a long-running scan may submit to
-        // Imunify (where these are consumed) well after a 24h window — same
-        // rationale as `storeSiteKey()`. Explicit cleanup on terminal events.
-        Cache::forever(
-            '_scan_options_' . (int)$siteScan,
-            $clean
-        );
+        // 7-day TTL: long enough that a slow scan can still find these options
+        // when it finally submits to Imunify; short enough to self-clean if the
+        // terminal cleanup never runs (orphan jobs, queue lost mid-flight).
+        Cache::put('_scan_options_' . (int)$siteScan, $clean, Carbon::now()->addDays(7));
     }
 
     /**
@@ -278,6 +275,31 @@ class ScanManager extends Manager
     }
 
     /**
+     * Mark the files flow as active for this scan. Used by the other flow's
+     * cleanup as a "the other flow still needs the shared options" check —
+     * see `forgetDatabaseCache()`. Written at dispatch time by
+     * `ScanPartsCalculatedListener`, wiped by `forgetFilesCache()`.
+     *
+     * @param int $siteScan
+     * @return void
+     */
+    public function markFilesActive($siteScan)
+    {
+        Cache::put('_scan_files_active_' . (int)$siteScan, 1, Carbon::now()->addDays(7));
+    }
+
+    /**
+     * Mark the database flow as active. Mirror of `markFilesActive()`.
+     *
+     * @param int $siteScan
+     * @return void
+     */
+    public function markDatabaseActive($siteScan)
+    {
+        Cache::put('_scan_db_active_' . (int)$siteScan, 1, Carbon::now()->addDays(7));
+    }
+
+    /**
      * Wipe every cache key scoped to the files flow. Called by `ScanCleanupListener`
      * on `ManagerScanCancelled` / `ManagerScanCompleted` with `type=files`.
      *
@@ -287,12 +309,17 @@ class ScanManager extends Manager
     public function forgetFilesCache($siteScan)
     {
         Cache::forget('_scan_imunify_job_' . (int)$siteScan);
-        // `_scan_options_` is written via the `wordpress` driver (durable
-        // across the dispatch/wp-cron gap, same rationale as `storeSiteKey()`),
-        // so the forget must target the same store.
-        Cache::forget('_scan_options_' . (int)$siteScan);
         Cache::forget(sprintf('_scan_parts_status_%s', (int)$siteScan));
         Cache::forget(sprintf('_scan_parts_expected_%s', (int)$siteScan));
+        Cache::forget('_scan_files_active_' . (int)$siteScan);
+
+        // `_scan_options_` is shared with the DB flow (SubmitToImunifyJob reads
+        // it; ScanDbJob::ensureScanStarted reads it too). Only wipe when the
+        // other flow is no longer active — otherwise a flow that finishes first
+        // takes the options out from under the survivor.
+        if (!Cache::has('_scan_db_active_' . (int)$siteScan)) {
+            Cache::forget('_scan_options_' . (int)$siteScan);
+        }
     }
 
     /**
@@ -306,10 +333,11 @@ class ScanManager extends Manager
         Cache::forget('_scan_db_imunify_job_' . (int)$siteScan);
         Cache::forget('_scan_db_scan_config_' . (int)$siteScan);
         Cache::forget('_scan_db_tables_' . (int)$siteScan);
-        // `_scan_options_` is shared with the files flow; forgetting it here is
-        // a no-op once the other flow's cleanup ran (both routes are safe).
-        // Same driver as the matching `storeScanOptions()` write.
-        Cache::forget('_scan_options_' . (int)$siteScan);
+        Cache::forget('_scan_db_active_' . (int)$siteScan);
+
+        if (!Cache::has('_scan_files_active_' . (int)$siteScan)) {
+            Cache::forget('_scan_options_' . (int)$siteScan);
+        }
     }
 
     /**
