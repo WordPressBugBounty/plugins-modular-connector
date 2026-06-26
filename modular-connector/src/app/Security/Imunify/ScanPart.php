@@ -105,11 +105,6 @@ class ScanPart implements ManifestablePartContract
      */
     public $filesystem = self::FILESYSTEM_DEFAULT;
 
-    /**
-     * @var bool When true, DbTablesDiscoverer must reject foreign-tenant prefixes (multisite).
-     */
-    public $onlyWithTheSamePrefix = false;
-
     public const INCLUDE_DATABASE = BackupPart::INCLUDE_DATABASE;
     public const INCLUDE_CORE = BackupPart::INCLUDE_CORE;
     public const INCLUDE_PLUGINS = BackupPart::INCLUDE_PLUGINS;
@@ -174,7 +169,6 @@ class ScanPart implements ManifestablePartContract
         }
 
         $this->included = $included;
-        $this->onlyWithTheSamePrefix = (bool)data_get($payload, 'batch.database_same_prefix', false);
 
         if (isset($payload->max_file_size)) {
             $this->maxFileSize = (int)$payload->max_file_size;

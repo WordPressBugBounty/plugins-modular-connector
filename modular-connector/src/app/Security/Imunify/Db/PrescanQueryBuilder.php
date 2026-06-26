@@ -3,6 +3,7 @@
 namespace Modular\Connector\Security\Imunify\Db;
 
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
 /**
  * Builds and executes the local prescan SQL queries that filter database rows
@@ -117,7 +118,7 @@ class PrescanQueryBuilder
 
         if ($isBase64 && $this->base64Pattern !== '') {
             // base64_pattern is interpolated textually (already sanitized in __construct).
-            $conditions[] = '(' . str_replace('col', $quotedColumn, $this->base64Pattern) . ')';
+            $conditions[] = '(' . Str::replace('col', $quotedColumn, $this->base64Pattern) . ')';
         }
 
         $whereSql = implode(' OR ', $conditions);
@@ -175,10 +176,10 @@ class PrescanQueryBuilder
     private function escapeIdentifier($identifier)
     {
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $identifier)) {
-            throw new \RuntimeException(sprintf('Unsafe SQL identifier rejected: %s', substr($identifier, 0, 50)));
+            throw new \RuntimeException(sprintf('Unsafe SQL identifier rejected: %s', Str::substr($identifier, 0, 50)));
         }
 
-        return str_replace('`', '``', $identifier);
+        return Str::replace('`', '``', $identifier);
     }
 
     /**

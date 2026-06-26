@@ -3,46 +3,60 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 3.0.1
+Stable tag: 3.0.2
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
 
-Manage all your WordPress sites from one place. Automate updates, backups, uptime monitoring, security, maintenance reports, and more.
+Manage all your WordPress sites from one place. Automate updates, backups, uptime monitoring, security, reports, and more.
 
 == Description ==
 
-[Modular DS](https://modulards.com/) is an all-in-one platform that makes managing multiple WordPress websites easy and efficient, helping you save time, demonstrate the value of your work, and grow a profitable maintenance business.
+[Modular DS](https://modulards.com/) is an all-in-one platform for managing multiple WordPress sites, built to help you save time and run a profitable maintenance business.
 
-From a single, intuitive dashboard, you can automate the most important maintenance tasks:
+From a single, intuitive dashboard, you can:
 
-* __Manage and update plugins, themes, and WordPress core__ across multiple sites at once.
+* __Bulk manage and update plugins, themes, and WordPress core__ across multiple sites at once.
 * __Monitor uptime and performance__ with real-time alerts.
-* __Schedule automatic cloud backups__ and restore them from Modular DS.
+* __Schedule automatic backups__ and restore them in one click from Modular DS.
 * __Know how likely a plugin update is to break your site__ before applying it with Update Copilot, our AI-powered update scoring system.
-* __Run safe updates__ to compare changes after updating and quickly roll back if anything goes wrong.
-* __Perform security scans__ and get notified of vulnerabilities up to 48 hours before they’re publicly disclosed.
+* __Run quick or safe updates and automate them with smart rules__ based on version type, risk level, or detected vulnerabilities.
+* __Perform vulnerability and malware scans__.
+* __Detect and fix broken links and images__.
+* __Migrate, clone, and create staging environments__.
 * __Optimize your WordPress databases__ right from Modular DS.
-* __Create and send automated maintenance reports for clients__, including work completed and key metrics from Google Analytics, Search Console, PageSpeed, and WooCommerce.
+* __Generate automated reports__, including pre-maintenance reports, to show the value of your work to clients.
 * __Display a custom maintenance mode page__ to hide unfinished changes while you update or work on a site.
 
-Modular DS is built with usability at its core and supported by a team with over a decade of hands-on experience in WordPress site management, always ready to help when you need it.
+Usability and support are at the heart of everything we do. Our team brings over a decade of hands-on experience in WordPress site management and is always ready to help when you need it.
 
 __[Explore more features on our website](https://modulards.com/features/)__ or __[get started for free](https://app.modulards.com/register)__.
 
-### Manage and monitor all your WordPress sites in one place
+### Manage, monitor, and protect all your WordPress sites in one place
 
-Connect your WordPress sites to Modular DS, access them with one-click login, and manage centralized updates, backups, security scans, uptime monitoring, and more in a single dashboard.
+Connect your WordPress sites to Modular DS, access them with one-click login, and manage updates, backups, security scans, uptime monitoring, and more in a single dashboard.
 
 Stay organized with tags and teams, and assign custom roles and permissions to collaborators.
 
-### Bulk updates and management
+### Bulk management and updates
 
-Update, install, activate, or delete plugins, themes, and WordPress versions across multiple websites at once (or one by one).
+Install, update, activate, or delete plugins, themes, and WordPress versions across multiple websites at once (or one by one).
 
-### Backups and restores
+The [global updater](https://help.modulards.com/en/article/how-the-global-updater-works-eudeeh/) also gives you a full picture of what's happening across your sites: detected vulnerabilities, Update Copilot risk scores, warnings for abandoned plugins, and more, all from one place.
 
-Schedule regular, GDPR-compliant backups to safeguard your clients’ sites and data, or create one manually whenever you need.
+### Smarter, automated updates
+
+Choose how your updates run: as quick standard updates, as safe updates with before and after screenshots and instant rollbacks, or as smart automated updates that let you define when and under what conditions they should run.
+
+Pair it with Update Copilot, our AI-powered scoring system, to understand how risky a plugin update might be before applying it and make more informed decisions.
+
+You can also schedule one-time updates for a specific date and time, or simply hide updates you are not ready to apply.
+
+Whatever approach you prefer, Modular DS gives you more control and flexibility to safely keep your sites up to date.
+
+### Backups and one-click restoration
+
+Schedule GDPR-compliant backups to safeguard your clients’ sites and data, or create one manually whenever you need.
 
 Choose between full or incremental backups and easily restore entire sites, files, or databases from Modular DS.
 
@@ -52,17 +66,25 @@ Never get caught off guard by downtime. Get notified by email, WhatsApp, Slack, 
 
 Customize check frequency, response time, keyword detection, and alert settings to fit your workflow. Modular DS includes one of the most complete uptime monitor tools for WordPress.
 
-### Safer, smarter plugin updates
+### Security monitoring and management
 
-Update Copilot, our AI-powered scoring system, helps you understand how risky a plugin update might be before applying it. It analyzes multiple factors, such as code changes and the historical reliability of the plugin and the latest version based on other users, so you don’t have to make update decisions blindly.
+Modular DS includes vulnerability detection for plugins, themes, and WordPress core, with alerts up to 48 hours before issues are publicly disclosed.
 
-Pair it with safe updates to create restore points, compare “before and after” changes, and instantly roll back if anything goes wrong.
+You also have malware scanning to check your sites' files and database for malicious content, and admin user alerts to know whenever someone is added or removed as an administrator on any of your connected sites.
 
-### Health, performance, and security scans
+On top of that, you get notified whenever something else requires your attention, from outdated PHP to expired SSL certificates.
 
-Catch vulnerabilities in plugins, themes, and WordPress core up to 48 hours before they’re publicly disclosed, thanks to our integration with Patchstack.
+For teams that need more, our add-ons extend these capabilities. See the integrations section below for details.
 
-Stay on top of your sites’ health, performance, and security with alerts whenever other issues or errors require your attention, like outdated PHP or an expired SSL certificate.
+### Broken link detection
+
+Run scheduled or on-demand scans to detect broken links and images across your sites. When broken internal links are found, create redirects to fix them without leaving Modular DS.
+
+### Site migration, cloning, and staging
+
+Modular DS lets you migrate or clone any connected site in three ways: move it to another existing site in the platform, migrate it to a different server while keeping the same domain, or clone it to a new domain.
+
+You can also create staging environments on your own server to test changes before going live.
 
 ### Database optimization
 
@@ -72,17 +94,22 @@ Keep your websites running smoothly while saving time and having a clear record 
 
 ### Client reports
 
-Automatically generate and send professional maintenance reports that highlight the work you do behind each site, so clients understand the value of your service and keep paying for it.
+From winning new clients to keeping existing ones, Modular DS covers both ends of the reporting workflow.
 
-Add time logs, dates, and screenshots to showcase the full scope and impact of your efforts.
+Before a client signs up, you can generate a pre-maintenance report to show everything their site needs: pending updates, detected vulnerabilities, site health issues, database optimizations, etc.
 
-Reports help you build trust, improve client retention, and turn your WordPress maintenance offering into recurring revenue.
+Once they are on board, automatically generate and send regular maintenance reports that highlight the work you do behind each site.
+
+Add time logs, dates, and screenshots to showcase the full scope of your efforts, so clients understand the value of your service and keep paying for it.
+
+Both report types help you build trust, improve client retention, and turn your WordPress maintenance offering into recurring revenue.
 
 ### Integrations
 
 Modular DS integrates with Google Analytics, Search Console, WooCommerce, and PageSpeed, giving you an overview of your websites in one place and allowing you to include the data your clients care most about in your reports.
-
-To further strengthen your sites’ security, our Patch & Protect add-on, powered by Patchstack, lets you block vulnerabilities with virtual patching and hardening rules as soon as they’re detected, even before an official update is available.
+To further strengthen your sites’ security, two add-ons extend what is included in every plan.
+Patch & Protect, powered by Patchstack, applies virtual patches and hardening rules to block known vulnerabilities and common attack methods as soon as they are detected, even before an official fix is available.
+And if one malware scan per month is not enough, our malware add-on, powered by Imunify Connect, lets you run weekly and on-demand scans across your sites.
 
 ### Support that understands you
 
@@ -110,11 +137,14 @@ Modular DS is a modern, all-in-one platform for managing multiple WordPress webs
 * One-click login to all your WordPress sites.
 * Bulk updates and management for plugins, themes, and WordPress core.
 * Safe updates and Update Copilot.
-* Backups and restores.
-* Site health and uptime monitoring.
-* Security scanning and early vulnerability detection.
+* Smart automated updates with conditional rules.
+* Site migration, cloning, and staging environments.
+* Backups and one-click restores.
+* Uptime monitoring.
+* Vulnerability and malware scanning.
+* Broken link detection.
 * Database optimization.
-* Customizable and white-label client reports.
+* Pre-maintenance and customizable white-label client reports.
 
 And more. Check out our [features page](https://modulards.com/features/) for details.
 
@@ -130,9 +160,11 @@ Backups are GDPR-compliant and securely hosted on AWS servers in Europe. Retenti
 
 = Is Modular DS free? =
 
-Modular DS offers a 14-day free trial and flexible subscription plans for different business sizes.
+Modular DS offers a 14-day free trial and subscription plans for different business sizes.
 
-Every plan includes core features at a fixed price, with monthly or annual billing options. For more details, visit [our pricing page](https://modulards.com/pricing/).
+Every plan includes core features at a fixed price, with monthly or annual billing options, and flexible overage, which means you can exceed your base limits and pay for the additional usage monthly.
+
+For more details, visit [our pricing page](https://modulards.com/pricing/).
 
 = Do I have to host my websites with a specific hosting provider? =
 
@@ -140,7 +172,7 @@ No, Modular DS works independently of your hosting provider. You can connect and
 
 = Is Modular DS secure? =
 
-Yes, it is. Modular DS uses the OAuth2 protocol to securely authenticate the connection between your website and our servers. This protocol generates tokens that expire and can be revoked at any time.
+Yes, it is. Modular DS uses the OAuth2 protocol to securely authenticate the connection between your websites and our servers. This protocol generates tokens that expire and can be revoked at any time. In addition, every request exchanged between Modular DS and your website is signed using JWT (JSON Web Tokens), a mechanism that helps verify the authenticity of each request.
 
 We never store your WordPress user passwords, ensuring your login credentials remain private and under your control.
 
@@ -162,6 +194,12 @@ From backups and uptime monitoring to vulnerability and plugin management, keepi
 
 Modular DS helps you streamline your daily workflow and run a professional, scalable, and profitable maintenance service with confidence.
 
+= What are pre-maintenance reports? =
+
+Pre-maintenance reports let you generate a report for any site showing everything it needs: pending updates, detected vulnerabilities, security and health issues, database optimizations, PageSpeed score, and any additional tasks you want to include.
+
+They are designed to help you present the value of your maintenance service to potential clients.
+
 = How does Modular DS stand out from other existing solutions? =
 
 We’ve placed strong emphasis on building a seamless user experience so you can manage all your websites in the simplest, most intuitive way possible, something our users love and consistently highlight in their reviews.
@@ -179,7 +217,7 @@ Please report security bugs found in the source code of the Modular DS plugin th
 1. Modular DS dashboard
 2. Bulk management and updates
 3. Backups and restores
-4. Uptime monitor
+4. Uptime monitoring
 5. Safe updates
 6. Update Copilot
 7. Database optimization
@@ -187,6 +225,12 @@ Please report security bugs found in the source code of the Modular DS plugin th
 9. Client report overview page
 
 == Changelog ==
+= v3.0.2 =
+Release date: 2026-06-26
+
+* Improved database malware scan to cover all WordPress tables with scannable text content
+* FIXED: Malware scan findings discarded when Imunify reported the scan as failed mid-process
+
 = v3.0.1 =
 Release date: 2026-05-22
 

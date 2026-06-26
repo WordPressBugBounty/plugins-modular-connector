@@ -71,7 +71,6 @@ class ScanPartsCalculatedListener
                 'mrid' => $event->mrid,
                 'site_scan' => $databasePart->siteScan,
                 'excluded_tables' => count($databasePart->excludedTables),
-                'only_same_prefix' => $databasePart->onlyWithTheSamePrefix,
             ]);
 
             dispatch(new ScanDbJob($databasePart));

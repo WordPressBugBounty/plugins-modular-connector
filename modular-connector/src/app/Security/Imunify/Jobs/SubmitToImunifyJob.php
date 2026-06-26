@@ -231,10 +231,11 @@ class SubmitToImunifyJob implements ShouldQueue
     /**
      * Build the file list for /scan/start from the consolidated manifest.
      *
-     * The consolidated manifest stores paths as `<disk>/<relative>` (e.g.
-     * `content/languages/admin-en.po`) for safe local resolution via Storage::disk.
-     * Imunify needs the **absolute filesystem path** so it can fetch the file when
-     * required, so each row is resolved here before going on the wire.
+     * The consolidated manifest stores paths as absolute filesystem paths
+     * already (resolved via the Storage facade at consolidation time), so
+     * `resolveSafePath()` here is purely a defensive guard — it re-validates
+     * traversal and disk-root containment at the FS boundary before the path
+     * goes on the wire to Imunify.
      *
      * @return array
      */
@@ -255,18 +256,20 @@ class SubmitToImunifyJob implements ShouldQueue
                     continue;
                 }
 
-                [$disk, $relative] = ConsolidatedManifest::splitDiskPath($row['path']);
-                if ($disk === null) {
-                    Log::warning('SubmitToImunifyJob: Skipping row with unresolvable disk', [
+                try {
+                    $absolute = ConsolidatedManifest::resolveSafePath($row['path']);
+                } catch (\Throwable $e) {
+                    Log::warning('SubmitToImunifyJob: Path validation failed', [
                         'mrid' => $this->mrid,
                         'path' => $row['path'],
+                        'error' => $e->getMessage(),
                     ]);
 
                     continue;
                 }
 
                 $files[] = [
-                    'path' => Storage::disk($disk)->path($relative),
+                    'path' => $absolute,
                     'file_index' => (int)$row['file_index'],
                     'size' => (int)$row['size'],
                     'modified_at' => (int)$row['timestamp'],

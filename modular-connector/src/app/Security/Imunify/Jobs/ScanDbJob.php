@@ -129,8 +129,8 @@ class ScanDbJob implements ShouldQueue
     private $batchSize = 500;
 
     /**
-     * @param ScanPart $part Database-typed scan part carrying mrid, name, siteScan,
-     *                       excludedTables and onlyWithTheSamePrefix.
+     * @param ScanPart $part Database-typed scan part carrying mrid, name, siteScan
+     *                       and excludedTables.
      * @param int $tableIndex
      * @param int $columnIndex
      * @param int $offset
@@ -270,8 +270,7 @@ class ScanDbJob implements ShouldQueue
         $tables = DbTablesDiscoverer::discover(
             $database,
             $tablePrefix,
-            $this->part->excludedTables,
-            $this->part->onlyWithTheSamePrefix
+            $this->part->excludedTables
         );
 
         Cache::put($cacheKey, $tables, Carbon::now()->addDay());

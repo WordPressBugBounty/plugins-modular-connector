@@ -350,30 +350,73 @@ class ImunifyClient
      *
      * Body shape: {"rows":[{"table","column","row_id","content"}],"is_final":bool}
      *
+     * Imunify rejects the whole batch with 400 if any row has an empty
+     * `table`, `column` or `row_id` (it names the offending field by index,
+     * e.g. `rows[3].row_id`). We drop malformed rows client-side so a single
+     * bad row from a future custom-table autodiscovery can't kill the batch.
+     * Empty `content` is fine — Imunify silently skips those rows and reports
+     * the count via the `skipped` response field.
+     *
      * @param string $jobId
      * @param array $rows [{table, column, row_id, content}] with HEX-encoded content
      * @param bool $isFinal Set true on last batch to trigger scanning
-     * @return array
+     * @return array Response body: {accepted: int, skipped?: int, job_status: string}
      * @throws GuzzleException
      */
     public function submitDatabaseContent($jobId, array $rows, $isFinal = false)
     {
+        $cleanRows = [];
+        $dropped = 0;
+
+        foreach ($rows as $r) {
+            $table = isset($r['table']) ? (string)$r['table'] : '';
+            $column = isset($r['column']) ? (string)$r['column'] : '';
+            $rowId = isset($r['row_id']) ? (string)$r['row_id'] : '';
+
+            if ($table === '' || $column === '' || $rowId === '') {
+                $dropped++;
+                continue;
+            }
+
+            $cleanRows[] = [
+                'table' => $table,
+                'column' => $column,
+                'row_id' => $rowId,
+                'content' => isset($r['content']) ? $r['content'] : '',
+            ];
+        }
+
+        if ($dropped > 0) {
+            Log::warning('ImunifyClient: Dropped malformed rows before /db-content submission', [
+                'job_id' => $jobId,
+                'dropped' => $dropped,
+                'remaining' => count($cleanRows),
+            ]);
+        }
+
         $payload = [
-            'rows' => array_map(function ($r) {
-                return [
-                    'table' => $r['table'],
-                    'column' => $r['column'],
-                    'row_id' => (string)$r['row_id'],
-                    'content' => $r['content'],
-                ];
-            }, $rows),
+            'rows' => $cleanRows,
             'is_final' => (bool)$isFinal,
         ];
 
-        return $this->postJson(sprintf('/api/v1/jobs/%s/db-content', $jobId), $payload, [
-            'rows_count' => count($rows),
+        $response = $this->postJson(sprintf('/api/v1/jobs/%s/db-content', $jobId), $payload, [
+            'rows_count' => count($cleanRows),
             'is_final' => (bool)$isFinal,
         ]);
+
+        // Server-side skip count for empty-content rows. Useful telemetry when
+        // expanding autodiscovery to tables whose text columns may legitimately
+        // be empty (e.g. nullable VARCHAR fields without a value).
+        if (is_array($response) && isset($response['skipped']) && (int)$response['skipped'] > 0) {
+            Log::debug('ImunifyClient: /db-content server-side skipped empty-content rows', [
+                'job_id' => $jobId,
+                'skipped' => (int)$response['skipped'],
+                'accepted' => isset($response['accepted']) ? (int)$response['accepted'] : null,
+                'job_status' => isset($response['job_status']) ? (string)$response['job_status'] : null,
+            ]);
+        }
+
+        return $response;
     }
 
     /**

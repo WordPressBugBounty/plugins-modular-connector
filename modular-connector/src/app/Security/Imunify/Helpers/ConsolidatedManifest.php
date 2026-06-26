@@ -2,21 +2,42 @@
 
 namespace Modular\Connector\Security\Imunify\Helpers;
 
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
 /**
  * Utility helpers for reading the consolidated scan manifest and validating
- * disk-relative paths against traversal.
+ * absolute filesystem paths against traversal.
  *
  * Consolidated manifest format: NDJSON, one object per line.
- * Example: {"checksum":"...","type":"f","size":N,"timestamp":N,"path":"disk/relative/path","file_index":N}
+ * Example: {"checksum":"...","type":"f","size":N,"timestamp":N,"path":"/var/www/html/wp-content/plugins/foo/bar.php","file_index":N}
+ *
+ * The `path` field is the **absolute filesystem path** as resolved through
+ * `Storage::disk($disk)->path($diskRelative)` at consolidation time. We emit
+ * absolute paths (not WP-relative) for two reasons:
+ *   1. **Same shape everywhere** — managed-WP hostings put disks on disparate
+ *      mount points (WP Engine: core at `/common/nt/wp/6.7.1`, wp-content at
+ *      `/var/www/html`). A WP-relative computation would either silently drop
+ *      those files or emit inconsistent shapes across the manifest. Absolute
+ *      paths are the lowest common denominator.
+ *   2. **What hosting-portal users recognize** — cPanel / Plesk / Pressable
+ *      file managers show absolute paths; the API can surface them verbatim.
+ *
+ * Imunify is fed the same absolute path verbatim, so no transformation at the
+ * Imunify boundary either.
  */
 class ConsolidatedManifest
 {
     /**
-     * @var array
+     * Disks expected to appear in scan manifests. Used by `resolveSafePath()` to
+     * validate that a manifest-stored absolute path lives inside one of our
+     * configured Storage roots — defensive guard against a future bug letting
+     * arbitrary paths into the manifest reach FS operations.
+     *
+     * @var string[]
      */
-    public static $validDisks = ['core', 'plugins', 'themes', 'mu_plugins', 'content', 'uploads'];
+    private static $diskNames = ['core', 'plugins', 'themes', 'mu_plugins', 'content', 'uploads'];
 
     /**
      * Canonical relative path of the consolidated manifest on the `scans` disk.
@@ -46,9 +67,9 @@ class ConsolidatedManifest
     }
 
     /**
-     * Build a [file_index => "disk/path"] map by reading the consolidated manifest line by line.
+     * Build a [file_index => absolute_path] map by reading the consolidated manifest line by line.
      *
-     * @param string $manifestPath Path on the 'backups' disk
+     * @param string $manifestPath Path on the 'scans' disk
      * @return array
      */
     public static function pathByIndex($manifestPath)
@@ -81,6 +102,7 @@ class ConsolidatedManifest
 
         return $map;
     }
+
     /**
      * Build a [file_index => parsed-row] map. Same iteration cost as `pathByIndex()`
      * but returns the whole row so callers can read `checksum` (precomputed by
@@ -128,14 +150,20 @@ class ConsolidatedManifest
      * Source format (CSV with `;` delimiter, `"` enclosure with `""` escape for embedded quotes):
      *   checksum;type;size;timestamp;"path"
      * Output format (NDJSON):
-     *   {"checksum":"...","type":"f","size":N,"timestamp":N,"path":"disk/...","file_index":N}
+     *   {"checksum":"...","type":"f","size":N,"timestamp":N,"path":"/var/www/html/...","file_index":N}
+     *
+     * The path is resolved from disk-relative to absolute via
+     * `Storage::disk($diskType)->path(...)` so the consolidated manifest is
+     * uniform regardless of host layout. Imunify and the API both consume the
+     * absolute path verbatim — no further transformation downstream.
      *
      * @param string $line Raw CSV line (no trailing newline expected).
-     * @param string $diskType The owning disk; used to prefix `path` so the consolidated
-     *                         manifest carries disk-qualified paths.
+     * @param string $diskType The owning disk; routed through the Storage facade
+     *                         to resolve the file's absolute filesystem path.
      * @param int $fileIndex Sequential index assigned by the writer; used later by
      *                       Imunify to reference files by index.
-     * @return string|null NDJSON line (no trailing newline) or null when the source row is malformed.
+     * @return string|null NDJSON line (no trailing newline) or null when the source row
+     *                     is malformed or the disk is unknown.
      */
     public static function rewriteCsvRow($line, $diskType, $fileIndex)
     {
@@ -148,12 +176,22 @@ class ConsolidatedManifest
 
         $rawPath = (string)$cols[4];
 
+        if (!in_array($diskType, self::$diskNames, true)) {
+            Log::warning('ConsolidatedManifest: Skipping row with unknown disk', [
+                'disk' => $diskType,
+                'raw_path' => $rawPath,
+            ]);
+            return null;
+        }
+
+        $absolute = Storage::disk($diskType)->path(ltrim($rawPath, '/'));
+
         return json_encode([
             'checksum' => (string)$cols[0],
             'type' => (string)$cols[1],
             'size' => (int)$cols[2],
             'timestamp' => (int)$cols[3],
-            'path' => $diskType . '/' . ltrim($rawPath, '/'),
+            'path' => $absolute,
             'file_index' => $fileIndex,
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
@@ -192,77 +230,54 @@ class ConsolidatedManifest
     }
 
     /**
-     * Split "disk/relative" into [disk, relative], rejecting unknown disks.
+     * Validate a manifest-stored absolute path before using it for FS operations
+     * (Imunify content upload, etc.). Rejects `..` segments and null bytes, then
+     * verifies the path lives inside one of our configured Storage disk roots —
+     * defensive guard against a future bug letting arbitrary paths into the
+     * manifest reach FS operations.
      *
-     * @param string $diskPath
-     * @return array [disk|null, relative]
-     */
-    public static function splitDiskPath($diskPath)
-    {
-        $slashPos = strpos($diskPath, '/');
-        if ($slashPos === false) {
-            return [null, $diskPath];
-        }
-
-        $disk = substr($diskPath, 0, $slashPos);
-        $relative = substr($diskPath, $slashPos + 1);
-
-        if (!in_array($disk, self::$validDisks, true)) {
-            return [null, $diskPath];
-        }
-
-        return [$disk, $relative];
-    }
-
-    /**
-     * Validate a disk-relative path: reject `..` traversal, null bytes, and ensure
-     * `realpath(disk + relative)` stays inside the disk root. Throws on invalid input.
+     * No `realpath()` is performed: on managed-WP hostings (WP Engine,
+     * Pressable) core files are symlinks into a shared mount point and
+     * realpath resolution would take them outside the disk root, breaking the
+     * containment check legitimately. The string-level check (anchored at the
+     * disk root path emitted by the Storage facade) is sufficient given the
+     * `..`/null-byte rejection above.
      *
-     * Defensive guard for any code that turns payload-controlled paths into FS operations.
-     *
-     * @param string $disk
-     * @param string $relative
-     * @return string Absolute path, guaranteed inside the disk root.
+     * @param string $absolutePath The absolute path stored in the consolidated manifest.
+     * @return string The same path, validated.
      * @throws \RuntimeException
      */
-    public static function resolveSafePath($disk, $relative)
+    public static function resolveSafePath($absolutePath)
     {
-        if (!is_string($disk) || $disk === '' || !in_array($disk, self::$validDisks, true)) {
-            throw new \RuntimeException(sprintf('Invalid disk: %s', (string)$disk));
-        }
-
-        if (!is_string($relative)) {
-            throw new \RuntimeException('Relative path is not a string');
+        if (!is_string($absolutePath)) {
+            throw new \RuntimeException('Path is not a string');
         }
 
         // Reject `..` only as a path SEGMENT, not as a substring.
         // Otherwise legitimate filenames like `file..backup.zip` get rejected.
-        $normalized = str_replace('\\', '/', $relative);
+        $normalized = Str::replace('\\', '/', $absolutePath);
         foreach (explode('/', $normalized) as $segment) {
             if ($segment === '..') {
-                throw new \RuntimeException(sprintf('Path traversal rejected: %s', $relative));
+                throw new \RuntimeException(sprintf('Path traversal rejected: %s', $absolutePath));
             }
         }
 
-        if (strpos($relative, "\0") !== false) {
-            throw new \RuntimeException(sprintf('Null byte in path rejected: %s', $relative));
+        if (Str::contains($absolutePath, "\0")) {
+            throw new \RuntimeException(sprintf('Null byte in path rejected: %s', $absolutePath));
         }
 
-        $diskRoot = Storage::disk($disk)->path('');
-        $absolute = Storage::disk($disk)->path($relative);
+        foreach (self::$diskNames as $disk) {
+            $diskRoot = rtrim(Str::replace('\\', '/', Storage::disk($disk)->path('')), '/');
 
-        $real = @realpath($absolute);
-        if ($real !== false) {
-            $absolute = $real;
+            if ($diskRoot === '') {
+                continue;
+            }
+
+            if ($normalized === $diskRoot || Str::startsWith($normalized, $diskRoot . '/')) {
+                return $absolutePath;
+            }
         }
 
-        $diskRootReal = @realpath($diskRoot) ?: $diskRoot;
-        $diskRootPrefix = rtrim($diskRootReal, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-
-        if (strpos($absolute, $diskRootPrefix) !== 0 && $absolute !== rtrim($diskRootReal, DIRECTORY_SEPARATOR)) {
-            throw new \RuntimeException(sprintf('Resolved path outside disk %s: %s', $disk, $relative));
-        }
-
-        return $absolute;
+        throw new \RuntimeException(sprintf('Path outside any known disk root: %s', $absolutePath));
     }
 }

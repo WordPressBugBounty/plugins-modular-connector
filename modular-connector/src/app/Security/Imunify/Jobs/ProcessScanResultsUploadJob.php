@@ -67,21 +67,30 @@ class ProcessScanResultsUploadJob implements ShouldQueue
     protected $summary;
 
     /**
+     * @var string Verbatim provider status from Imunify (`completed` for a
+     *             clean end, `failed` for a salvaged partial). Forwarded
+     *             unchanged into ManagerScanCompleted so API can branch on it.
+     */
+    protected $status;
+
+    /**
      * @param string $mrid
      * @param string $name
      * @param int $siteScan
      * @param string $resultsPath
      * @param int $totalItems
      * @param array $summary
+     * @param string $status
      */
-    public function __construct($mrid, $name, $siteScan, $resultsPath, $totalItems, array $summary)
+    public function __construct($mrid, $name, $siteScan, $resultsPath, $totalItems, array $summary, $status)
     {
         $this->mrid = $mrid;
         $this->name = $name;
-        $this->siteScan = (int) $siteScan;
+        $this->siteScan = (int)$siteScan;
         $this->resultsPath = $resultsPath;
-        $this->totalItems = (int) $totalItems;
+        $this->totalItems = (int)$totalItems;
         $this->summary = $summary;
+        $this->status = (string)$status;
         $this->queue = 'backups';
     }
 
@@ -145,7 +154,8 @@ class ProcessScanResultsUploadJob implements ShouldQueue
             $this->mrid,
             $this->siteScan,
             $this->totalItems,
-            $this->summary
+            $this->summary,
+            $this->status
         ));
 
         // Local results NDJSON is only useful for the upload; once API has it,

@@ -64,13 +64,19 @@ class ManagerScanCompleted extends AbstractEvent
      * @param int $siteScan
      * @param int $totalFiles Total file count carried into the scan (from manifest).
      * @param array $summary {clean, malicious, suspicious, infected, ...}
+     * ºº     * @param string $status Verbatim provider status from Imunify (`completed`,
+     *                      `failed`). Lets API distinguish a clean completion
+     *                      from a salvaged partial scan: in both cases the
+     *                      summary carries verdicts, but `status=failed` means
+     *                      `sum(summary) < total_files` is expected.
      * @return self
      */
-    public static function forFiles($mrid, $siteScan, $totalFiles, array $summary): self
+    public static function forFiles($mrid, $siteScan, $totalFiles, array $summary, $status): self
     {
         return new self($mrid, $siteScan, ManagerScanPartUpdated::TYPE_FILES, [
             'site_scan' => (int)$siteScan,
             'type' => ManagerScanPartUpdated::TYPE_FILES,
+            'status' => (string)$status,
             'total_files' => (int)$totalFiles,
             'summary' => $summary,
         ]);

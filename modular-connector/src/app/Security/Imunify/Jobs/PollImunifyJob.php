@@ -13,7 +13,6 @@ use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
-use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
 use function Modular\ConnectorDependencies\dispatch;
@@ -201,7 +200,6 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
             ]);
 
             Scan::cancelFiles($this->mrid, $this->name, $this->siteScan, 'poll_timeout');
-            Cache::forget('_scan_imunify_job_' . $this->siteScan);
 
             return;
         }
@@ -228,10 +226,13 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         $providerStatus = isset($results['status']) ? (string)$results['status'] : '';
 
         // Imunify can mark the job as terminally failed even before is_complete
-        // flips (e.g. internal worker error mid-scan). Treat it as a cancellation:
-        // emit ManagerScanCancelled, drop the cached job id, and stop polling.
-        // Same exit shape as a network-level failure so the API sees a single
-        // terminal signal per scan regardless of where the failure originated.
+        // flips — most commonly its own 1h30 hard timeout, in which case the
+        // response still carries partial verdicts in `files[]` for everything
+        // analyzed up to that point. Salvage those: emit ManagerScanCompleted
+        // with `status=failed` so API gets the findings (e.g. 7 malicious
+        // detections lost in a 33k-file scan) instead of a Cancelled event
+        // that throws all results away. Only fall back to the legacy cancel
+        // path when there is no verdict at all (job died too early).
         if ($providerStatus === 'failed') {
             Log::error('PollImunifyJob: Imunify reports job failed', [
                 'mrid' => $this->mrid,
@@ -241,14 +242,17 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 'error' => isset($results['error']) ? (string)$results['error'] : null,
             ]);
 
+            if ($this->hasAnyVerdict($files)) {
+                $this->emitDone($files, $providerStatus);
+                return;
+            }
+
             Scan::cancelFiles(
                 $this->mrid,
                 $this->name,
                 $this->siteScan,
                 isset($results['error']) && $results['error'] !== '' ? (string)$results['error'] : 'imunify_job_failed'
             );
-
-            Cache::forget('_scan_imunify_job_' . $this->siteScan);
 
             return;
         }
@@ -257,9 +261,7 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         // Only ManagerScanCompleted is emitted — it is the richer terminal signal
         // (carries `summary`); ProgressUpdated reports in-flight state only.
         if (!empty($results['is_complete']) && $providerStatus !== 'processing') {
-            $this->emitDone($files);
-
-            Cache::forget('_scan_imunify_job_' . $this->siteScan);
+            $this->emitDone($files, $providerStatus);
 
             return;
         }
@@ -458,24 +460,14 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 continue;
             }
 
-            $diskPath = $rowsByIndex[$fileIndex]['path'];
-            [$disk, $relative] = ConsolidatedManifest::splitDiskPath($diskPath);
-
-            if ($disk === null) {
-                Log::warning('PollImunifyJob: Cannot resolve disk', [
-                    'mrid' => $this->mrid,
-                    'path' => $diskPath,
-                ]);
-
-                continue;
-            }
+            $manifestPath = $rowsByIndex[$fileIndex]['path'];
 
             try {
-                $absolute = ConsolidatedManifest::resolveSafePath($disk, $relative);
+                $absolute = ConsolidatedManifest::resolveSafePath($manifestPath);
             } catch (\Throwable $e) {
                 Log::warning('PollImunifyJob: Path validation failed', [
                     'mrid' => $this->mrid,
-                    'path' => $diskPath,
+                    'path' => $manifestPath,
                     'error' => $e->getMessage(),
                 ]);
 
@@ -525,9 +517,13 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
      * already used by the polling loop.
      *
      * @param array $files
+     * @param string $providerStatus Verbatim Imunify status (`completed` on a
+     *                               normal end, `failed` on a salvaged partial).
+     *                               Propagated unchanged to the webhook so API
+     *                               can branch on it.
      * @return void
      */
-    private function emitDone(array $files)
+    private function emitDone(array $files, $providerStatus)
     {
         $summary = ['clean' => 0, 'malicious' => 0, 'suspicious' => 0, 'infected' => 0];
 
@@ -563,8 +559,25 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
             $this->siteScan,
             $resultsPath,
             $this->totalItems,
-            $summary
+            $summary,
+            (string)$providerStatus
         ));
+    }
+
+    /**
+     * Cheap predicate for the salvage path: any file carrying a non-empty
+     * `verdict` means Imunify analyzed it before the job died, so we have
+     * actionable findings to forward. Files still in `needs_sha256` or
+     * `needs_upload` have no `verdict` field and don't count.
+     */
+    private function hasAnyVerdict(array $files): bool
+    {
+        foreach ($files as $file) {
+            if (isset($file['verdict']) && $file['verdict'] !== '') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

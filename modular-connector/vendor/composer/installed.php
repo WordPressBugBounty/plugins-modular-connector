@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'modular/connector',
-        'pretty_version' => 'dev-develop',
-        'version' => 'dev-develop',
-        'reference' => '767f2fbe1aab20c9d02a1a1097a3c9b5d8d9b33a',
+        'pretty_version' => 'dev-master',
+        'version' => 'dev-master',
+        'reference' => '707a12580a9e52e32bec7b4aa6839cded6f34fc7',
         'type' => 'wordpres-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -299,9 +299,9 @@
             'dev_requirement' => false,
         ),
         'modular/connector' => array(
-            'pretty_version' => 'dev-develop',
-            'version' => 'dev-develop',
-            'reference' => '767f2fbe1aab20c9d02a1a1097a3c9b5d8d9b33a',
+            'pretty_version' => 'dev-master',
+            'version' => 'dev-master',
+            'reference' => '707a12580a9e52e32bec7b4aa6839cded6f34fc7',
             'type' => 'wordpres-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
