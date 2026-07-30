@@ -240,10 +240,80 @@ class ServerSetup
             }
             $cached = Cache::driver('wordpress')->get("transient_update_{$type}");
             if (is_object($cached)) {
-                return $cached;
+                return static::dropStaleUpdateEntries($type, $cached);
             }
             return $value;
         });
+    }
+    /**
+     * Remove items from the persisted update-transient copy.
+     *
+     * Called after a successful upgrade: the copy still holds the pre-upgrade
+     * update entry, and restoring it later would resurrect a "ghost" update
+     * for an already-updated item (reported as updatable X -> X). Direct
+     * cache write — it never touches the real WP transient, so no pre_set
+     * filters run (vendor updaters holding stale in-memory versions would
+     * re-inject) and nothing can be corrupted when running in cron.
+     *
+     * @param string $type One of 'plugins', 'themes'
+     * @param array $items Plugin basenames or theme stylesheets
+     * @return void
+     */
+    public static function forgetUpdateTransientItems(string $type, array $items): void
+    {
+        if (empty($items)) {
+            return;
+        }
+        $cached = Cache::driver('wordpress')->get("transient_update_{$type}");
+        if (!is_object($cached) || empty($cached->response) || !is_array($cached->response)) {
+            return;
+        }
+        foreach ($items as $item) {
+            unset($cached->response[$item]);
+        }
+        Cache::driver('wordpress')->put("transient_update_{$type}", $cached, 3 * 24 * 3600);
+    }
+    /**
+     * Drop update entries whose new_version is not newer than the installed
+     * version before serving the persisted copy.
+     *
+     * Ghost entries appear when the update transient is rebuilt in the same
+     * request that upgraded the item: vendor updaters captured the
+     * pre-upgrade version at plugins_loaded and re-inject the update even
+     * though the disk already has the new version.
+     *
+     * @param string $type One of 'plugins', 'themes', 'core'
+     * @param object $cached
+     * @return object
+     */
+    private static function dropStaleUpdateEntries(string $type, $cached)
+    {
+        if (!in_array($type, ['plugins', 'themes'], \true) || empty($cached->response) || !is_array($cached->response)) {
+            return $cached;
+        }
+        foreach ($cached->response as $basename => $update) {
+            $newVersion = is_object($update) ? $update->new_version ?? null : $update['new_version'] ?? null;
+            if (empty($newVersion)) {
+                continue;
+            }
+            $installed = null;
+            if ($type === 'plugins') {
+                $file = \WP_PLUGIN_DIR . '/' . $basename;
+                if (file_exists($file)) {
+                    if (!function_exists('get_plugin_data')) {
+                        require_once \ABSPATH . 'wp-admin/includes/plugin.php';
+                    }
+                    $installed = get_plugin_data($file, \false, \false)['Version'] ?? null;
+                }
+            } else {
+                $theme = wp_get_theme($basename);
+                $installed = $theme->exists() ? $theme->get('Version') : null;
+            }
+            if (!empty($installed) && version_compare($installed, $newVersion, '>=')) {
+                unset($cached->response[$basename]);
+            }
+        }
+        return $cached;
     }
     /**
      * Ensure WordPress user functions are loaded.

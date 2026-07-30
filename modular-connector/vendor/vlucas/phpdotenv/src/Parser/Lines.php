@@ -105,7 +105,7 @@ final class Lines
      */
     private static function isCommentOrWhitespace(string $line)
     {
-        $line = \trim($line);
+        $line = \trim($line, " \n\r\t\x00\v");
         return $line === '' || isset($line[0]) && $line[0] === '#';
     }
 }

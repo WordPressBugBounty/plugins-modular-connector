@@ -2,18 +2,23 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline;
 
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\LoginCompatibilities;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\PixelYourSiteCompatibilities;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\SeedProdCompatibilities;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Compatibilities\TrxUpdaterCompatibilities;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Closure;
 use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 /**
- * Force compatibility fixes for hosting providers and YITH plugins.
+ * Force compatibility fixes for premium plugin/theme upgraders.
  *
- * This pipe handles two types of compatibility fixes:
+ * This pipe handles six compatibility fixes:
  * 1. YITH Upgrader - Forces registration of YITH upgrade system that initializes late
- * 2. Hosting Cookies - Sets hosting-specific cookies (WP Engine, etc.)
+ * 2. Divi Upgrader - Registers Divi's update component (normally registered on init)
+ * 3. YITH Download - Resolves the plugin being upgraded in non-AJAX contexts
+ * 4. ThemeREX Bridge - Bridges trx_updater's custom update system into the WP transients
+ * 5. PixelYourSite - Instantiates its admin_init-gated EDD updaters (core + add-ons)
+ * 6. SeedProd - Instantiates its admin_init-gated updater
  *
  * Note: User login is handled earlier by SetupAdminEnvironment so themes
  * with authorization gates register their hooks during WordPress init.
@@ -37,7 +42,7 @@ class ForceCompatibilities
         } catch (\Throwable $e) {
             Log::warning('ForceCompatibilities: YITH upgrader failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
-        // 2. Set hosting-specific cookies
+        // 2. Register Divi upgrade component (normally registered on init)
         try {
             $this->registerDiviUpgrader();
         } catch (\Throwable $e) {
@@ -51,21 +56,27 @@ class ForceCompatibilities
         } catch (\Throwable $e) {
             Log::warning('ForceCompatibilities: YITH download compat failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
+        // 4. Bridge ThemeREX Updater's custom update system into the WP transients.
+        // Must run before init: TGMPA checks the tgmpa_load filter there.
+        try {
+            TrxUpdaterCompatibilities::register();
+        } catch (\Throwable $e) {
+            Log::warning('ForceCompatibilities: ThemeREX bridge failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
+        // 5. Instantiate PixelYourSite's updaters: they only register on
+        // admin_init, which never fires in our request contexts.
+        try {
+            PixelYourSiteCompatibilities::register();
+        } catch (\Throwable $e) {
+            Log::warning('ForceCompatibilities: PixelYourSite updaters failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
+        // 6. Instantiate SeedProd's updater: same admin_init gate as PYS.
+        try {
+            SeedProdCompatibilities::register();
+        } catch (\Throwable $e) {
+            Log::warning('ForceCompatibilities: SeedProd updater failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        }
         return $next($request);
-    }
-    /**
-     * Set hosting-specific cookies.
-     *
-     * Generates and sets cookies required by hosting providers
-     * (e.g., WP Engine's wpe-auth for filesystem access).
-     *
-     * @return void
-     */
-    private function setHostingCookies(): void
-    {
-        $cookies = LoginCompatibilities::hostingCookies(is_ssl());
-        // Set cookies in $_COOKIE superglobal
-        ServerSetup::setCookies($cookies);
     }
     /**
      * Register YITH upgrade system if it hasn't been registered yet.
@@ -192,22 +203,5 @@ class ForceCompatibilities
             return stripos($function, 'yith') !== \false || stripos($function, 'yit') !== \false;
         }
         return \false;
-    }
-    /**
-     * Get a readable name for a callback (for logging).
-     *
-     * @param mixed $callback
-     * @return string
-     */
-    private function getCallbackName($callback): string
-    {
-        if (is_array($callback) && isset($callback[0], $callback[1])) {
-            $class = is_object($callback[0]) ? get_class($callback[0]) : $callback[0];
-            return $class . '::' . $callback[1];
-        }
-        if (is_string($callback)) {
-            return $callback;
-        }
-        return 'unknown';
     }
 }

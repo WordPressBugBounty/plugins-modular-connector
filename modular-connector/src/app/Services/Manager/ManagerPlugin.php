@@ -224,7 +224,11 @@ class ManagerPlugin extends AbstractManager
                 ->toArray();
         }
 
-        return $this->parseBulkActionResponse($items, $response, 'upgrade', self::PLUGIN);
+        $parsed = $this->parseBulkActionResponse($items, $response, 'upgrade', self::PLUGIN);
+
+        $this->forgetUpgradedItems($parsed, 'plugins');
+
+        return $parsed;
     }
 
     /**

@@ -7,6 +7,7 @@ use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline\Authen
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline\BeforeLogin;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline\FetchModularRequest;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline\ForceCompatibilities;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline\ForceCronCompatibilities;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline\SetupAdminEnvironment;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\Pipeline\ValidateRoute;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Routing\Router;
@@ -149,7 +150,7 @@ class Bootloader
      * Run request handler pipeline for direct requests.
      *
      * This pipeline executes on after_setup_theme (PHP_INT_MAX):
-     * 1. ForceCompatibilities - YITH/Divi upgraders + hosting cookies
+     * 1. ForceCompatibilities - YITH/Divi upgraders + YITH download fix + ThemeREX bridge
      * 2. then() - Register Laravel handler on wp_loaded hook
      *
      * @param IlluminateHttpKernel $kernel
@@ -165,6 +166,52 @@ class Bootloader
         });
     }
     /**
+     * Run cron handler pipeline for cron requests.
+     *
+     * Cron requests don't run the direct-request pipelines, so this pipeline
+     * applies the compatibilities that must also cover cron-executed jobs
+     * (e.g. MODULAR_CONNECTOR_LOOPBACK = false). Executes on
+     * after_setup_theme (PHP_INT_MAX), before init:
+     * 1. ForceCronCompatibilities - ThemeREX bridge
+     * 2. then() - Register Laravel handler on shutdown hook (bootCron)
+     *
+     * @param IlluminateHttpKernel $kernel
+     * @param Request $request
+     * @return bool
+     */
+    protected function runCronHandlerPipeline(IlluminateHttpKernel $kernel, Request $request): bool
+    {
+        return \Modular\ConnectorDependencies\app(Pipeline::class)->send($request)->through([ForceCronCompatibilities::class])->then(function (Request $request) use ($kernel) {
+            // Register handler on shutdown hook
+            $this->bootCron($kernel, $request);
+            return \true;
+        });
+    }
+    /**
+     * Check whether the request carries parameters that only belong to a direct request.
+     *
+     * This is what keeps the unauthenticated cron entry point away from Modular routes,
+     * so it must cover every selector ModularRouteResolver reads (`type`, `x-mo-type`).
+     * Extend it whenever a new selector is added there.
+     *
+     * @param Request $request
+     * @return bool
+     */
+    protected function hasModularSelectors(Request $request): bool
+    {
+        foreach (['origin', 'type', 'sig', 'mrid'] as $parameter) {
+            if ($request->has($parameter)) {
+                return \true;
+            }
+        }
+        foreach (['x-mo-type', 'x-mo-authentication'] as $header) {
+            if ($request->hasHeader($header)) {
+                return \true;
+            }
+        }
+        return \false;
+    }
+    /**
      * Boot the Application for HTTP requests using 100% pipelines.
      *
      * Only two entry points are allowed:
@@ -173,11 +220,14 @@ class Bootloader
      *
      * Direct requests use two pipelines:
      * 1. Request Validation Pipeline (BEFORE WordPress init) - Security and validation
-     * 2. Request Handler Pipeline (AFTER plugins_loaded) - Login and handler registration
+     * 2. Request Handler Pipeline (AFTER plugins_loaded) - Compatibilities and handler registration
      *
-     * Cron requests:
-     * - Execute AFTER plugins_loaded (WordPress must be fully initialized)
-     * - Register handler on shutdown hook
+     * Cron requests use one pipeline:
+     * 1. Cron Handler Pipeline (AFTER plugins_loaded) - Cron compatibilities,
+     *    then register handler on shutdown hook
+     *
+     * wp-cron.php is unauthenticated and skips the validation pipeline, so cron requests
+     * carrying direct-request parameters are rejected before anything boots.
      *
      * @param IlluminateHttpKernel $kernel
      * @param Request $request
@@ -191,6 +241,12 @@ class Bootloader
         if (!$isCron && !$isDirectRequest) {
             return;
         }
+        // wp-cron.php is reachable unauthenticated, so it must never carry Modular routing
+        // or authentication selectors. A genuine cron request only ever gets doing_wp_cron.
+        if ($isCron && $this->hasModularSelectors($request)) {
+            Log::warning('Bootloader: Rejected cron request carrying Modular parameters', ['ip' => $request->ip(), 'uri' => $request->fullUrl()]);
+            return;
+        }
         Log::debug('Booting the Application for HTTP requests', ['is_direct_request' => HttpUtils::isDirectRequest(), 'is_cron' => HttpUtils::isCron(), 'uri' => $request->fullUrl()]);
         $this->configRequest();
         if ($isDirectRequest) {
@@ -200,11 +256,11 @@ class Bootloader
         // Both direct requests and cron execute in after_setup_theme hook
         add_action('after_setup_theme', function () use ($kernel, $request, $isDirectRequest, $isCron) {
             if ($isDirectRequest) {
-                // Request Handler Pipeline: Login and handler registration
+                // Request Handler Pipeline: Compatibilities and handler registration
                 $this->runRequestHandlerPipeline($kernel, $request);
             } elseif ($isCron) {
-                // Cron: Register handler on shutdown hook
-                $this->bootCron($kernel, $request);
+                // Cron Handler Pipeline: Cron compatibilities and shutdown handler
+                $this->runCronHandlerPipeline($kernel, $request);
             }
         }, \PHP_INT_MAX);
     }

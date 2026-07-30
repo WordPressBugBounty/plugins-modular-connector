@@ -371,6 +371,9 @@ class ScanDbJob implements ShouldQueue
             $table = $tables[$tableIdx];
             $columns = $table['columns'];
             $isBase64 = !empty($table['base64']);
+            $rowFilter = isset($table['row_filter']) && is_array($table['row_filter'])
+                ? $table['row_filter']
+                : [];
 
             for (; $columnIdx < count($columns); $columnIdx++) {
                 $column = $columns[$columnIdx];
@@ -380,7 +383,8 @@ class ScanDbJob implements ShouldQueue
                     $column,
                     $table['key'],
                     $isBase64,
-                    $lastKey
+                    $lastKey,
+                    $rowFilter
                 );
 
                 foreach ($generator as $batch) {

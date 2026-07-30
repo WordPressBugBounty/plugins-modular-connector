@@ -85,6 +85,85 @@ class DbTablesDiscoverer
     private static $base64Suffixes = ['postmeta', 'options', 'usermeta', 'commentmeta'];
 
     /**
+     * Per-suffix exact-match denylist of columns that auto-discovery must
+     * never include. WordPress-specific columns that don't match the generic
+     * patterns below go here (e.g. `user_pass` doesn't contain `password`).
+     *
+     * @var array<string, string[]>
+     */
+    private static $sensitiveColumnsBySuffix = [
+        'users' => ['user_pass', 'user_activation_key'],
+    ];
+
+    /**
+     * Case-insensitive substring patterns for column names that should never
+     * enter a scan descriptor, regardless of which table they live in.
+     * Inspired by Sentry's default scrubbed fields and Datadog's process-args
+     * scrubbing: credential-shaped column names are excluded on the assumption
+     * that no plugin/theme stores malware payloads in fields whose name
+     * advertises a secret.
+     *
+     * Substring matching is intentional — plugins use varied naming (`apikey`,
+     * `api_key`, `stripe_api_key`, ...) and an exact-match list would miss
+     * most of them.
+     *
+     * @var string[]
+     */
+    private static $sensitiveColumnNamePatterns = [
+        'password', 'passwd', 'pwd',
+        'secret',
+        'token',
+        'api_key', 'apikey',
+        'private_key', 'privatekey',
+        'credentials',
+        'salt',
+        'bearer',
+        'credit_card', 'creditcard', 'card_number', 'cvv',
+        'ssn',
+    ];
+
+    /**
+     * Suffix → name of the "key" column for tables that store data as
+     * `(key, value)` pairs. The prescan adds a `key_column NOT LIKE ?` clause
+     * for each pattern in `$sensitiveRowKeyPatterns` so secrets stored as
+     * values (e.g. `wp_options` rows like `*_api_key`, `wp_usermeta` rows
+     * with `meta_key = 'session_tokens'`) never reach /db-content.
+     *
+     * @var array<string, string>
+     */
+    private static $keyValueTableConfig = [
+        'options'     => 'option_name',
+        'postmeta'    => 'meta_key',
+        'usermeta'    => 'meta_key',
+        'commentmeta' => 'meta_key',
+        'termmeta'    => 'meta_key',
+    ];
+
+    /**
+     * LIKE patterns (case-insensitive via WP's default `_ci` collation) applied
+     * to the key column of key/value tables to skip rows whose key advertises
+     * a credential or session secret. Bound as PDO values, never interpolated.
+     *
+     * Keep in sync with `$sensitiveColumnNamePatterns`: same vocabulary, wrapped
+     * in `%` wildcards. `%token%` also covers WordPress core's `session_tokens`
+     * usermeta row.
+     *
+     * @var string[]
+     */
+    private static $sensitiveRowKeyPatterns = [
+        '%password%', '%passwd%', '%pwd%',
+        '%secret%',
+        '%token%',
+        '%api_key%', '%apikey%',
+        '%private_key%', '%privatekey%',
+        '%credentials%',
+        '%salt%',
+        '%bearer%',
+        '%credit_card%', '%creditcard%', '%card_number%', '%cvv%',
+        '%ssn%',
+    ];
+
+    /**
      * MySQL column data types that can carry scannable text/blob content.
      * Numeric, datetime, binary-key, and enum/set columns are excluded —
      * malware signatures have nothing to match against in those types and
@@ -106,7 +185,9 @@ class DbTablesDiscoverer
      * — the `information_schema` LIKE escapes `_` so other WordPress installs
      * sharing the same database (different prefix) are not picked up.
      *
-     * Each descriptor: {schema, name, key, columns, base64?}
+     * Each descriptor: {schema, name, key, columns, base64?, row_filter?}.
+     * `row_filter` is `{column, exclude_patterns}` and only present for
+     * key/value tables; consumed by `PrescanQueryBuilder::executePrescan`.
      *
      * @param string $database
      * @param string $tablePrefix
@@ -150,6 +231,11 @@ class DbTablesDiscoverer
                 continue;
             }
 
+            $suffix = Str::after($tableName, $tablePrefix);
+            $deniedColumns = isset(self::$sensitiveColumnsBySuffix[$suffix])
+                ? self::$sensitiveColumnsBySuffix[$suffix]
+                : [];
+
             $primaryKey = null;
             $scannableColumns = [];
 
@@ -157,9 +243,20 @@ class DbTablesDiscoverer
                 if ($primaryKey === null && $column['COLUMN_KEY'] === 'PRI') {
                     $primaryKey = $column['COLUMN_NAME'];
                 }
-                if (in_array($column['DATA_TYPE'], self::$scannableDataTypes, true)) {
-                    $scannableColumns[] = $column['COLUMN_NAME'];
+
+                if (!in_array($column['DATA_TYPE'], self::$scannableDataTypes, true)) {
+                    continue;
                 }
+
+                if (in_array($column['COLUMN_NAME'], $deniedColumns, true)) {
+                    continue;
+                }
+
+                if (self::isSensitiveColumnName($column['COLUMN_NAME'])) {
+                    continue;
+                }
+
+                $scannableColumns[] = $column['COLUMN_NAME'];
             }
 
             if ($primaryKey === null || empty($scannableColumns)) {
@@ -175,17 +272,53 @@ class DbTablesDiscoverer
                 'columns' => $scannableColumns,
             ];
 
-            $suffix = Str::startsWith($tableName, $tablePrefix)
-                ? substr($tableName, strlen($tablePrefix))
-                : $tableName;
             if (in_array($suffix, self::$base64Suffixes, true)) {
                 $descriptor['base64'] = true;
+            }
+
+            $rowFilter = self::rowFilterFor($suffix);
+
+            if ($rowFilter !== null) {
+                $descriptor['row_filter'] = $rowFilter;
             }
 
             $descriptors[] = $descriptor;
         }
 
         return $descriptors;
+    }
+
+    /**
+     * Case-insensitive substring check against `$sensitiveColumnNamePatterns`.
+     * Returns true when the column name advertises a credential and should be
+     * dropped from auto-discovery.
+     *
+     * @param string $columnName
+     * @return bool
+     */
+    private static function isSensitiveColumnName($columnName)
+    {
+        return Str::contains(Str::lower($columnName), self::$sensitiveColumnNamePatterns);
+    }
+
+    /**
+     * Build the `row_filter` descriptor field for a table suffix, or null when
+     * the table is not a key/value store. Shared by both discovery paths so the
+     * fallback gets the same row-level scrubbing as auto-discovery.
+     *
+     * @param string $suffix
+     * @return array|null
+     */
+    private static function rowFilterFor($suffix)
+    {
+        if (!isset(self::$keyValueTableConfig[$suffix])) {
+            return null;
+        }
+
+        return [
+            'column' => self::$keyValueTableConfig[$suffix],
+            'exclude_patterns' => self::$sensitiveRowKeyPatterns,
+        ];
     }
 
     /**
@@ -203,7 +336,8 @@ class DbTablesDiscoverer
         $descriptors = [];
 
         foreach (self::$candidates as $logicalName => $def) {
-            $physicalName = $tablePrefix . (isset($def['suffix']) ? $def['suffix'] : $logicalName);
+            $suffix = isset($def['suffix']) ? $def['suffix'] : $logicalName;
+            $physicalName = $tablePrefix . $suffix;
 
             if (isset($excludedSet[$physicalName])) {
                 continue;
@@ -218,6 +352,12 @@ class DbTablesDiscoverer
 
             if (!empty($def['base64'])) {
                 $descriptor['base64'] = true;
+            }
+
+            $rowFilter = self::rowFilterFor($suffix);
+
+            if ($rowFilter !== null) {
+                $descriptor['row_filter'] = $rowFilter;
             }
 
             $descriptors[] = $descriptor;

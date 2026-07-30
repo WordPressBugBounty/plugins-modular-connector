@@ -2,6 +2,7 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
@@ -315,6 +316,34 @@ abstract class AbstractManager implements ManagerContract
     }
 
     /**
+     * Purge successfully upgraded items from the persisted update-transient
+     * copy so the pre-upgrade entries can't resurface as ghost updates
+     * (reported as updatable X -> X).
+     *
+     * @param array $parsedResponse Result of parseBulkActionResponse()
+     * @param string $type One of 'plugins', 'themes'
+     * @return void
+     */
+    final protected function forgetUpgradedItems(array $parsedResponse, string $type): void
+    {
+        $upgraded = [];
+
+        foreach ($parsedResponse as $result) {
+            if (!empty($result['success']) && is_string($result['item'] ?? null)) {
+                $upgraded[] = $result['item'];
+            }
+        }
+
+        try {
+            ServerSetup::forgetUpdateTransientItems($type, $upgraded);
+        } catch (\Throwable $e) {
+            Log::warning('Manager: failed to purge upgraded items from update-transient copy', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Verify if the installed version on disk meets or exceeds the expected version from the update transient.
      *
      * @param string $item The plugin basename (e.g. 'akismet/akismet.php') or theme slug.
@@ -369,6 +398,26 @@ abstract class AbstractManager implements ManagerContract
                 break;
         }
 
-        return $itemsToUpdate;
+        /**
+         * Drop "ghost" updates: entries whose new_version is not greater than
+         * the installed version. They appear when the update transient is
+         * rebuilt in the same request that upgraded the item — vendor
+         * updaters captured the pre-upgrade version at plugins_loaded and
+         * re-inject the entry even though the disk already has the new
+         * version (e.g. an item reported as updatable from X to X).
+         */
+        return array_filter($itemsToUpdate, function ($item, $basename) use ($itemType) {
+            $newVersion = data_get($item, 'update.new_version');
+
+            if (empty($newVersion)) {
+                return true;
+            }
+
+            $installed = $itemType === ManagerTheme::THEME
+                ? wp_get_theme($basename)->get('Version')
+                : data_get($item, 'Version');
+
+            return empty($installed) || version_compare($newVersion, $installed, '>');
+        }, ARRAY_FILTER_USE_BOTH);
     }
 }

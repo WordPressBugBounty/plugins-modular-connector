@@ -4,30 +4,30 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90
+class ComposerStaticInit8c0d96469b3749633c93416f3234deeb
 {
     public static $files = array (
-        '13a37d95aabae02d2a6a0b92e7ccf695' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
-        '130f7d4c90c72c17a9cf0429542715a6' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        '5e14c3b0e1dddff8a892633e762a1566' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
-        '210bfeace9589db52e420d908609e2f0' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
-        'ab2f85ae6b7325901a08db638b09fa7c' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        '8c1fda14a5f12f04b5a5f17dadb09f63' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
-        '65f1a70490baa24de81df6d14c6b2bf1' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        'f7519a4eb3656c012b0bcce0137e8fee' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
-        'f9f72e21003d0144acda5325f070679e' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
-        'fdd220ef19c62db7c5dd582ad4c43b79' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        '6358adc0d569d5985c2c4e3d7f4085ff' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        '981ec4e3342ebff1379a628f6ad0e157' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        '7acbcff126c357e59e0cf9b474736f8f' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
-        'af87f07c2bb340d714cde9a1777bd13c' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-        'e5b42488cf13eebefc09b981de5fcbcb' => __DIR__ . '/..' . '/illuminate/events/functions.php',
-        '2ef038e0bac841039c346417217c8338' => __DIR__ . '/..' . '/opis/closure/functions.php',
-        '235b6d0737755fedaabb9bcae5573576' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        'd3ee0b40bed758929489b79131c2a6ed' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        '17d9fd0a7cf779a15711aa59c635ff63' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
-        '52e3be5d6727fcc4bbc51772948101c0' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
-        '3941f0c63c7d0a00fe97e85c052987e3' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        '2826887f8ce3cfb552106d55baaa4bee' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        '6d5a3c6a9306c0ddeaadca088f5e2e1c' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+        '6cd354c8895bd427f90f92658d288ffd' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        '666a6f61e934013c2701b7528a55b29d' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
+        'b029489f1b3632814f2d0f6360346887' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
+        '75e6ca4f2320a7dfc1a6ff68f085ee40' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        'd423edd5a581d0cae960b3e7a8914458' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
+        'd97a10a061ab699e1bd668e28051442c' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
+        'd6a522078513fba1cbd73a58ff8e14b6' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
+        'd82a74fc8f45dfdbb531c8dde2d16213' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        'db44f5699180610f03455cc46a7f69af' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
+        '828a3a1b9b02adc731e4d27548616261' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
+        'ccdf404de1740c6ff03b906ffe813282' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        'e3e36a38cb91e61d2ccaeb92d25c9258' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
+        'c29ec763b72ef3187d9b886410bf0c37' => __DIR__ . '/..' . '/illuminate/events/functions.php',
+        '554a216a61a1a6be002b4172802aafcd' => __DIR__ . '/..' . '/opis/closure/functions.php',
+        'ff314e0dd9f6ab7166ccc74b3834e3d8' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        '771e690b8fc87893b692054791f5d5b2' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        '560dd8e41e047fc5c1f2f0f2522c409b' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
+        '11264653774297e3eb48ce33b5ea2f16' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
+        'ae3cd2082e9a93760e94be029609fb16' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -420,6 +420,9 @@ class ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Cache\\WordPressStoreRepository' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Cache/WordPressStoreRepository.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\Compatibilities' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/Compatibilities.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\LoginCompatibilities' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/LoginCompatibilities.php',
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\PixelYourSiteCompatibilities' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/PixelYourSiteCompatibilities.php',
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\SeedProdCompatibilities' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/SeedProdCompatibilities.php',
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Compatibilities\\TrxUpdaterCompatibilities' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Compatibilities/TrxUpdaterCompatibilities.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Console\\Command' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Console/Command.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Console\\Scheduling\\Event' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Console/Scheduling/Event.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Console\\Scheduling\\Schedule' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Console/Scheduling/Schedule.php',
@@ -445,6 +448,7 @@ class ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Http\\Pipeline\\BeforeLogin' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Http/Pipeline/BeforeLogin.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Http\\Pipeline\\FetchModularRequest' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Http/Pipeline/FetchModularRequest.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Http\\Pipeline\\ForceCompatibilities' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Http/Pipeline/ForceCompatibilities.php',
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Http\\Pipeline\\ForceCronCompatibilities' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Http/Pipeline/ForceCronCompatibilities.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Http\\Pipeline\\SetupAdminEnvironment' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Http/Pipeline/SetupAdminEnvironment.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Http\\Pipeline\\ValidateRoute' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Http/Pipeline/ValidateRoute.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\PackageManifest' => __DIR__ . '/..' . '/ares/framework/src/Foundation/PackageManifest.php',
@@ -686,14 +690,20 @@ class ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\CurlFactoryInterface' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/CurlFactoryInterface.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\CurlHandler' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/CurlHandler.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\CurlMultiHandler' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/CurlMultiHandler.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\CurlShareHandleState' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/CurlShareHandleState.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\CurlVersion' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/CurlVersion.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\EasyHandle' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/EasyHandle.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\HeaderProcessor' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/HeaderProcessor.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\HostValidator' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/HostValidator.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\MockHandler' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/MockHandler.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\Proxy' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/Proxy.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\ProxyEnvironment' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/ProxyEnvironment.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\StreamHandler' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/StreamHandler.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Handler\\TlsVersion' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Handler/TlsVersion.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\MessageFormatter' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/MessageFormatter.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\MessageFormatterInterface' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/MessageFormatterInterface.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Middleware' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Middleware.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Multiplexing' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Multiplexing.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Pool' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Pool.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\PrepareBodyMiddleware' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/PrepareBodyMiddleware.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Promise\\AggregateException' => __DIR__ . '/..' . '/guzzlehttp/promises/src/AggregateException.php',
@@ -732,6 +742,7 @@ class ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\Query' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/Query.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\Request' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/Request.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\Response' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/Response.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\Rfc3986' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/Rfc3986.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\Rfc7230' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/Rfc7230.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\ServerRequest' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/ServerRequest.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Psr7\\Stream' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/Stream.php',
@@ -747,6 +758,7 @@ class ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90
         'Modular\\ConnectorDependencies\\GuzzleHttp\\RequestOptions' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/RequestOptions.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\RetryMiddleware' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/RetryMiddleware.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\TransferStats' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/TransferStats.php',
+        'Modular\\ConnectorDependencies\\GuzzleHttp\\TransportSharing' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/TransportSharing.php',
         'Modular\\ConnectorDependencies\\GuzzleHttp\\Utils' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/Utils.php',
         'Modular\\ConnectorDependencies\\Ifsnop\\Mysqldump\\Mysqldump' => __DIR__ . '/..' . '/ifsnop/mysqldump-php/src/Ifsnop/Mysqldump/Mysqldump.php',
         'Modular\\ConnectorDependencies\\Illuminate\\Bus\\Batch' => __DIR__ . '/..' . '/illuminate/bus/Batch.php',
@@ -2855,9 +2867,9 @@ class ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit128fdd99d2ee77c28540b4fe67144e90::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit8c0d96469b3749633c93416f3234deeb::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit8c0d96469b3749633c93416f3234deeb::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit8c0d96469b3749633c93416f3234deeb::$classMap;
 
         }, null, ClassLoader::class);
     }

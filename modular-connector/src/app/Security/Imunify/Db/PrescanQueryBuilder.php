@@ -93,9 +93,15 @@ class PrescanQueryBuilder
      * @param bool $isBase64
      * @param string|int $lastKey Cursor: yield rows with key strictly greater than this.
      *                            Pass '' or 0 to start from the beginning.
+     * @param array $rowFilter Optional `{column, exclude_patterns}` from the
+     *                         table descriptor — when set, rows whose
+     *                         `column` value matches any of `exclude_patterns`
+     *                         (LIKE) are skipped at the SQL level so secrets
+     *                         in `wp_options` / `wp_*meta` never reach the
+     *                         /db-content endpoint.
      * @return \Generator yields array of rows
      */
-    public function executePrescan($table, $column, $key, $isBase64, $lastKey = 0)
+    public function executePrescan($table, $column, $key, $isBase64, $lastKey = 0, array $rowFilter = [])
     {
         if (empty($this->prescanPatterns)) {
             return;
@@ -121,12 +127,30 @@ class PrescanQueryBuilder
             $conditions[] = '(' . Str::replace('col', $quotedColumn, $this->base64Pattern) . ')';
         }
 
-        $whereSql = implode(' OR ', $conditions);
+        $whereSql = '(' . implode(' OR ', $conditions) . ')';
+
+        // Row-level denylist: append `AND filterColumn NOT LIKE ?` per pattern.
+        // Identifier escaped via escapeIdentifier (allow-list regex); patterns
+        // are bound as PDO values so no interpolation risk.
+        if (isset($rowFilter['column'], $rowFilter['exclude_patterns'])
+            && is_string($rowFilter['column'])
+            && is_array($rowFilter['exclude_patterns'])
+            && !empty($rowFilter['exclude_patterns'])) {
+            $filterColumnId = $this->escapeIdentifier($rowFilter['column']);
+            $quotedFilterColumn = sprintf('`%s`', $filterColumnId);
+            foreach ($rowFilter['exclude_patterns'] as $excludePattern) {
+                if (!is_string($excludePattern) || $excludePattern === '') {
+                    continue;
+                }
+                $whereSql .= ' AND ' . $quotedFilterColumn . ' NOT LIKE ?';
+                $bindings[] = $excludePattern;
+            }
+        }
 
         $sql = sprintf(
             'SELECT %s AS row_key, HEX(%s) AS hex_content '
             . 'FROM %s '
-            . 'WHERE %s > ? AND LENGTH(%s) <= %d AND (%s) '
+            . 'WHERE %s > ? AND LENGTH(%s) <= %d AND %s '
             . 'ORDER BY %s LIMIT %d',
             $quotedKey,
             $quotedColumn,
@@ -183,9 +207,22 @@ class PrescanQueryBuilder
     }
 
     /**
-     * Allow-list for prescan patterns received from Imunify. Reject anything with
-     * SQL-dangerous characters (semicolons, comment sequences are caught by the
-     * regex below since `;` and `-` outside of `\\\-` are not in the class).
+     * Gatekeeper for prescan patterns received from Imunify. Two independent rules:
+     *
+     *   1. **SQL safety** — char allow-list rejects semicolons / comment sequences
+     *      so the pattern can be safely embedded in a LIKE clause (LIKE values
+     *      go through PDO bindings but `base64_pattern` is interpolated
+     *      textually, so the bar is the same for both).
+     *   2. **Literal density** — reject "matches everything" degenerate patterns
+     *      like `%`, `%a%`, `%_%` that would turn the prescan into "ship every
+     *      text/blob row to /db-content". Real malware signatures always carry
+     *      a multi-char literal anchor (`eval`, `base64_decode`, `<?php`, etc.),
+     *      so requiring ≥3 contiguous non-wildcard, non-whitespace characters
+     *      drops degenerate patterns without losing legitimate ones.
+     *
+     * Defense in depth — Imunify is a trusted opt-in provider, but a TLS MITM
+     * or provider compromise could otherwise weaponize a single `%` pattern to
+     * exfiltrate everything in the auto-discovered tables.
      *
      * @param mixed $pattern
      * @return bool
@@ -196,7 +233,11 @@ class PrescanQueryBuilder
             return false;
         }
 
-        return preg_match('/^[a-zA-Z0-9%_<>?!@#&()=:\/\\\\.^*+\-\s]+$/', $pattern) === 1;
+        if (preg_match('/^[a-zA-Z0-9%_<>?!@#&()=:\/\\\\.^*+\-\s]+$/', $pattern) !== 1) {
+            return false;
+        }
+
+        return preg_match('/[^%_\s]{3,}/', $pattern) === 1;
     }
 
     /**

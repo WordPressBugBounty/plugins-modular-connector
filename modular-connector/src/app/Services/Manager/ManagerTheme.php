@@ -148,7 +148,11 @@ class ManagerTheme extends AbstractManager
 
         $response = @$upgrader->bulk_upgrade($themes);
 
-        return $this->parseBulkActionResponse($themes, $response, 'upgrade', self::THEME);
+        $parsed = $this->parseBulkActionResponse($themes, $response, 'upgrade', self::THEME);
+
+        $this->forgetUpgradedItems($parsed, 'themes');
+
+        return $parsed;
     }
 
     /**

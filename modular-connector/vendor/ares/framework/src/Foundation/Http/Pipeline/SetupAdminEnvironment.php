@@ -27,6 +27,11 @@ class SetupAdminEnvironment
      */
     public function handle(Request $request, Closure $next)
     {
+        // Must run synchronously, before any plugin is loaded: on multisite,
+        // network-activated plugins load before muplugins_loaded fires, and a
+        // plugin that branches on is_admin() while loading breaks if the answer
+        // changes before it runs its plugins_loaded hooks.
+        $this->setupAdminConstants();
         // Login admin user early so themes loading during WordPress init
         // can pass authorization gates and register their hooks
         $this->loginAdminUser();
@@ -138,8 +143,6 @@ class SetupAdminEnvironment
     {
         try {
             ServerSetup::loginAs();
-            // Setup admin constants (WP_ADMIN, WP_NETWORK_ADMIN, etc.)
-            $this->setupAdminConstants();
             // Simulate wp-admin environment
             $this->simulateAdminEnvironment();
         } catch (\Throwable $e) {

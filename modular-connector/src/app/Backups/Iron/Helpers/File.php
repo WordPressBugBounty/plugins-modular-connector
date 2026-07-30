@@ -88,6 +88,7 @@ class File
                         'wpvividbackups',
                         'aiowps_backups',
                         'ai1wm-backups',
+                        'backups-dup-lite',
                         'backups-dup-pro',
 
                         // WordPress default values

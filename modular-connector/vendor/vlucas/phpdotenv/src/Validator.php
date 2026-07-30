@@ -57,7 +57,7 @@ class Validator
     public function notEmpty()
     {
         return $this->assertNullable(static function (string $value) {
-            return Str::len(\trim($value)) > 0;
+            return Str::len(\trim($value, " \n\r\t\x00\v")) > 0;
         }, 'is empty');
     }
     /**

@@ -14,7 +14,7 @@ $loader = (static function () {
     // Restore the backup and ensure the excluded files are properly marked as loaded
     $GLOBALS['__composer_autoload_files'] = \array_merge(
         $existingComposerAutoloadFiles,
-        \array_fill_keys(['65f1a70490baa24de81df6d14c6b2bf1', '9eaa6b0f3f04e58e17ae5ecb754ea313', '6358adc0d569d5985c2c4e3d7f4085ff', 'acbe0d033c55cd0a032b415e08d14f4c', '7acbcff126c357e59e0cf9b474736f8f', 'b48cbeb76a71e226a23fa64ac2b94dc6', 'f9f72e21003d0144acda5325f070679e', '36dfd6ed9dd74e8062aa61f09caf8554', '130f7d4c90c72c17a9cf0429542715a6', '5928a00fa978807cf85d90ec3f4b0147', 'f7519a4eb3656c012b0bcce0137e8fee', '13a37d95aabae02d2a6a0b92e7ccf695', 'af87f07c2bb340d714cde9a1777bd13c', 'b178954ba4692b8876c08a4a97e6ce23', '28099935d0ea91a1b5e09408e356eacb', 'c5e5dfa7f2077b89dbc43523332b50aa', '674e404d8857dd99db32bc218bb5643a', '83cc8b953df9a6f7e51f674d84d57730', '9250916e8af80e0d1bb31401fd2e15a7', '99b27172349c9ec3abea78f62e2938bb', 'a875add15ea9a7df1a6c0c26cc9e4590', '1cbb53d50065225a14c2360be2ccbf6f', '54b9ab13bc86d8251a04a939888e357e', 'a89966141ddd51b9b7e868bc3b2f9bb0', '7bdb062931f6e7102434c3ad28423eb6', 'f49032536fdd06afd9df7191c3f21453', '18e965175c6bcd96deba6bc791a44373', '51421aa3e5e8003b70a289762d146a2a', '7edcabe1b67fbb38f4972a722bbbb429', '7b0b5d7b98f96ad751222ae5cc98cfcb', 'd1fb64fd99fc22e28e29a95cc0ea533a'], true)
+        \array_fill_keys(['d423edd5a581d0cae960b3e7a8914458', '9eaa6b0f3f04e58e17ae5ecb754ea313', 'db44f5699180610f03455cc46a7f69af', 'acbe0d033c55cd0a032b415e08d14f4c', '80dfc307f8b4b13bcd033cef5c977d19', 'ccdf404de1740c6ff03b906ffe813282', 'b48cbeb76a71e226a23fa64ac2b94dc6', 'd6a522078513fba1cbd73a58ff8e14b6', '36dfd6ed9dd74e8062aa61f09caf8554', 'e4e9c4430b5a6c815e77a26074c8155a', '6d5a3c6a9306c0ddeaadca088f5e2e1c', '5928a00fa978807cf85d90ec3f4b0147', 'd97a10a061ab699e1bd668e28051442c', '2826887f8ce3cfb552106d55baaa4bee', 'e3e36a38cb91e61d2ccaeb92d25c9258', 'b178954ba4692b8876c08a4a97e6ce23', '28099935d0ea91a1b5e09408e356eacb', 'c5e5dfa7f2077b89dbc43523332b50aa', '674e404d8857dd99db32bc218bb5643a', '83cc8b953df9a6f7e51f674d84d57730', '9250916e8af80e0d1bb31401fd2e15a7', '99b27172349c9ec3abea78f62e2938bb', 'a875add15ea9a7df1a6c0c26cc9e4590', '1cbb53d50065225a14c2360be2ccbf6f', '54b9ab13bc86d8251a04a939888e357e', 'a89966141ddd51b9b7e868bc3b2f9bb0', '7bdb062931f6e7102434c3ad28423eb6', 'f49032536fdd06afd9df7191c3f21453', '18e965175c6bcd96deba6bc791a44373', '51421aa3e5e8003b70a289762d146a2a', '7edcabe1b67fbb38f4972a722bbbb429', '7b0b5d7b98f96ad751222ae5cc98cfcb', 'd1fb64fd99fc22e28e29a95cc0ea533a'], true)
     );
 
     return $loader;
@@ -32,8 +32,8 @@ if (!function_exists('humbug_phpscoper_expose_class')) {
 humbug_phpscoper_expose_class('CURLStringFile', 'Modular\ConnectorDependencies\CURLStringFile');
 humbug_phpscoper_expose_class('ReturnTypeWillChange', 'Modular\ConnectorDependencies\ReturnTypeWillChange');
 humbug_phpscoper_expose_class('Normalizer', 'Modular\ConnectorDependencies\Normalizer');
-humbug_phpscoper_expose_class('Stringable', 'Modular\ConnectorDependencies\Stringable');
 humbug_phpscoper_expose_class('ValueError', 'Modular\ConnectorDependencies\ValueError');
+humbug_phpscoper_expose_class('Stringable', 'Modular\ConnectorDependencies\Stringable');
 humbug_phpscoper_expose_class('Attribute', 'Modular\ConnectorDependencies\Attribute');
 humbug_phpscoper_expose_class('PhpToken', 'Modular\ConnectorDependencies\PhpToken');
 humbug_phpscoper_expose_class('UnhandledMatchError', 'Modular\ConnectorDependencies\UnhandledMatchError');
@@ -113,6 +113,7 @@ if (!function_exists('mb_strwidth')) { function mb_strwidth() { return \Modular\
 if (!function_exists('mb_substitute_character')) { function mb_substitute_character() { return \Modular\ConnectorDependencies\mb_substitute_character(...func_get_args()); } }
 if (!function_exists('mb_substr')) { function mb_substr() { return \Modular\ConnectorDependencies\mb_substr(...func_get_args()); } }
 if (!function_exists('mb_substr_count')) { function mb_substr_count() { return \Modular\ConnectorDependencies\mb_substr_count(...func_get_args()); } }
+if (!function_exists('normalizer_get_raw_decomposition')) { function normalizer_get_raw_decomposition() { return \Modular\ConnectorDependencies\normalizer_get_raw_decomposition(...func_get_args()); } }
 if (!function_exists('normalizer_is_normalized')) { function normalizer_is_normalized() { return \Modular\ConnectorDependencies\normalizer_is_normalized(...func_get_args()); } }
 if (!function_exists('normalizer_normalize')) { function normalizer_normalize() { return \Modular\ConnectorDependencies\normalizer_normalize(...func_get_args()); } }
 if (!function_exists('preg_last_error_msg')) { function preg_last_error_msg() { return \Modular\ConnectorDependencies\preg_last_error_msg(...func_get_args()); } }

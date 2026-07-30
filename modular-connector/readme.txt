@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 3.0.2
+Stable tag: 3.1.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -225,6 +225,15 @@ Please report security bugs found in the source code of the Modular DS plugin th
 9. Client report overview page
 
 == Changelog ==
+= v3.1.0 =
+Release date: 2026-07-30
+
+* Improved premium plugin and theme update detection with new compatibility for ThemeREX (Qwery theme, ThemeREX Addons), PixelYourSite and SeedProd Pro
+* Improved malware scanner: partial results are now delivered when a scan fails, and sensitive database content is excluded from scans
+* FIXED: Incorrect results in the background updates health check
+* FIXED: Updates still shown as pending right after being successfully applied (e.g. Elementor Pro)
+* FIXED: Duplicator Lite local backups are now excluded from backups
+
 = v3.0.2 =
 Release date: 2026-06-26
 

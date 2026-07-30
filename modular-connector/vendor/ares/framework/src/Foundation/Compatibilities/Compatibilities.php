@@ -49,4 +49,51 @@ class Compatibilities
         }
         return \true;
     }
+    /**
+     * Execute a hook callback registered by a third-party class without
+     * firing the whole hook.
+     *
+     * Useful for admin-gated registrations (e.g. updaters hooked on
+     * admin_init) that must also run in our non-admin request contexts:
+     * firing do_action() would execute every plugin's callback, this
+     * executes only the vendor's one.
+     *
+     * @param string $hookName
+     * @param string $className
+     * @param string $methodName
+     * @param int $priority
+     * @return bool True if at least one matching callback was executed
+     */
+    public static function callFilterByClassName(string $hookName, string $className, string $methodName, int $priority = 10): bool
+    {
+        global $wp_filter;
+        if (empty($wp_filter[$hookName])) {
+            return \false;
+        }
+        if (is_a($wp_filter[$hookName], 'WP_Hook')) {
+            $hooks = $wp_filter[$hookName]->callbacks[$priority] ?? [];
+        } else {
+            $hooks = $wp_filter[$hookName][$priority] ?? [];
+        }
+        if (empty($hooks) || !is_array($hooks)) {
+            return \false;
+        }
+        $called = \false;
+        foreach ($hooks as $filter) {
+            if (!isset($filter['function']) || !is_array($filter['function'])) {
+                continue;
+            }
+            $object = $filter['function'][0] ?? null;
+            $method = $filter['function'][1] ?? null;
+            $isClassMatch = is_object($object) && get_class($object) === $className || is_string($object) && $object === $className;
+            if (!$isClassMatch || $method !== $methodName) {
+                continue;
+            }
+            if (is_callable($filter['function'])) {
+                call_user_func($filter['function']);
+                $called = \true;
+            }
+        }
+        return $called;
+    }
 }
