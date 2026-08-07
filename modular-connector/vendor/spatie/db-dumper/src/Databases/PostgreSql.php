@@ -7,33 +7,21 @@ use Modular\ConnectorDependencies\Spatie\DbDumper\Exceptions\CannotStartDump;
 use Modular\ConnectorDependencies\Symfony\Component\Process\Process;
 class PostgreSql extends DbDumper
 {
-    /** @var bool */
-    protected $useInserts = \false;
-    /** @var bool */
-    protected $createTables = \true;
+    protected bool $useInserts = \false;
+    protected bool $createTables = \true;
+    protected bool $includeData = \true;
     /** @var false|resource */
     private $tempFileHandle;
     public function __construct()
     {
         $this->port = 5432;
     }
-    /**
-     * @return $this
-     */
-    public function useInserts()
+    public function useInserts(): self
     {
         $this->useInserts = \true;
         return $this;
     }
-    /**
-     * Dump the contents of the database to the given file.
-     *
-     * @param string $dumpFile
-     *
-     * @throws \Spatie\DbDumper\Exceptions\CannotStartDump
-     * @throws \Spatie\DbDumper\Exceptions\DumpFailed
-     */
-    public function dumpToFile(string $dumpFile)
+    public function dumpToFile(string $dumpFile): void
     {
         $this->guardAgainstIncompleteCredentials();
         $tempFileHandle = tmpfile();
@@ -42,22 +30,18 @@ class PostgreSql extends DbDumper
         $process->run();
         $this->checkIfDumpWasSuccessFul($process, $dumpFile);
     }
-    /**
-     * Get the command that should be performed to dump the database.
-     *
-     * @param string $dumpFile
-     *
-     * @return string
-     */
     public function getDumpCommand(string $dumpFile): string
     {
         $quote = $this->determineQuote();
-        $command = ["{$quote}{$this->dumpBinaryPath}pg_dump{$quote}", "-U {$this->userName}", '-h ' . ($this->socket === '' ? $this->host : $this->socket), "-p {$this->port}"];
+        $command = ["{$quote}{$this->dumpBinaryPath}pg_dump{$quote}", "-U \"{$this->userName}\"", '-h ' . ($this->socket === '' ? $this->host : $this->socket), "-p {$this->port}"];
         if ($this->useInserts) {
             $command[] = '--inserts';
         }
         if (!$this->createTables) {
             $command[] = '--data-only';
+        }
+        if (!$this->includeData) {
+            $command[] = '--schema-only';
         }
         foreach ($this->extraOptions as $extraOption) {
             $command[] = $extraOption;
@@ -72,8 +56,12 @@ class PostgreSql extends DbDumper
     }
     public function getContentsOfCredentialsFile(): string
     {
-        $contents = [$this->host, $this->port, $this->dbName, $this->userName, $this->password];
+        $contents = [$this->escapeCredentialEntry($this->host), $this->escapeCredentialEntry((string) $this->port), $this->escapeCredentialEntry($this->dbName), $this->escapeCredentialEntry($this->userName), $this->escapeCredentialEntry($this->password)];
         return implode(':', $contents);
+    }
+    protected function escapeCredentialEntry($entry): string
+    {
+        return str_replace(['\\', ':'], ['\\\\', '\:'], $entry);
     }
     public function guardAgainstIncompleteCredentials()
     {
@@ -87,18 +75,16 @@ class PostgreSql extends DbDumper
     {
         return ['PGPASSFILE' => $temporaryCredentialsFile, 'PGDATABASE' => $this->dbName];
     }
-    /**
-     * @return $this
-     */
-    public function doNotCreateTables()
+    public function doNotCreateTables(): self
     {
         $this->createTables = \false;
         return $this;
     }
-    /**
-     * @param string $dumpFile
-     * @return Process
-     */
+    public function doNotDumpData(): self
+    {
+        $this->includeData = \false;
+        return $this;
+    }
     public function getProcess(string $dumpFile): Process
     {
         $command = $this->getDumpCommand($dumpFile);
@@ -117,7 +103,7 @@ class PostgreSql extends DbDumper
     /**
      * @param false|resource $tempFileHandle
      */
-    public function setTempFileHandle($tempFileHandle)
+    public function setTempFileHandle($tempFileHandle): void
     {
         $this->tempFileHandle = $tempFileHandle;
     }

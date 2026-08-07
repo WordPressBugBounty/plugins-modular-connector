@@ -4,30 +4,30 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit8c0d96469b3749633c93416f3234deeb
+class ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396
 {
     public static $files = array (
-        '2826887f8ce3cfb552106d55baaa4bee' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
-        '6d5a3c6a9306c0ddeaadca088f5e2e1c' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        '6cd354c8895bd427f90f92658d288ffd' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
-        '666a6f61e934013c2701b7528a55b29d' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
-        'b029489f1b3632814f2d0f6360346887' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        '75e6ca4f2320a7dfc1a6ff68f085ee40' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
-        'd423edd5a581d0cae960b3e7a8914458' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        'd97a10a061ab699e1bd668e28051442c' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
-        'd6a522078513fba1cbd73a58ff8e14b6' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
-        'd82a74fc8f45dfdbb531c8dde2d16213' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        'db44f5699180610f03455cc46a7f69af' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        '828a3a1b9b02adc731e4d27548616261' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        'ccdf404de1740c6ff03b906ffe813282' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
-        'e3e36a38cb91e61d2ccaeb92d25c9258' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-        'c29ec763b72ef3187d9b886410bf0c37' => __DIR__ . '/..' . '/illuminate/events/functions.php',
-        '554a216a61a1a6be002b4172802aafcd' => __DIR__ . '/..' . '/opis/closure/functions.php',
-        'ff314e0dd9f6ab7166ccc74b3834e3d8' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        '771e690b8fc87893b692054791f5d5b2' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        '560dd8e41e047fc5c1f2f0f2522c409b' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
-        '11264653774297e3eb48ce33b5ea2f16' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
-        'ae3cd2082e9a93760e94be029609fb16' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        '8da48fdc3532c426647ceec0a448215d' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        '72452fd9cc3a6b30d62b91321fd58ce2' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+        'e20d5e03b320c6f70ee29f3971609067' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        'c4eb89c43f5c2c464e86ef6954611857' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
+        '710a54d2093fc78438efc7417baced45' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
+        '918137051066aca18dbfc7a533ecb366' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        '9d6224f53298ecc18e1467b2d2d93806' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
+        '692027fa7a011e51c56b23874e80913e' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
+        'cb166370d89928617b6a9ae3f5e5a863' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
+        '2bda2d61cef99ff8a7e79ffa2cfb8135' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        '9249e31d643dd9758736674bba3eb67e' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
+        '04a71cb0b74b9a5950f46847ec242edf' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
+        'a9237bb65405221c6e6e7e527f4a1d33' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        '386595b45161610142ecf82ece3a440c' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
+        '3f41acae8616f90bbc3722943a76d7c1' => __DIR__ . '/..' . '/illuminate/events/functions.php',
+        'ea36bc6f7ac0c0446fc33887b54175f3' => __DIR__ . '/..' . '/opis/closure/functions.php',
+        'c9d17440d128bb4a8094e989cec0c1b3' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        '3997dd35b610bb964438ab4fb453a38e' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        '1c00a4e1714393953c55bd3ddd4289d3' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
+        'eb42044c31e73c7e5992fe39381350ce' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
+        '0bf49b87a53c3d8c54f62f99db98ca28' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -1882,16 +1882,20 @@ class ComposerStaticInit8c0d96469b3749633c93416f3234deeb
         'Modular\\ConnectorDependencies\\Ramsey\\Uuid\\UuidInterface' => __DIR__ . '/..' . '/ramsey/uuid/src/UuidInterface.php',
         'Modular\\ConnectorDependencies\\Ramsey\\Uuid\\Validator\\GenericValidator' => __DIR__ . '/..' . '/ramsey/uuid/src/Validator/GenericValidator.php',
         'Modular\\ConnectorDependencies\\Ramsey\\Uuid\\Validator\\ValidatorInterface' => __DIR__ . '/..' . '/ramsey/uuid/src/Validator/ValidatorInterface.php',
+        'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Compressors\\Bzip2Compressor' => __DIR__ . '/..' . '/spatie/db-dumper/src/Compressors/Bzip2Compressor.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Compressors\\Compressor' => __DIR__ . '/..' . '/spatie/db-dumper/src/Compressors/Compressor.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Compressors\\GzipCompressor' => __DIR__ . '/..' . '/spatie/db-dumper/src/Compressors/GzipCompressor.php',
+        'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Databases\\MariaDb' => __DIR__ . '/..' . '/spatie/db-dumper/src/Databases/MariaDb.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Databases\\MongoDb' => __DIR__ . '/..' . '/spatie/db-dumper/src/Databases/MongoDb.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Databases\\MySql' => __DIR__ . '/..' . '/spatie/db-dumper/src/Databases/MySql.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Databases\\PostgreSql' => __DIR__ . '/..' . '/spatie/db-dumper/src/Databases/PostgreSql.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Databases\\Sqlite' => __DIR__ . '/..' . '/spatie/db-dumper/src/Databases/Sqlite.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\DbDumper' => __DIR__ . '/..' . '/spatie/db-dumper/src/DbDumper.php',
+        'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\DsnParser' => __DIR__ . '/..' . '/spatie/db-dumper/src/DsnParser.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Exceptions\\CannotSetParameter' => __DIR__ . '/..' . '/spatie/db-dumper/src/Exceptions/CannotSetParameter.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Exceptions\\CannotStartDump' => __DIR__ . '/..' . '/spatie/db-dumper/src/Exceptions/CannotStartDump.php',
         'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Exceptions\\DumpFailed' => __DIR__ . '/..' . '/spatie/db-dumper/src/Exceptions/DumpFailed.php',
+        'Modular\\ConnectorDependencies\\Spatie\\DbDumper\\Exceptions\\InvalidDatabaseUrl' => __DIR__ . '/..' . '/spatie/db-dumper/src/Exceptions/InvalidDatabaseUrl.php',
         'Modular\\ConnectorDependencies\\Symfony\\Component\\Console\\Application' => __DIR__ . '/..' . '/symfony/console/Application.php',
         'Modular\\ConnectorDependencies\\Symfony\\Component\\Console\\Attribute\\AsCommand' => __DIR__ . '/..' . '/symfony/console/Attribute/AsCommand.php',
         'Modular\\ConnectorDependencies\\Symfony\\Component\\Console\\CI\\GithubActionReporter' => __DIR__ . '/..' . '/symfony/console/CI/GithubActionReporter.php',
@@ -2618,16 +2622,21 @@ class ComposerStaticInit8c0d96469b3749633c93416f3234deeb
         'Modular\\Connector\\Backups\\BackupManager' => __DIR__ . '/../..' . '/src/app/Backups/BackupManager.php',
         'Modular\\Connector\\Backups\\Console\\AutoCleanUpCommand' => __DIR__ . '/../..' . '/src/app/Backups/Console/AutoCleanUpCommand.php',
         'Modular\\Connector\\Backups\\Contracts\\BackupDriver' => __DIR__ . '/../..' . '/src/app/Backups/Contracts/BackupDriver.php',
+        'Modular\\Connector\\Backups\\Dumper\\ChunkedDumper' => __DIR__ . '/../..' . '/src/app/Backups/Dumper/ChunkedDumper.php',
         'Modular\\Connector\\Backups\\Dumper\\PHPDumper' => __DIR__ . '/../..' . '/src/app/Backups/Dumper/PHPDumper.php',
         'Modular\\Connector\\Backups\\Dumper\\ShellDumper' => __DIR__ . '/../..' . '/src/app/Backups/Dumper/ShellDumper.php',
         'Modular\\Connector\\Backups\\Facades\\Backup' => __DIR__ . '/../..' . '/src/app/Backups/Facades/Backup.php',
         'Modular\\Connector\\Backups\\Iron\\BackupIronDriver' => __DIR__ . '/../..' . '/src/app/Backups/Iron/BackupIronDriver.php',
         'Modular\\Connector\\Backups\\Iron\\BackupPart' => __DIR__ . '/../..' . '/src/app/Backups/Iron/BackupPart.php',
+        'Modular\\Connector\\Backups\\Iron\\Dump\\LargeTableDumper' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Dump/LargeTableDumper.php',
+        'Modular\\Connector\\Backups\\Iron\\Dump\\SegmentMerger' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Dump/SegmentMerger.php',
+        'Modular\\Connector\\Backups\\Iron\\Dump\\SmallTablesDumper' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Dump/SmallTablesDumper.php',
         'Modular\\Connector\\Backups\\Iron\\Events\\ManagerBackupPartUpdated' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Events/ManagerBackupPartUpdated.php',
         'Modular\\Connector\\Backups\\Iron\\Events\\ManagerBackupPartsCalculated' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Events/ManagerBackupPartsCalculated.php',
         'Modular\\Connector\\Backups\\Iron\\Helpers\\File' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Helpers/File.php',
         'Modular\\Connector\\Backups\\Iron\\Helpers\\HasMaxTime' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Helpers/HasMaxTime.php',
         'Modular\\Connector\\Backups\\Iron\\Helpers\\ManifestHasher' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Helpers/ManifestHasher.php',
+        'Modular\\Connector\\Backups\\Iron\\Jobs\\CalculateDatabasePlanJob' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Jobs/CalculateDatabasePlanJob.php',
         'Modular\\Connector\\Backups\\Iron\\Jobs\\DatabaseCompressJob' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Jobs/DatabaseCompressJob.php',
         'Modular\\Connector\\Backups\\Iron\\Jobs\\DatabaseDumpJob' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Jobs/DatabaseDumpJob.php',
         'Modular\\Connector\\Backups\\Iron\\Jobs\\ProcessFilesJob' => __DIR__ . '/../..' . '/src/app/Backups/Iron/Jobs/ProcessFilesJob.php',
@@ -2867,9 +2876,9 @@ class ComposerStaticInit8c0d96469b3749633c93416f3234deeb
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit8c0d96469b3749633c93416f3234deeb::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit8c0d96469b3749633c93416f3234deeb::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit8c0d96469b3749633c93416f3234deeb::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396::$classMap;
 
         }, null, ClassLoader::class);
     }

@@ -66,6 +66,10 @@ class DatabaseCompressJob implements ShouldQueue
 
             Storage::disk('backups')->delete($filename);
 
+            // Same contract as the file parts: batch_size reports the real zip size from
+            // upload_pending onwards.
+            $part->batchSize = $part->getPathSize('zip');
+
             $part->markAs(ManagerBackupPartUpdated::STATUS_UPLOAD_PENDING);
         } catch (\Throwable $e) {
             Log::error($e);

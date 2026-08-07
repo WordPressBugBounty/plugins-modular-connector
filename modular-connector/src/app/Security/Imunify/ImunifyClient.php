@@ -44,6 +44,27 @@ class ImunifyClient
     private const MAX_RETRIES = 2;
 
     /**
+     * Ceiling for a server-supplied `Retry-After`. Imunify documents 429 and 503
+     * as retryable *honouring that header*; when it asks for longer than this the
+     * transport gives up and lets the queue re-dispatch later — sleeping through
+     * it would burn the caller's whole 25s tick on a single request.
+     */
+    private const MAX_RETRY_AFTER_SECONDS = 10;
+
+    /**
+     * Page size for `/db-results`, which paginates. Reading a single page would
+     * silently under-report threats on a heavily infected site.
+     */
+    private const DB_RESULTS_PAGE_SIZE = 100;
+
+    /**
+     * Upper bound on accumulated `/db-results` rows. Guards worker memory (the
+     * DB flow carries its threats inline in the webhook) and doubles as the
+     * termination guarantee if the endpoint ever ignores `offset`.
+     */
+    private const DB_RESULTS_MAX = 2000;
+
+    /**
      * Build a client by looking up the global site_key stored by StartScanJob
      * (and re-stamped by every post-action StartJob). Throws if the key has
      * been evicted — the caller's existing try/catch handles it as a regular
@@ -136,32 +157,85 @@ class ImunifyClient
             // 429 Too Many Requests + transient 5xx (502 bad gateway, 503 service
             // unavailable, 504 gateway timeout). 500 Internal Server Error is also
             // worth retrying once — Imunify occasionally returns it under load.
-            if (in_array($status, [429, 500, 502, 503, 504], true)) {
-                Log::warning('ImunifyClient: retrying after transient status', [
-                    'attempt' => $retries + 1,
-                    'uri' => (string)$request->getUri(),
-                    'status' => $status,
-                ]);
-
-                return true;
+            if (!in_array($status, [429, 500, 502, 503, 504], true)) {
+                return false;
             }
 
-            return false;
+            $retryAfter = $this->retryAfterSeconds($response);
+
+            if ($retryAfter !== null && $retryAfter > self::MAX_RETRY_AFTER_SECONDS) {
+                Log::warning('ImunifyClient: giving up, Retry-After exceeds the tick budget', [
+                    'uri' => (string)$request->getUri(),
+                    'status' => $status,
+                    'retry_after' => $retryAfter,
+                ]);
+
+                return false;
+            }
+
+            Log::warning('ImunifyClient: retrying after transient status', [
+                'attempt' => $retries + 1,
+                'uri' => (string)$request->getUri(),
+                'status' => $status,
+                'retry_after' => $retryAfter,
+            ]);
+
+            return true;
         };
     }
 
     /**
-     * Delay between retries in milliseconds. Exponential-ish (500ms, 1500ms) so a
-     * saturated Imunify gets a chance to drain before we hammer it again.
+     * Delay between retries in milliseconds. A server-supplied `Retry-After`
+     * always wins — Imunify's rate limiter and maintenance windows both set it,
+     * and ignoring it just burns the retry budget in a couple of seconds. Falls
+     * back to exponential-ish backoff so a saturated Imunify gets a chance to
+     * drain before we hammer it again.
      *
      * @return callable
      */
     private function retryDelay()
     {
-        return function ($retries) {
-            // 0-indexed: first retry waits 500ms, second waits 1500ms.
+        return function ($retries, ResponseInterface $response = null) {
+            $retryAfter = $this->retryAfterSeconds($response);
+
+            if ($retryAfter !== null) {
+                return $retryAfter * 1000;
+            }
+
+            // Guzzle increments before calling this: 1 → 1500ms, 2 → 2500ms.
             return 500 + 1000 * $retries;
         };
+    }
+
+    /**
+     * Parse `Retry-After` in either documented form (delta-seconds or HTTP-date).
+     *
+     * @param ResponseInterface|null $response
+     * @return int|null Seconds to wait, or null when the header is absent/unparseable.
+     */
+    private function retryAfterSeconds(ResponseInterface $response = null)
+    {
+        if ($response === null || !$response->hasHeader('Retry-After')) {
+            return null;
+        }
+
+        $value = trim($response->getHeaderLine('Retry-After'));
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (ctype_digit($value)) {
+            return (int)$value;
+        }
+
+        $timestamp = strtotime($value);
+
+        if ($timestamp === false) {
+            return null;
+        }
+
+        return max(0, $timestamp - time());
     }
 
     /**
@@ -220,15 +294,25 @@ class ImunifyClient
             $payload['webhook_secret'] = $options['webhook_secret'];
         }
 
-        return $this->postJson('/api/v1/scan/start', $payload);
+        $response = $this->postJson('/api/v1/scan/start', $payload);
+
+        $this->logWebhookWarning('/api/v1/scan/start', $response);
+
+        return $response;
     }
 
     /**
      * POST /api/v1/jobs/{jobId}/hashes
      *
+     * Imunify rejects entries individually: a 2xx does not mean the whole batch
+     * landed, so `processed` and `errors` have to be inspected. A rejected entry
+     * is not fatal — the file simply stays `needs_sha256` and the next poll tick
+     * resubmits it — but a batch that keeps bouncing would otherwise burn the
+     * whole poll deadline silently, so it is logged.
+     *
      * @param string $jobId
      * @param array $hashes [{file_id, sha256}]
-     * @return array
+     * @return array Response body: {processed: int, errors: array}
      * @throws GuzzleException
      */
     public function submitHashes($jobId, array $hashes)
@@ -242,9 +326,25 @@ class ImunifyClient
             }, $hashes),
         ];
 
-        return $this->postJson(sprintf('/api/v1/jobs/%s/hashes', $jobId), $payload, [
-            'batch_size' => count($hashes),
+        $submitted = count($hashes);
+
+        $response = $this->postJson(sprintf('/api/v1/jobs/%s/hashes', $jobId), $payload, [
+            'batch_size' => $submitted,
         ]);
+
+        $processed = isset($response['processed']) ? (int)$response['processed'] : null;
+        $errors = isset($response['errors']) && is_array($response['errors']) ? $response['errors'] : [];
+
+        if (!empty($errors) || ($processed !== null && $processed !== $submitted)) {
+            Log::warning('ImunifyClient: /hashes did not accept the whole batch', [
+                'job_id' => $jobId,
+                'submitted' => $submitted,
+                'processed' => $processed,
+                'errors' => array_slice($errors, 0, 10),
+            ]);
+        }
+
+        return $response;
     }
 
     /**
@@ -308,6 +408,66 @@ class ImunifyClient
     }
 
     /**
+     * POST /api/v1/jobs/{jobId}/upload-batch (multipart)
+     *
+     * One `file_ids` part (JSON array of ids) followed by one `file` part per
+     * upload, **in the same order** — the endpoint pairs them positionally, so
+     * the order of both lists is the contract.
+     *
+     * Returns 202 Accepted like the single-file endpoint: the scan itself is
+     * async and the verdicts show up on a later `/results` poll. The endpoint is
+     * capped by total payload size and file count (values unpublished); the
+     * documented client contract is to fall back to per-file `/upload` on any
+     * 4xx/5xx, which `PollImunifyJob::flushUploadBatch()` does.
+     *
+     * @param string $jobId
+     * @param array $files [{file_id, path}] — absolute, readable paths.
+     * @return array
+     * @throws GuzzleException
+     */
+    public function uploadFilesBatch($jobId, array $files)
+    {
+        if (empty($files)) {
+            throw new \RuntimeException('uploadFilesBatch called with an empty batch');
+        }
+
+        // Validate before opening anything so a bad path cannot leave handles
+        // dangling half-way through the batch.
+        $fileIds = [];
+        $paths = [];
+
+        foreach ($files as $file) {
+            $path = isset($file['path']) ? (string)$file['path'] : '';
+
+            if ($path === '' || !file_exists($path) || !is_readable($path)) {
+                throw new \RuntimeException(sprintf('File not found or not readable: %s', $path));
+            }
+
+            $fileIds[] = isset($file['file_id']) ? (string)$file['file_id'] : '';
+            $paths[] = $path;
+        }
+
+        $multipart = [
+            [
+                'name' => 'file_ids',
+                'contents' => json_encode($fileIds),
+            ],
+        ];
+
+        foreach ($paths as $path) {
+            $multipart[] = [
+                'name' => 'file',
+                'contents' => Utils::streamFor(fopen($path, 'r')),
+                'filename' => basename($path),
+            ];
+        }
+
+        return $this->postMultipart(sprintf('/api/v1/jobs/%s/upload-batch', $jobId), $multipart, [
+            'batch_size' => count($fileIds),
+        ]);
+    }
+
+    /**
      * POST /api/v1/scan/database/start
      *
      * @param string $cmsType e.g. "wordpress"
@@ -342,7 +502,34 @@ class ImunifyClient
             $payload['webhook_secret'] = $options['webhook_secret'];
         }
 
-        return $this->postJson('/api/v1/scan/database/start', $payload);
+        $response = $this->postJson('/api/v1/scan/database/start', $payload);
+
+        $this->logWebhookWarning('/api/v1/scan/database/start', $response);
+
+        return $response;
+    }
+
+    /**
+     * Surface a rejected `webhook_url`. Imunify validates the URL (scheme +
+     * resolved-IP safety) and, when it refuses one, still starts the scan — the
+     * only signals are this body field and an `X-Webhook-Warning` header. The
+     * plugin is poll-driven, so a rejected webhook is not fatal here; it is
+     * logged because a silently unconfigured webhook is otherwise invisible.
+     *
+     * @param string $uri
+     * @param mixed $response
+     * @return void
+     */
+    private function logWebhookWarning($uri, $response)
+    {
+        if (!is_array($response) || empty($response['webhook_warning'])) {
+            return;
+        }
+
+        Log::warning('ImunifyClient: Imunify rejected the webhook configuration', [
+            'uri' => $uri,
+            'warning' => (string)$response['webhook_warning'],
+        ]);
     }
 
     /**
@@ -443,11 +630,10 @@ class ImunifyClient
     }
 
     /**
-     * GET /api/v1/jobs/{jobId}/db-results
+     * GET /api/v1/jobs/{jobId}/db-results — one page.
      *
-     * Full verdict list for a DB scan job. Only safe to call once the job is in
-     * a terminal state ('completed' or 'failed') as confirmed by
-     * `getDatabaseJobStatus()`. Shape:
+     * Only safe to call once the job is in a terminal state ('completed' or
+     * 'failed') as confirmed by `getDatabaseJobStatus()`. Shape:
      *   {
      *     "job_id": "...",
      *     "status": "completed" | "failed",
@@ -458,13 +644,96 @@ class ImunifyClient
      *     ]
      *   }
      *
+     * Prefer `getAllDatabaseJobResults()`: the endpoint paginates, so a single
+     * call returns at most one page of threats.
+     *
      * @param string $jobId
+     * @param int $limit
+     * @param int $offset
+     * @param string|null $status Optional filter, e.g. "detected".
      * @return array
      * @throws GuzzleException
      */
-    public function getDatabaseJobResults($jobId)
+    public function getDatabaseJobResults($jobId, $limit = self::DB_RESULTS_PAGE_SIZE, $offset = 0, $status = null)
     {
-        return $this->getJson(sprintf('/api/v1/jobs/%s/db-results', $jobId));
+        $query = [
+            'limit' => (int)$limit,
+            'offset' => (int)$offset,
+        ];
+
+        if ($status !== null && $status !== '') {
+            $query['status'] = (string)$status;
+        }
+
+        return $this->getJson(
+            sprintf('/api/v1/jobs/%s/db-results?%s', $jobId, http_build_query($query)),
+            $query
+        );
+    }
+
+    /**
+     * Walk every `/db-results` page and return the first page's envelope with the
+     * accumulated `results`. The endpoint is paginated, so reading only page one
+     * caps a scan at `DB_RESULTS_PAGE_SIZE` threats and under-reports
+     * `threats_found` on badly infected sites without any error surfacing.
+     *
+     * Accumulation stops at `DB_RESULTS_MAX`; when that happens the envelope
+     * carries `results_truncated => true` so the caller can tell a capped list
+     * from a complete one.
+     *
+     * @param string $jobId
+     * @param string|null $status Optional filter, e.g. "detected".
+     * @return array Same envelope as `getDatabaseJobResults()` with the full `results`.
+     * @throws GuzzleException
+     */
+    public function getAllDatabaseJobResults($jobId, $status = null)
+    {
+        $envelope = null;
+        $all = [];
+        $offset = 0;
+        $truncated = false;
+
+        do {
+            $page = $this->getDatabaseJobResults($jobId, self::DB_RESULTS_PAGE_SIZE, $offset, $status);
+
+            if ($envelope === null) {
+                $envelope = $page;
+            }
+
+            $results = isset($page['results']) && is_array($page['results']) ? $page['results'] : [];
+            $count = count($results);
+
+            if ($count === 0) {
+                break;
+            }
+
+            foreach ($results as $result) {
+                if (count($all) >= self::DB_RESULTS_MAX) {
+                    $truncated = true;
+                    break;
+                }
+
+                $all[] = $result;
+            }
+
+            $offset += $count;
+        } while (!$truncated && $count >= self::DB_RESULTS_PAGE_SIZE);
+
+        if ($truncated) {
+            Log::warning('ImunifyClient: /db-results truncated at the local cap', [
+                'job_id' => $jobId,
+                'cap' => self::DB_RESULTS_MAX,
+            ]);
+        }
+
+        $envelope = is_array($envelope) ? $envelope : [];
+        $envelope['results'] = $all;
+
+        if ($truncated) {
+            $envelope['results_truncated'] = true;
+        }
+
+        return $envelope;
     }
 
     /**

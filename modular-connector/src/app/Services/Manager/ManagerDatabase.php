@@ -2,12 +2,15 @@
 
 namespace Modular\Connector\Services\Manager;
 
+use Modular\Connector\Backups\Dumper\ChunkedDumper;
 use Modular\Connector\Backups\Dumper\PHPDumper;
 use Modular\Connector\Backups\Dumper\ShellDumper;
+use Modular\Connector\Backups\Iron\BackupPart;
 use Modular\Connector\Facades\Server;
 use Modular\Connector\Jobs\ConfigureDriversJob;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
@@ -72,7 +75,19 @@ class ManagerDatabase
      */
     public function server()
     {
-        return preg_replace('/[^0-9.].*/', '', $this->serverInfo());
+        $version = $this->serverInfo();
+
+        if (empty($version)) {
+            return '';
+        }
+
+        // MariaDB 10+ reports itself as "5.5.5-10.11.6-MariaDB" so that old MySQL clients do
+        // not choke on a major version of 10. Left alone, every such server looks like 5.5.5.
+        if (Str::startsWith($version, '5.5.5-')) {
+            $version = Str::after($version, '5.5.5-');
+        }
+
+        return preg_replace('/[^0-9.].*/', '', $version);
     }
 
     /**
@@ -172,6 +187,33 @@ class ManagerDatabase
             'collate' => $this->collate(),
             'max_allowed_packet_size' => $this->getMySQLVar('max_allowed_packet'),
             'max_connections' => $this->getMySQLVar('max_connections'),
+            'dump' => $this->dumpCapabilities(),
+        ];
+    }
+
+    /**
+     * What this host can actually dump with, probed live. Reported through
+     * manager.server.information (so the API can measure, fleet-wide, e.g. how many sites
+     * have a shell but no working dump binary) and consumed by planDump() so the backup
+     * takes exactly the path the API saw.
+     *
+     * shell    → proc_* functions available
+     * supported→ PHP >= 8.0, required by spatie/db-dumper 3.x
+     * preferred→ binary this engine/version should use
+     * binary   → binary that actually answered `--version`, null = PHP dumper path
+     *
+     * @return array
+     */
+    public function dumpCapabilities(): array
+    {
+        $shell = Server::shellIsAvailable();
+        $supported = static::supportsShellDumper();
+
+        return [
+            'shell' => $shell,
+            'supported' => $supported,
+            'preferred' => ShellDumper::preferredBinary(),
+            'binary' => $shell && $supported ? ShellDumper::detectBinary() : null,
         ];
     }
 
@@ -185,7 +227,7 @@ class ManagerDatabase
         global $wpdb;
 
         $tables = $wpdb->get_results(
-            $wpdb->prepare("SELECT table_name AS name, data_length + index_length as size FROM information_schema.TABLES WHERE table_schema = %s", DB_NAME)
+            $wpdb->prepare("SELECT table_name AS name, data_length + index_length as size, avg_row_length as avg_row, table_rows as `rows` FROM information_schema.TABLES WHERE table_schema = %s", DB_NAME)
         );
 
         return Collection::make($tables)
@@ -303,34 +345,133 @@ class ManagerDatabase
     }
 
     /**
-     * Create database dump
+     * Resolve the dump plan once, on the part itself: which binary (if any) and which
+     * tables are large enough to deserve their own resumable segment.
+     *
+     * @param \Modular\Connector\Backups\Iron\BackupPart $part
+     * @return void
+     */
+    public function planDump($part): void
+    {
+        // Probed once and stored on the part, so no later tick pays the try/catch dance or
+        // takes a different path than the tick before it.
+        $part->dumpBinary = $this->dumpCapabilities()['binary'];
+
+        $excluded = $part->excludedTables;
+
+        $part->dumpTables = $this->tree()
+            ->filter(fn($table) => !in_array($table->name, $excluded) && (int)$table->size >= $part->dumpLargeTableSize)
+            ->sortBy('name')
+            ->values()
+            ->map(fn($table) => [
+                'name' => $table->name,
+                'size' => (int)$table->size,
+                'rows' => (int)$table->rows,
+                'avgRow' => (int)$table->avg_row,
+            ])
+            ->toArray();
+
+        $part->dumpTableIndex = 0;
+        $part->dumpCursor = [];
+
+        // One segment for every small table plus one per large table: reusing the part's
+        // generic progress fields keeps isDone() and the progress webhooks working untouched.
+        $part->totalItems = 1 + count($part->dumpTables);
+        $part->offset = 0;
+
+        $part->dumpPhase = BackupPart::DUMP_PHASE_SMALL;
+
+        Log::debug('Database dump planned', [
+            'binary' => $part->dumpBinary,
+            'largeTables' => count($part->dumpTables),
+            'threshold' => $part->dumpLargeTableSize,
+        ]);
+    }
+
+    /**
+     * One-shot dump of a set of tables through whichever engine the plan resolved.
      *
      * @param string $path
-     * @param \Modular\Connector\Backups\Iron\BackupPart $options
+     * @param \Modular\Connector\Backups\Iron\BackupPart $part
+     * @param array|null $only dump only these tables; null dumps everything except the
+     *                         excluded ones and the planned large tables
      * @return void
-     * @throws \Exception
+     * @throws \Throwable
      */
-    public function dump(string $path, $options)
+    public function dumpSegment(string $path, $part, ?array $only = null): void
     {
-        $excluded = $options->excludedTables;
+        $excluded = $only !== null
+            ? []
+            : array_values(array_unique(array_merge(
+                $part->excludedTables,
+                array_column($part->dumpTables, 'name')
+            )));
 
-        // TODO implement multi driver support
-        if (Server::shellIsAvailable()) {
-            Log::debug('Using shell dumper for database dump');
+        if ($part->dumpBinary !== null) {
+            ShellDumper::dump($path, $part->connection, $excluded, $only, $part->dumpBinary);
 
-            try {
-                ShellDumper::dump($path, $options->connection, $excluded);
-                return;
-            } catch (\Throwable $e) {
-                // silence is golden
-                Log::debug($e);
-            }
+            return;
         }
 
-        Log::debug('Using PHP dumper for database dump');
+        $dumper = PHPDumper::create()
+            ->setHost($part->connection['host'])
+            ->setPort($part->connection['port'])
+            ->setSocket($part->connection['socket'])
+            ->setDatabase($part->connection['database'])
+            ->setUsername($part->connection['username'])
+            ->setPassword($part->connection['password']);
 
-        // If shell dumper failed, try PHP dumper
-        PHPDumper::dump($path, $options->connection, $excluded);
+        if ($only !== null) {
+            $dumper->includeTables($only);
+        } else {
+            $dumper->excludeTables($excluded);
+        }
+
+        $dumper->dumpToFile($path);
+    }
+
+    /**
+     * @param \Modular\Connector\Backups\Iron\BackupPart $part
+     * @return ChunkedDumper
+     */
+    public function chunkedDumper($part): ChunkedDumper
+    {
+        return ChunkedDumper::create($part->connection, $this->dumpCharset());
+    }
+
+    /**
+     * Charset WordPress is actually connected with, read from the live connection so the
+     * dumpers never spend a probe of their own.
+     *
+     * @return string
+     */
+    private function dumpCharset(): string
+    {
+        global $wpdb;
+
+        $charset = !empty($wpdb->charset) ? $wpdb->charset : Config::get('database.connections.wordpress.charset');
+
+        return !empty($charset) ? $charset : 'utf8mb4';
+    }
+
+    /**
+     * Whether this runtime can load the shell dumper at all.
+     *
+     * `spatie/db-dumper` 3.x declares PHP ^8.0 and uses union types and `static` return
+     * types, which are parse errors on 7.4 — its classes cannot even be autoloaded there,
+     * so the guard has to sit before anything touches `ShellDumper`.
+     *
+     * PHP 7.4 sites therefore always take the PHP dumper, which is slower and restarts from
+     * scratch on any interruption.
+     *
+     * TODO: remove this guard, and the version floor in composer.json, once the minimum
+     *       supported PHP is 8.0.
+     *
+     * @return bool
+     */
+    private static function supportsShellDumper(): bool
+    {
+        return PHP_VERSION_ID >= 80000;
     }
 
     /**

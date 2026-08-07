@@ -58,11 +58,40 @@ class ManagerServer
     }
 
     /**
-     * Detect memory limit
-     *
-     * @return bool
+     * @return string
+     * @deprecated Since 3.2.0. Use memoryLimitServer(). Kept because a plugin update
+     * swaps the files mid-request, so code from the previous release still held in
+     * memory can resolve this service and call the old name.
      */
     public function memoryLimit()
+    {
+        return $this->memoryLimitServer();
+    }
+
+    /**
+     * Memory limit the host is configured with, captured before the Bootloader
+     * raises it. A plain ini_get() here would report our own raised value, not
+     * the one the hosting actually applies.
+     *
+     * @return string
+     */
+    public function memoryLimitServer()
+    {
+        // Same update window in reverse: this service can be autoloaded from the new
+        // release while HttpUtils is still the copy loaded before the files changed.
+        if (!method_exists(HttpUtils::class, 'memoryLimitServer')) {
+            return ini_get('memory_limit');
+        }
+
+        return HttpUtils::memoryLimitServer();
+    }
+
+    /**
+     * Memory limit the connector actually runs with, after the raise.
+     *
+     * @return string
+     */
+    public function memoryLimitWorker()
     {
         return ini_get('memory_limit');
     }
@@ -632,7 +661,8 @@ class ManagerServer
     {
         return [
             'current' => $this->phpVersion(),
-            'memory_limit' => $this->memoryLimit(),
+            'memory_limit' => $this->memoryLimitServer(),
+            'memory_limit_worker' => $this->memoryLimitWorker(),
             'extensions' => [
                 'dom' => extension_loaded('dom'),
                 'exif' => extension_loaded('exif'),

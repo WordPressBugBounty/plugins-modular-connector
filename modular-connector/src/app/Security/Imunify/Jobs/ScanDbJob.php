@@ -447,8 +447,9 @@ class ScanDbJob implements ShouldQueue
             if ($status === 'completed') {
                 // /db-status omits the threats list; fetch it once now that the
                 // job is terminal. Polling that endpoint repeatedly is what we
-                // are trying to avoid (it grows with detection volume).
-                $results = $client->getDatabaseJobResults($jobId);
+                // are trying to avoid (it grows with detection volume), and it
+                // paginates — hence the walk-every-page variant.
+                $results = $client->getAllDatabaseJobResults($jobId);
                 $this->completeScan($results);
 
                 return;

@@ -38,7 +38,7 @@ class Kernel extends HttpKernel
             '--queue' => 'default',
             '--stop-when-empty' => 1,
             '--timeout' => 600,
-            '--memory' => HttpUtils::maxMemoryLimit(true),
+            '--memory' => $this->memoryBudget(),
             '--max-time' => 30,
             '--max-jobs' => 4,
         ])
@@ -53,7 +53,7 @@ class Kernel extends HttpKernel
             '--queue' => 'default',
             '--stop-when-empty' => 1,
             '--timeout' => 600,
-            '--memory' => HttpUtils::maxMemoryLimit(true),
+            '--memory' => $this->memoryBudget(),
             '--max-time' => 30,
             '--max-jobs' => 4,
         ])
@@ -65,7 +65,7 @@ class Kernel extends HttpKernel
             '--queue' => 'backups',
             '--stop-when-empty' => 1,
             '--timeout' => 600,
-            '--memory' => HttpUtils::maxMemoryLimit(true),
+            '--memory' => $this->memoryBudget(),
             '--max-time' => 30,
             '--max-jobs' => 4,
         ])
@@ -77,7 +77,7 @@ class Kernel extends HttpKernel
             '--queue' => 'optimizations',
             '--stop-when-empty' => 1,
             '--timeout' => 600,
-            '--memory' => HttpUtils::maxMemoryLimit(true),
+            '--memory' => $this->memoryBudget(),
             '--max-time' => 30,
             '--max-jobs' => 4,
         ])
@@ -91,5 +91,23 @@ class Kernel extends HttpKernel
         ])
             ->withoutOverlapping(60) // 1 hour
             ->everyMinute();
+    }
+
+    /**
+     * Memory a worker may use before exiting gracefully, in megabytes.
+     *
+     * A plugin update swaps the files mid-request, so this Kernel can come from the
+     * new release while HttpUtils is still the copy loaded before the update. Fall
+     * back to the same ratio applied to the old API instead of fataling.
+     *
+     * @return int
+     */
+    protected function memoryBudget(): int
+    {
+        if (!method_exists(HttpUtils::class, 'memoryBudget')) {
+            return max(64, (int)(HttpUtils::maxMemoryLimit(true) * 0.8));
+        }
+
+        return HttpUtils::memoryBudget();
     }
 }

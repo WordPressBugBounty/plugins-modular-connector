@@ -60,6 +60,14 @@ class ManagerBackupPartUpdated extends AbstractEvent
             'status' => $status,
         ];
 
+        // Every database webhook carries the plan: the API keeps only the newest status per
+        // part, so any webhook overtaking manifest_done must not lose the plan with it.
+        $dumpPlan = $backupPart->getDumpPlan();
+
+        if ($dumpPlan !== null) {
+            $data['database_plan'] = $dumpPlan;
+        }
+
         if (!empty($extraArgs)) {
             $data = array_merge($data, $extraArgs);
         }

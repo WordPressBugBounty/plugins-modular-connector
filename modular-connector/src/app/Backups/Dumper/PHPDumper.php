@@ -3,13 +3,22 @@
 namespace Modular\Connector\Backups\Dumper;
 
 use Modular\ConnectorDependencies\Ifsnop\Mysqldump\Mysqldump;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
 
 class PHPDumper
 {
     /**
-     * @var \mysqli|mixed
+     * Seconds allowed to open the dump connection.
      */
-    protected $connection;
+    private const CONNECT_TIMEOUT = 10;
+
+    /**
+     * Server-side write timeout for the dump session, seconds. Long enough to ride out the
+     * write stalls of a ~1MB/s disk between two unbuffered reads, short enough that a hung
+     * dump cannot hold its connection slot indefinitely on hosts where slots are scarce.
+     */
+    private const NET_WRITE_TIMEOUT = 300;
 
     /**
      * @var string
@@ -200,61 +209,86 @@ class PHPDumper
                 'skip-comments' => true,
                 'default-character-set' => $this->charset,
                 'include-tables' => $this->tables,
-            ]
+                'init_commands' => ['SET SESSION net_write_timeout = ' . self::NET_WRITE_TIMEOUT],
+            ],
+            $this->pdoSettings()
         );
     }
 
     /**
-     * Connect to database
+     * PDO attributes for the dump connection.
      *
-     * @return \mysqli
+     * The library defaults to persistent connections, which keep a slot occupied in the
+     * PHP-FPM pool long after the dump finished. On hosts with a low `max_user_connections`
+     * that is enough to lock the account out of its own database, so it is forced off here.
+     *
+     * @return array
      */
-    protected function connectToDatabase()
+    protected function pdoSettings(): array
     {
-        if (!empty($this->connection)) {
-            return $this->connection;
+        $settings = [
+            \PDO::ATTR_PERSISTENT => false,
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_TIMEOUT => self::CONNECT_TIMEOUT,
+        ];
+
+        // Rows are streamed unbuffered so a whole table never lands in memory. The dump is
+        // then only as fast as the disk it writes to, and a gap between two reads longer than
+        // the server's net_write_timeout drops the connection mid-table ("2006 MySQL server
+        // has gone away"), which loses the whole dump. The session raises that timeout to a
+        // bounded value (NET_WRITE_TIMEOUT, via init_commands) instead of an open-ended one,
+        // so a hung dump still cannot hold its connection slot for long.
+        if (defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')) {
+            $settings[\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = false;
         }
 
-        $this->connection = new \mysqli(
-            $this->host,
-            $this->username,
-            $this->password,
-            $this->database,
-            $this->port,
-            $this->socket
-        );
+        return $settings;
+    }
 
-        if ($this->connection->connect_error) {
-            throw new \RuntimeException('Failed to connect to database: ' . $this->connection->connect_error);
+    /**
+     * Read the charset WordPress is actually connected with.
+     *
+     * Taken from the live connection rather than probed with one of our own, so listing the
+     * schema costs no extra slot in the account's connection pool.
+     *
+     * @return $this
+     */
+    protected function resolveCharset()
+    {
+        global $wpdb;
+
+        $charset = !empty($wpdb->charset)
+            ? $wpdb->charset
+            : Config::get('database.connections.wordpress.charset');
+
+        if (!empty($charset)) {
+            $this->charset = $charset;
         }
 
-        $charset = $this->connection->get_charset();
-
-        if (!empty($charset->charset)) {
-            $this->charset = $charset->charset;
-        }
-
-        return $this->connection;
+        return $this;
     }
 
     /**
      * Get the database tables
+     *
+     * Runs on the connection Laravel already holds. The dump itself still needs a dedicated
+     * one (it streams unbuffered result sets inside a long transaction and rewrites session
+     * variables), but enumerating tables does not.
+     *
      * @return array
      */
     protected function getTargetTables()
     {
-        /**
-         * @var \mysqli
-         */
-        $mysqli = $this->connection;
-        $mysqli->query("SET NAMES 'utf8'");
+        $rows = DB::connection('wordpress')->select('SHOW TABLES');
 
         $tables = [];
 
-        $query = $mysqli->query('SHOW TABLES');
+        foreach ($rows as $row) {
+            $values = array_values((array)$row);
 
-        while ($row = $query->fetch_row()) {
-            $tables[] = $row[0];
+            if (isset($values[0])) {
+                $tables[] = $values[0];
+            }
         }
 
         return $tables;
@@ -409,9 +443,8 @@ class PHPDumper
     {
         $this->guardAgainstIncompleteCredentials();
 
-        $this->connectToDatabase();
-
-        $this->guardAgainstEmptyTables();
+        $this->resolveCharset()
+            ->guardAgainstEmptyTables();
 
         $this->prepareExportContentsFrom($path);
 

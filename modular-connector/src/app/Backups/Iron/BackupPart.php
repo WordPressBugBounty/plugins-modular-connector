@@ -4,6 +4,7 @@ namespace Modular\Connector\Backups\Iron;
 
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
 use Modular\Connector\Backups\Iron\Helpers\File;
+use Modular\Connector\Backups\Iron\Jobs\DatabaseDumpJob;
 use Modular\Connector\Backups\Iron\Jobs\ProcessFilesJob;
 use Modular\Connector\Backups\Iron\Jobs\ProcessUploadJob;
 use Modular\Connector\Backups\Iron\Manifest\Manifest;
@@ -148,6 +149,55 @@ class BackupPart implements ManifestablePartContract
      */
     public string $hashAlgorithm = 'auto';
 
+    /**
+     * Dump binary resolved once during the plan phase: 'mariadb-dump', 'mysqldump' or null
+     * when the dump must go through PHP (no shell, no binary, or PHP < 8.0).
+     *
+     * @var string|null
+     */
+    public ?string $dumpBinary = null;
+
+    /**
+     * @var string
+     */
+    public string $dumpPhase = self::DUMP_PHASE_PLAN;
+
+    /**
+     * Large tables planned for individual segments, in dump order. Each entry:
+     * ['name' => string, 'size' => int, 'rows' => int, 'avgRow' => int]
+     *
+     * @var array
+     */
+    public array $dumpTables = [];
+
+    /**
+     * Index into $dumpTables of the table currently being dumped.
+     *
+     * @var int
+     */
+    public int $dumpTableIndex = 0;
+
+    /**
+     * Resume state of the table currently being dumped:
+     * ['chunked' => bool, 'pkColumn' => string|null, 'pk' => int, 'row' => int, 'bytes' => int]
+     *
+     * @var array
+     */
+    public array $dumpCursor = [];
+
+    /**
+     * Tables at or above this size (data + index bytes) get their own segment.
+     *
+     * @var int
+     */
+    public int $dumpLargeTableSize = 100 * 1024 * 1024; // 100 MB
+
+    public const DUMP_PHASE_PLAN = 'plan';
+    public const DUMP_PHASE_SMALL = 'small';
+    public const DUMP_PHASE_LARGE = 'large';
+    public const DUMP_PHASE_MERGE = 'merge';
+    public const DUMP_PHASE_COMPRESS = 'compress';
+
     public const INCLUDE_DATABASE = 'database';
     public const INCLUDE_CORE = 'core';
     public const INCLUDE_PLUGINS = 'plugins';
@@ -267,6 +317,12 @@ class BackupPart implements ManifestablePartContract
 
         if (isset($payload->batch->max_files)) {
             $this->limit = $payload->batch->max_files;
+        }
+
+        $largeTableSize = (int)data_get($payload, 'batch.database_large_table_size', 0);
+
+        if ($largeTableSize >= 1024 * 1024) {
+            $this->dumpLargeTableSize = $largeTableSize;
         }
 
         $this->connection = static::resolveConnection();
@@ -463,7 +519,60 @@ class BackupPart implements ManifestablePartContract
             Storage::disk('backups')->delete($this->getFileNameWithExtension('sql'));
         }
 
+        if ($this->type === self::INCLUDE_DATABASE) {
+            for ($index = 0; $index <= count($this->dumpTables); $index++) {
+                $segment = $this->getSegmentFileName($index);
+
+                if (Storage::disk('backups')->exists($segment)) {
+                    Storage::disk('backups')->delete($segment);
+                }
+            }
+        }
+
         Storage::disk('backups')->delete($this->getFileNameWithExtension('zip'));
+    }
+
+    /**
+     * Dump segment file name: index 0 holds every small table, index N (1-based) holds
+     * `$dumpTables[N - 1]`. Indexes instead of table names keep the name filesystem-safe
+     * and deterministic, so segments can be cleaned or resumed without extra state.
+     *
+     * @param int $index
+     * @return string
+     */
+    public function getSegmentFileName(int $index): string
+    {
+        return sprintf('%s-%s-segment-%03d.sql', $this->name, $this->type, $index);
+    }
+
+    /**
+     * The resolved dump plan, or null while it does not exist yet.
+     *
+     * Attached to every webhook of the database part (not only manifest_done): the API
+     * processes the newest status and discards anything older, so a keepalive overtaking
+     * manifest_done must not lose the plan with it.
+     *
+     * @return array|null
+     */
+    public function getDumpPlan(): ?array
+    {
+        if ($this->type !== self::INCLUDE_DATABASE || $this->dumpPhase === self::DUMP_PHASE_PLAN) {
+            return null;
+        }
+
+        return [
+            'binary' => $this->dumpBinary,
+            'threshold' => $this->dumpLargeTableSize,
+            'segments' => $this->totalItems,
+            'large_tables' => array_map(
+                fn($table) => [
+                    'name' => $table['name'],
+                    'size' => $table['size'],
+                    'rows' => $table['rows'],
+                ],
+                $this->dumpTables
+            ),
+        ];
     }
 
     /**
@@ -491,7 +600,7 @@ class BackupPart implements ManifestablePartContract
     public function markAs($status, bool $emitEvent = true, array $extra = []): BackupPart
     {
         if ($this->status === $status) {
-            if (!empty($extra['force_redispatch']) && $this->type !== self::INCLUDE_DATABASE) {
+            if (!empty($extra['force_redispatch'])) {
                 if ($this->status === ManagerBackupPartUpdated::STATUS_IN_PROGRESS) {
                     Log::debug('Re-dispatch $part', [
                         'part' => $this->type,
@@ -503,7 +612,11 @@ class BackupPart implements ManifestablePartContract
                         'batchMaxFileSize' => $this->batchMaxFileSize,
                     ]);
 
-                    dispatch(new ProcessFilesJob($this));
+                    if ($this->type === self::INCLUDE_DATABASE) {
+                        dispatch(new DatabaseDumpJob($this));
+                    } else {
+                        dispatch(new ProcessFilesJob($this));
+                    }
                 }
 
                 // In some hosting providers, the process of reading the manifest file is very slow,
@@ -547,7 +660,11 @@ class BackupPart implements ManifestablePartContract
             // We set the offset to 0 because the file reader starts from 0
             $this->offset = 0;
 
-            dispatch(new ProcessFilesJob($this));
+            if ($this->type === self::INCLUDE_DATABASE) {
+                dispatch(new DatabaseDumpJob($this));
+            } else {
+                dispatch(new ProcessFilesJob($this));
+            }
         } elseif ($status === ManagerBackupPartUpdated::STATUS_DONE) {
             $this->cleanFiles($this->isDone());
         }

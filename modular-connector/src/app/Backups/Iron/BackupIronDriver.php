@@ -7,7 +7,7 @@ use Modular\Connector\Backups\Facades\Backup;
 use Modular\Connector\Backups\Facades\Backup as BackupFacade;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartsCalculated;
 use Modular\Connector\Backups\Iron\Events\ManagerBackupPartUpdated;
-use Modular\Connector\Backups\Iron\Jobs\DatabaseDumpJob;
+use Modular\Connector\Backups\Iron\Jobs\CalculateDatabasePlanJob;
 use Modular\Connector\Backups\Iron\Manifest\CalculateManifestJob;
 use Modular\Connector\Facades\Manager;
 use Modular\Connector\Listeners\HookEventListener;
@@ -88,7 +88,9 @@ class BackupIronDriver implements BackupDriver
 
                 dispatch(new CalculateManifestJob($part));
             } else {
-                dispatch(new DatabaseDumpJob($part));
+                // The database "manifest": resolve the dump plan and report the exact
+                // segment count to the API before dumping starts.
+                dispatch(new CalculateDatabasePlanJob($part));
             }
         });
     }

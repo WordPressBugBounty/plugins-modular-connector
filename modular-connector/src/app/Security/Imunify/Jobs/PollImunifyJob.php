@@ -24,8 +24,11 @@ use function Modular\ConnectorDependencies\event;
  * Pattern (mirrors the reference plugin imunify-malware-scanner/scanner.php::process_scan):
  *   1. GET /jobs/{id}/results — returns the full file list with per-file `action`.
  *   2. Iterate `files`:
- *        - up to 50 with `action=needs_sha256` → batch POST to /jobs/{id}/hashes
- *        - 1 with `action=needs_upload`        → POST file content to /jobs/{id}/content
+ *        - `action=needs_sha256` → batched POSTs to /jobs/{id}/hashes (50 per batch,
+ *          as many batches as the tick budget allows)
+ *        - `action=needs_upload` → grouped multipart POSTs to
+ *          /jobs/{id}/upload-batch (10 files or 5 MB per request), with a
+ *          per-file /jobs/{id}/upload fallback when a batch is refused
  *   3. If `is_complete` → emit `ManagerScanCompleted` and stop.
  *   4. Else → emit `ManagerScanProgressUpdated::inProgress` (throttled) and re-dispatch.
  *
@@ -57,9 +60,9 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 
     /**
      * @var int Wall-clock budget per tick, aligned with Backup's manifest/merge
-     *          jobs. Bounds the number of `/jobs/{id}/upload` calls we squeeze
-     *          into a single poll (each upload is one multipart POST, the API
-     *          has no batch endpoint).
+     *          jobs. Bounds how many `/upload-batch` requests we squeeze into a
+     *          single poll; whatever is left stays `needs_upload` and the next
+     *          tick picks it up.
      */
     protected $maxTime = 25;
 
@@ -118,6 +121,18 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
      * @var int Matches the reference plugin (BATCH_SIZE = 50).
      */
     private $hashBatchSize = 50;
+
+    /**
+     * @var int Files per `/upload-batch` request.
+     */
+    private const UPLOAD_BATCH_MAX_FILES = 10;
+
+    /**
+     * @var int Byte budget per `/upload-batch` request. Independent of
+     *          `ScanPart::$maxFileSize` (which API can raise), so a bigger
+     *          per-file cap shrinks the batch instead of inflating the request.
+     */
+    private const UPLOAD_BATCH_MAX_BYTES = 5242880;
 
     /**
      * @var int Minimum seconds between two consecutive progress webhooks.
@@ -424,15 +439,19 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 
     /**
      * Upload files Imunify flagged as `needs_upload` until the per-tick time
-     * budget (`$maxTime`) is exhausted. Imunify's `/jobs/{id}/upload` only
-     * accepts one file per multipart POST (verified against the reference
-     * plugin), so we sequence them inside the tick: as many as the budget
-     * allows, then the next dispatch picks up the rest.
+     * budget (`$maxTime`) is exhausted, grouping them into `/upload-batch`
+     * requests so N files cost one HTTP round trip instead of N.
+     *
+     * Batches are bounded by BOTH file count and total bytes. The byte budget is
+     * what actually matters: files are only capped at `ScanPart::$maxFileSize`
+     * (5 MB, and API-configurable), so a count-only limit would allow a ~50 MB
+     * multipart — past the client's 30s HTTP timeout on a slow uplink, past the
+     * tick budget, and straight into a 413 that costs the whole payload twice on
+     * the fallback. Typical scannable WordPress files are a few KB, so real
+     * batches fill on count and the byte cap only bites on the rare fat file.
      *
      * Reference (scanner.php) caps at 1/tick because it runs from AJAX (PHP
-     * timeout pressure on the frontend); ours runs in a queue worker, so we
-     * can extract more uploads per dispatch and shrink wall-clock from
-     * minutes-per-tick × N files down to N/uploads-per-tick.
+     * timeout pressure on the frontend); ours runs in a queue worker.
      *
      * @param ImunifyClient $client
      * @param array $files
@@ -443,6 +462,8 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
     private function processNeedsUpload(ImunifyClient $client, array $files, array $rowsByIndex, $startTime)
     {
         $uploaded = 0;
+        $batch = [];
+        $batchBytes = 0;
 
         foreach ($files as $file) {
             if ($this->isTimeExceeded($startTime, $this->maxTime)) {
@@ -483,17 +504,31 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 continue;
             }
 
-            try {
-                $client->uploadFile($this->imunifyJobId, $absolute, $fileId);
-                $uploaded++;
-            } catch (\Throwable $e) {
-                Log::warning('PollImunifyJob: Upload failed', [
-                    'mrid' => $this->mrid,
-                    'file_id' => $fileId,
-                    'error' => $e->getMessage(),
-                ]);
+            // Size on disk now, not the manifest's: the file may have grown
+            // since it was enumerated and the budget has to reflect what we
+            // are actually about to put on the wire.
+            $size = filesize($absolute);
+            $size = $size === false ? 0 : (int)$size;
+
+            // A file that alone fills the budget never shares a request.
+            if ($size >= self::UPLOAD_BATCH_MAX_BYTES) {
+                $uploaded += $this->uploadSingle($client, $fileId, $absolute) ? 1 : 0;
+
+                continue;
             }
+
+            if (count($batch) >= self::UPLOAD_BATCH_MAX_FILES
+                || ($batchBytes + $size) > self::UPLOAD_BATCH_MAX_BYTES) {
+                $uploaded += $this->flushUploadBatch($client, $batch);
+                $batch = [];
+                $batchBytes = 0;
+            }
+
+            $batch[] = ['file_id' => $fileId, 'path' => $absolute];
+            $batchBytes += $size;
         }
+
+        $uploaded += $this->flushUploadBatch($client, $batch);
 
         if ($uploaded > 0) {
             Log::debug('PollImunifyJob: Files uploaded', [
@@ -501,6 +536,76 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 'imunify_job_id' => $this->imunifyJobId,
                 'count' => $uploaded,
             ]);
+        }
+    }
+
+    /**
+     * Send one accumulated batch, falling back to per-file uploads if the batch
+     * endpoint refuses it — the caps are unpublished, so a rejection (typically
+     * 413) is a documented, expected outcome rather than an error. The fallback
+     * re-sends those bytes, which is exactly why the batch budget is set well
+     * below anything likely to be refused.
+     *
+     * @param ImunifyClient $client
+     * @param array $batch [{file_id, path}]
+     * @return int Files accepted by Imunify.
+     */
+    private function flushUploadBatch(ImunifyClient $client, array $batch)
+    {
+        if (empty($batch)) {
+            return 0;
+        }
+
+        // A lone file does not need the batch envelope.
+        if (count($batch) === 1) {
+            return $this->uploadSingle($client, $batch[0]['file_id'], $batch[0]['path']) ? 1 : 0;
+        }
+
+        try {
+            $client->uploadFilesBatch($this->imunifyJobId, $batch);
+
+            return count($batch);
+        } catch (\Throwable $e) {
+            Log::warning('PollImunifyJob: Batch upload rejected, falling back to per-file', [
+                'mrid' => $this->mrid,
+                'imunify_job_id' => $this->imunifyJobId,
+                'batch_size' => count($batch),
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $uploaded = 0;
+
+        foreach ($batch as $item) {
+            $uploaded += $this->uploadSingle($client, $item['file_id'], $item['path']) ? 1 : 0;
+        }
+
+        return $uploaded;
+    }
+
+    /**
+     * Single-file `/upload`. A failure is not fatal: the file stays
+     * `needs_upload` in Imunify's view and the next poll tick retries it.
+     *
+     * @param ImunifyClient $client
+     * @param string $fileId
+     * @param string $absolute
+     * @return bool
+     */
+    private function uploadSingle(ImunifyClient $client, $fileId, $absolute)
+    {
+        try {
+            $client->uploadFile($this->imunifyJobId, $absolute, $fileId);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('PollImunifyJob: Upload failed', [
+                'mrid' => $this->mrid,
+                'file_id' => $fileId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
     }
 
@@ -586,6 +691,13 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
      * `size`) by `file_index`. fopen/fwrite — never buffers more than one
      * line in memory beyond `rowsByIndex` itself.
      *
+     * `signature_name` and `threat_type` are the only detection detail the
+     * public Connect API exposes (the panel's human-readable `verdict_details`
+     * is not part of `/results`), so they ride along verbatim — without them a
+     * finding reaches the app as "suspicious file X" with nothing to act on.
+     * Both are nullable: Imunify omits them for verdicts it cannot attribute
+     * to a signature, and the API maps them with `data_get()`.
+     *
      * @param array $files Imunify's final `files[]` (every entry has `verdict`).
      * @param string $resultsPath Target path on the `scans` disk.
      * @return bool
@@ -624,6 +736,8 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
                         'checksum' => $row['checksum'],
                         'size' => $row['size'],
                         'verdict' => $verdict,
+                        'signature_name' => $this->detailField($file, 'signature_name'),
+                        'threat_type' => $this->detailField($file, 'threat_type'),
                     ]) . "\n");
             }
         } finally {
@@ -631,6 +745,26 @@ class PollImunifyJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
         }
 
         return true;
+    }
+
+    /**
+     * Read an optional detection-detail field from an Imunify `files[]` entry,
+     * collapsing "absent" and "empty string" into a single `null` so the API
+     * does not have to distinguish them when importing the finding.
+     *
+     * @param array $file
+     * @param string $key
+     * @return string|null
+     */
+    private function detailField(array $file, $key)
+    {
+        if (!isset($file[$key]) || !is_scalar($file[$key])) {
+            return null;
+        }
+
+        $value = trim((string)$file[$key]);
+
+        return $value === '' ? null : $value;
     }
 
     /**

@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'modular/connector',
-        'pretty_version' => 'dev-master',
-        'version' => 'dev-master',
-        'reference' => '51a4c51f7f58494ced6dadf1e0a488dcd56a8110',
+        'pretty_version' => 'dev-develop',
+        'version' => 'dev-develop',
+        'reference' => 'ea5147d1f415aa5811a3077434e1d4c83d1e7fa7',
         'type' => 'wordpres-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -299,9 +299,9 @@
             'dev_requirement' => false,
         ),
         'modular/connector' => array(
-            'pretty_version' => 'dev-master',
-            'version' => 'dev-master',
-            'reference' => '51a4c51f7f58494ced6dadf1e0a488dcd56a8110',
+            'pretty_version' => 'dev-develop',
+            'version' => 'dev-develop',
+            'reference' => 'ea5147d1f415aa5811a3077434e1d4c83d1e7fa7',
             'type' => 'wordpres-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -504,9 +504,9 @@
             ),
         ),
         'spatie/db-dumper' => array(
-            'pretty_version' => '2.21.1',
-            'version' => '2.21.1.0',
-            'reference' => '05e5955fb882008a8947c5a45146d86cfafa10d1',
+            'pretty_version' => '3.8.3',
+            'version' => '3.8.3.0',
+            'reference' => 'eac3221fbe27fac51f388600d27b67b1b079406e',
             'type' => 'library',
             'install_path' => __DIR__ . '/../spatie/db-dumper',
             'aliases' => array(),
