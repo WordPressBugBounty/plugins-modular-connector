@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 3.2.0
+Stable tag: 3.2.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -233,6 +233,12 @@ Please report security bugs found in the source code of the Modular DS plugin th
 9. Client report overview page
 
 == Changelog ==
+= v3.2.1 =
+Release date: 2026-08-10
+
+* FIXED: Database backups failing on hosts pairing a MySQL 8 server with an older or MariaDB dump tool
+* FIXED: Database backups failing on hosts where the dump tool could not connect through the local database socket
+
 = v3.2.0 =
 Release date: 2026-08-07
 

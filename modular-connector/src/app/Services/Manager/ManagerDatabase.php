@@ -408,9 +408,26 @@ class ManagerDatabase
             )));
 
         if ($part->dumpBinary !== null) {
-            ShellDumper::dump($path, $part->connection, $excluded, $only, $part->dumpBinary);
+            try {
+                ShellDumper::dump($path, $part->connection, $excluded, $only, $part->dumpBinary);
 
-            return;
+                return;
+            } catch (\Throwable $e) {
+                if (!static::causedByUnusableBinary($e)) {
+                    throw $e;
+                }
+
+                // The binary cannot work on this host at all — wrong socket, rejected flag,
+                // no grants for the CLI. Retrying it segment after segment would fail the
+                // whole backup, so the part switches to the PHP dumper for good; dumpBinary
+                // rides on the part, so the API sees the downgrade in `database_plan`.
+                Log::warning('Shell dumper cannot run on this host, falling back to the PHP dumper', [
+                    'binary' => $part->dumpBinary,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $part->dumpBinary = null;
+            }
         }
 
         $dumper = PHPDumper::create()
@@ -428,6 +445,30 @@ class ManagerDatabase
         }
 
         $dumper->dumpToFile($path);
+    }
+
+    /**
+     * Whether the dump binary failed because it cannot operate on this host, rather than
+     * because of the data it was asked to dump.
+     *
+     * These are environment faults the PHP dumper does not share: it connects through PDO
+     * with PHP's own socket and grants, and speaks no command-line flags. A dump that fails
+     * for any other reason (a corrupt table, a full disk, a killed connection mid-stream)
+     * would fail the same way there, so it is left to fail loudly.
+     *
+     * @param \Throwable $e
+     * @return bool
+     */
+    private static function causedByUnusableBinary(\Throwable $e): bool
+    {
+        return Str::contains($e->getMessage(), [
+            "Can't connect to",
+            'Access denied for user',
+            'unknown variable',
+            'unknown option',
+            'command not found',
+            'No such file or directory',
+        ]);
     }
 
     /**

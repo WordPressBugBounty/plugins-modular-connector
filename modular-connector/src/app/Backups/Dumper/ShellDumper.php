@@ -57,11 +57,9 @@ class ShellDumper
             $binary = static::preferredBinary();
         }
 
-        $isMariaDb = Manager::driver('database')->engine() === 'MariaDB';
-
         $dumper = $binary === self::BINARY_MARIADB ? MariaDb::create() : MySql::create();
 
-        static::run($dumper, $path, $connection, $excluded, $only, $isMariaDb);
+        static::run($dumper, $path, $connection, $excluded, $only, $binary);
 
         if ($binary === self::BINARY_MARIADB) {
             static::neutralizeSandboxHeader($path);
@@ -85,6 +83,101 @@ class ShellDumper
             && version_compare($version, self::MARIADB_DUMP_SINCE, '>=');
 
         return $useMariaDbBinary ? self::BINARY_MARIADB : self::BINARY_MYSQL;
+    }
+
+    /**
+     * Memoized `--version` probe of the mysqldump client, one per PHP process.
+     *
+     * @var bool|null
+     */
+    protected static ?bool $columnStatistics = null;
+
+    /**
+     * Hosts for which the client talks over a UNIX socket instead of TCP.
+     */
+    private const LOCAL_HOSTS = ['', 'localhost'];
+
+    /**
+     * Socket the dump binary must connect through, or null to let it use the host.
+     *
+     * `localhost` is not an address for MySQL clients: it selects the UNIX socket and
+     * ignores any port. The binary then falls back to the socket path it was compiled with
+     * (`/tmp/mysqld.sock`), which on shared hosting rarely matches the one PHP was built to
+     * use — the dump dies with `2002: Can't connect to local MySQL server` even though
+     * WordPress is happily connected. Asking the live connection where its socket actually
+     * is costs one query on the pool Laravel already holds and settles it.
+     *
+     * @param array $connection
+     * @return string|null
+     */
+    protected static function resolveSocket(array $connection): ?string
+    {
+        if (!empty($connection['socket'])) {
+            return $connection['socket'];
+        }
+
+        $host = strtolower(trim((string)$connection['host']));
+
+        if (!in_array($host, self::LOCAL_HOSTS, true)) {
+            return null;
+        }
+
+        $socket = Manager::driver('database')->getMySQLVar('socket');
+
+        if (!empty($socket)) {
+            return $socket;
+        }
+
+        // The server did not report one (or the query was denied): fall back to whatever
+        // socket this PHP build talks to, which is by definition a working path.
+        foreach (['mysqli.default_socket', 'pdo_mysql.default_socket'] as $setting) {
+            $socket = ini_get($setting);
+
+            if (!empty($socket)) {
+                return $socket;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether the local mysqldump client understands `--column-statistics`.
+     *
+     * Only Oracle's mysqldump 8.0.2+ does — MariaDB's client and MySQL 5.x clients reject
+     * it no matter what server they talk to, so the server engine says nothing here. Old
+     * clients print their real release in `Distrib` (`Ver 10.13 Distrib 5.7.44`); from 8.0
+     * the release is the `Ver` itself (`Ver 8.0.36`).
+     *
+     * @return bool
+     */
+    protected static function clientSupportsColumnStatistics(): bool
+    {
+        if (static::$columnStatistics !== null) {
+            return static::$columnStatistics;
+        }
+
+        $supported = false;
+
+        try {
+            $process = new Process([self::BINARY_MYSQL, '--version']);
+            $process->setTimeout(self::DETECT_TIMEOUT);
+            $process->run();
+
+            $output = $process->getOutput();
+
+            if ($process->isSuccessful() && stripos($output, 'mariadb') === false) {
+                if (preg_match('/Distrib\s+(\d+)\./i', $output, $matches) === 1) {
+                    $supported = (int)$matches[1] >= 8;
+                } elseif (preg_match('/Ver\s+(\d+)\./i', $output, $matches) === 1) {
+                    $supported = (int)$matches[1] >= 8;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Unprobeable client: leave the flag out, plain mysqldump works everywhere.
+        }
+
+        return static::$columnStatistics = $supported;
     }
 
     /**
@@ -177,10 +270,10 @@ class ShellDumper
      * @param array $connection
      * @param array $excluded
      * @param array|null $only
-     * @param bool $isMariaDb
+     * @param string $binary
      * @return void
      */
-    protected static function run(MySql $dumper, string $path, array $connection, array $excluded, ?array $only, bool $isMariaDb): void
+    protected static function run(MySql $dumper, string $path, array $connection, array $excluded, ?array $only, string $binary): void
     {
         $port = $connection['port'];
         $socket = $connection['socket'];
@@ -202,6 +295,8 @@ class ShellDumper
             $dumper = $dumper->setPort($port);
         }
 
+        $socket = static::resolveSocket($connection);
+
         if (!empty($socket)) {
             $dumper = $dumper->setSocket($socket);
         }
@@ -210,8 +305,10 @@ class ShellDumper
         // oversized serialized row aborts the whole dump. Session-scoped, needs no privileges.
         $dumper = $dumper->addExtraOption('--max-allowed-packet=64M');
 
-        // MariaDB don't use variable 'column-statistics=0' in the mysqldump,
-        if (!$isMariaDb) {
+        // `--column-statistics=0` only exists in Oracle's mysqldump 8.0.2+. Whether to send
+        // it depends on the CLIENT binary, not the server engine: hosts routinely pair a
+        // MySQL 8 server with a MariaDB (or 5.x) mysqldump, which rejects the flag outright.
+        if ($binary === self::BINARY_MYSQL && static::clientSupportsColumnStatistics()) {
             $dumper = $dumper->doNotUseColumnStatistics();
         }
 
