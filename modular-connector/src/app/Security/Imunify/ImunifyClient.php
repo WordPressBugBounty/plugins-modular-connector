@@ -3,7 +3,11 @@
 namespace Modular\Connector\Security\Imunify;
 
 use Modular\Connector\Security\Facades\Scan;
+use Modular\Connector\Security\Imunify\Exceptions\ImunifyQuotaExceededException;
+use Modular\Connector\Security\Imunify\Exceptions\ImunifyUnavailableException;
 use Modular\ConnectorDependencies\GuzzleHttp\Client;
+use Modular\ConnectorDependencies\GuzzleHttp\Exception\BadResponseException;
+use Modular\ConnectorDependencies\GuzzleHttp\Exception\ClientException;
 use Modular\ConnectorDependencies\GuzzleHttp\Exception\ConnectException;
 use Modular\ConnectorDependencies\GuzzleHttp\Exception\GuzzleException;
 use Modular\ConnectorDependencies\GuzzleHttp\HandlerStack;
@@ -50,6 +54,18 @@ class ImunifyClient
      * it would burn the caller's whole 25s tick on a single request.
      */
     private const MAX_RETRY_AFTER_SECONDS = 10;
+
+    /**
+     * Endpoints where a 429 may be retried by the transport: the backend sheds
+     * them before any work happens, so a retry cannot double-count. Committing
+     * calls (`/hashes`, `/db-content`, uploads) keep a 429 terminal at this
+     * layer and let the job reissue the whole batch later. 503 retries for
+     * every call. Mirrors the reference SDK's admission-retry policy.
+     */
+    private const ADMISSION_RETRY_SAFE_PATHS = [
+        '/api/v1/scan/start',
+        '/api/v1/scan/database/start',
+    ];
 
     /**
      * Page size for `/db-results`, which paginates. Reading a single page would
@@ -158,6 +174,10 @@ class ImunifyClient
             // unavailable, 504 gateway timeout). 500 Internal Server Error is also
             // worth retrying once — Imunify occasionally returns it under load.
             if (!in_array($status, [429, 500, 502, 503, 504], true)) {
+                return false;
+            }
+
+            if ($status === 429 && !in_array($request->getUri()->getPath(), self::ADMISSION_RETRY_SAFE_PATHS, true)) {
                 return false;
             }
 
@@ -328,9 +348,23 @@ class ImunifyClient
 
         $submitted = count($hashes);
 
-        $response = $this->postJson(sprintf('/api/v1/jobs/%s/hashes', $jobId), $payload, [
-            'batch_size' => $submitted,
-        ]);
+        try {
+            $response = $this->postJson(sprintf('/api/v1/jobs/%s/hashes', $jobId), $payload, [
+                'batch_size' => $submitted,
+            ]);
+        } catch (ClientException $e) {
+            // A fully rejected batch answers 422 with the same accounting body
+            // (`processed: 0` + rejections). It happens legitimately: after a
+            // committed-but-lost response we resend a batch whose files were
+            // already resolved clean and pruned, so every file_id is "not
+            // found". Not a transport failure — surface the body and let the
+            // next /results poll confirm completion.
+            $response = $this->rejectionBody($e, 'processed');
+
+            if ($response === null) {
+                throw $e;
+            }
+        }
 
         $processed = isset($response['processed']) ? (int)$response['processed'] : null;
         $errors = isset($response['errors']) && is_array($response['errors']) ? $response['errors'] : [];
@@ -345,23 +379,6 @@ class ImunifyClient
         }
 
         return $response;
-    }
-
-    /**
-     * GET /api/v1/jobs/{jobId} — lightweight status endpoint.
-     *
-     * Used to gate `/hashes` submission: Imunify accepts /scan/start asynchronously
-     * (HTTP 202) and only assigns `file_id` UUIDs once the worker transitions the
-     * job from "pending" to "processing". Submitting hashes before that returns
-     * `"scan job file not found"` for every entry.
-     *
-     * @param string $jobId
-     * @return array Job status: {job_id, status, ...}
-     * @throws GuzzleException
-     */
-    public function getJobStatus($jobId)
-    {
-        return $this->getJson(sprintf('/api/v1/jobs/%s', $jobId));
     }
 
     /**
@@ -414,11 +431,15 @@ class ImunifyClient
      * upload, **in the same order** — the endpoint pairs them positionally, so
      * the order of both lists is the contract.
      *
-     * Returns 202 Accepted like the single-file endpoint: the scan itself is
-     * async and the verdicts show up on a later `/results` poll. The endpoint is
-     * capped by total payload size and file count (values unpublished); the
-     * documented client contract is to fall back to per-file `/upload` on any
-     * 4xx/5xx, which `PollImunifyJob::flushUploadBatch()` does.
+     * Returns 202/207 like the single-file endpoint: the scan itself is async
+     * and the verdicts show up on a later `/results` poll. The body carries
+     * `{accepted, rejected, errors, items[]}` with one `items[]` entry per file
+     * in submission order (`status: accepted|rejected|error`). A fully rejected
+     * batch answers 422 with that same accounting body, which is returned as-is
+     * so the caller reads the per-item reasons instead of re-uploading. The
+     * backend caps the body at 8 MiB; a 413 (or any other 4xx) means nothing
+     * was persisted and `PollImunifyJob::flushUploadBatch()` may fall back to
+     * per-file `/upload`.
      *
      * @param string $jobId
      * @param array $files [{file_id, path}] — absolute, readable paths.
@@ -462,23 +483,67 @@ class ImunifyClient
             ];
         }
 
-        return $this->postMultipart(sprintf('/api/v1/jobs/%s/upload-batch', $jobId), $multipart, [
-            'batch_size' => count($fileIds),
+        try {
+            return $this->postMultipart(sprintf('/api/v1/jobs/%s/upload-batch', $jobId), $multipart, [
+                'batch_size' => count($fileIds),
+            ]);
+        } catch (ClientException $e) {
+            $body = $this->rejectionBody($e, 'items');
+
+            if ($body === null) {
+                throw $e;
+            }
+
+            return $body;
+        }
+    }
+
+    /**
+     * Decode a 422 whose body is per-item accounting rather than an error
+     * (`/hashes` → `processed`, `/upload-batch` → `items`). Null for any other
+     * status or shape, so the caller rethrows.
+     *
+     * @param BadResponseException $e
+     * @param string $key
+     * @return array|null
+     */
+    private function rejectionBody(BadResponseException $e, $key)
+    {
+        $response = $e->getResponse();
+
+        if ($response === null || $response->getStatusCode() !== 422) {
+            return null;
+        }
+
+        $body = json_decode((string)$response->getBody(), true);
+
+        if (!is_array($body) || !array_key_exists($key, $body)) {
+            return null;
+        }
+
+        Log::warning('ImunifyClient: batch fully rejected with accounting body', [
+            'uri' => (string)$e->getRequest()->getUri(),
+            'key' => $key,
         ]);
+
+        return $body;
     }
 
     /**
      * POST /api/v1/scan/database/start
      *
+     * Only the fields the reference SDK sends: no `force_rescan` (its variant is
+     * a local cache switch) and no webhook fields (configured on `/scan/start`,
+     * persisted per site).
+     *
      * @param string $cmsType e.g. "wordpress"
      * @param string $dbPrefix e.g. "wp_"
      * @param array $tables Discovered table descriptors
      * @param string|null $wordpressPath Optional install path
-     * @param array $options [force_rescan, webhook_url, webhook_secret]
      * @return array Response with job_id, status, scan_config
      * @throws GuzzleException
      */
-    public function startDatabaseScan($cmsType, $dbPrefix, array $tables, $wordpressPath = null, array $options = [])
+    public function startDatabaseScan($cmsType, $dbPrefix, array $tables, $wordpressPath = null)
     {
         $payload = [
             'cms_type' => $cmsType,
@@ -490,23 +555,7 @@ class ImunifyClient
             $payload['wordpress_path'] = $wordpressPath;
         }
 
-        if (isset($options['force_rescan'])) {
-            $payload['force_rescan'] = (bool)$options['force_rescan'];
-        }
-
-        if (!empty($options['webhook_url'])) {
-            $payload['webhook_url'] = $options['webhook_url'];
-        }
-
-        if (!empty($options['webhook_secret'])) {
-            $payload['webhook_secret'] = $options['webhook_secret'];
-        }
-
-        $response = $this->postJson('/api/v1/scan/database/start', $payload);
-
-        $this->logWebhookWarning('/api/v1/scan/database/start', $response);
-
-        return $response;
+        return $this->postJson('/api/v1/scan/database/start', $payload);
     }
 
     /**
@@ -783,12 +832,19 @@ class ImunifyClient
      * and a `response` debug log after parsing. All Imunify traffic flows through
      * here so every endpoint is observable without per-method log calls.
      *
+     * Two response families become typed exceptions so jobs can react without
+     * parsing Guzzle messages: 429/503 (after the transport retries gave up) →
+     * ImunifyUnavailableException; 403 with a quota code →
+     * ImunifyQuotaExceededException. Everything else propagates as Guzzle threw it.
+     *
      * @param string $method
      * @param string $uri
      * @param array $options Guzzle request options.
      * @param array $requestContext Extra metadata for the request log.
      * @return array Parsed response body.
      * @throws GuzzleException
+     * @throws ImunifyUnavailableException
+     * @throws ImunifyQuotaExceededException
      */
     private function execute($method, $uri, array $options, array $requestContext)
     {
@@ -797,7 +853,12 @@ class ImunifyClient
             'uri' => $uri,
         ], $requestContext));
 
-        $response = $this->http->request($method, $uri, $options);
+        try {
+            $response = $this->http->request($method, $uri, $options);
+        } catch (BadResponseException $e) {
+            throw $this->mapException($uri, $e);
+        }
+
         $parsed = $this->parseResponse($response);
 
         Log::debug('ImunifyClient: response', [
@@ -807,6 +868,55 @@ class ImunifyClient
         ]);
 
         return $parsed;
+    }
+
+    /**
+     * @param string $uri
+     * @param BadResponseException $e
+     * @return \Throwable
+     */
+    private function mapException($uri, BadResponseException $e)
+    {
+        $response = $e->getResponse();
+
+        if ($response === null) {
+            return $e;
+        }
+
+        $status = $response->getStatusCode();
+        $body = json_decode((string)$response->getBody(), true);
+        $body = is_array($body) ? $body : [];
+
+        if ($status === 429 || $status === 503) {
+            $exception = new ImunifyUnavailableException(
+                $uri,
+                $status,
+                ImunifyUnavailableException::reasonFor($status, $body),
+                $this->retryAfterSeconds($response),
+                $e
+            );
+
+            Log::warning('ImunifyClient: Imunify unavailable', $exception->context());
+
+            return $exception;
+        }
+
+        if ($status === 403 && ImunifyQuotaExceededException::matches($body)) {
+            Log::warning('ImunifyClient: Imunify quota exceeded', [
+                'uri' => $uri,
+                'code' => $body['code'],
+                'error' => isset($body['error']) ? (string)$body['error'] : null,
+            ]);
+
+            return new ImunifyQuotaExceededException(
+                $body['code'],
+                isset($body['error']) ? (string)$body['error'] : 'Quota exceeded',
+                $body,
+                $e
+            );
+        }
+
+        return $e;
     }
 
     /**

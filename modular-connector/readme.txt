@@ -2,8 +2,8 @@
 Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
-Tested up to: 7.0
-Stable tag: 3.2.1
+Tested up to: 7.1
+Stable tag: 3.3.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -233,6 +233,18 @@ Please report security bugs found in the source code of the Modular DS plugin th
 9. Client report overview page
 
 == Changelog ==
+= v3.3.0 =
+Release date: 2026-09-04
+
+* Improved malware scan reliability: when Imunify is overloaded or under maintenance the scan now waits and resumes where it left off instead of failing, and an exhausted quota is reported with its renewal details
+* Improved malware scan coverage: more executable and web-served file types (php3, php4, php5, php7, phps, inc, svg), symlinked plugins and files, and database tables with a text primary key (e.g. Wordfence)
+* Improved malware scan results and progress: file counts now come from Imunify's own summary, files that could not be analysed are reported as unknown instead of clean, and progress no longer stalls near 30% on mostly clean sites
+* Improved malware scan memory usage on slow hosts, sharing the file enumeration with the backup system
+* Improved storage layout: logs, cache and the backup and scan working files are now kept together under modular_storage, in folders named per site, with automatic cleanup of the old locations
+* FIXED: Per-area file exclusions (plugins, themes, uploads, etc.) ignored by the malware scan
+* FIXED: Database backups failing on hosts whose database serves TLS with a self-signed certificate, or when the connection dropped while dumping a table below the large-table threshold
+* FIXED: WordPress version reported incorrectly on hosts that hide it (e.g. GridPane)
+
 = v3.2.1 =
 Release date: 2026-08-10
 

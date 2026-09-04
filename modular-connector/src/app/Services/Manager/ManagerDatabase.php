@@ -373,6 +373,9 @@ class ManagerDatabase
 
         $part->dumpTableIndex = 0;
         $part->dumpCursor = [];
+        $part->dumpSmallChunked = false;
+        $part->dumpSmallTables = [];
+        $part->dumpSmallTableIndex = 0;
 
         // One segment for every small table plus one per large table: reusing the part's
         // generic progress fields keeps isDone() and the progress webhooks working untouched.
@@ -462,6 +465,9 @@ class ManagerDatabase
     private static function causedByUnusableBinary(\Throwable $e): bool
     {
         return Str::contains($e->getMessage(), [
+            // Covers every handshake failure the client reports: unreachable socket or host,
+            // refused credentials, rejected TLS certificate.
+            'when trying to connect',
             "Can't connect to",
             'Access denied for user',
             'unknown variable',

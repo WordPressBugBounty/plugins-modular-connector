@@ -3,6 +3,7 @@
 namespace Modular\Connector\Security\Imunify\Db;
 
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 
 /**
@@ -164,6 +165,20 @@ class DbTablesDiscoverer
     ];
 
     /**
+     * Primary-key data types the prescan cursor can paginate. The cursor keeps
+     * the value the database returned, so `key > cursor` compares integers
+     * numerically and varchar keys (Wordfence `wp_wfConfig.name`, whose `val`
+     * blob can hold malware) in collation order — both total orders because
+     * the key is unique. Binary keys stay out: their bytes would not survive
+     * the JSON `row_id` sent to Imunify. Composite keys are rejected too:
+     * `ORDER BY key` on one column of a composite key is not a total order,
+     * and Imunify's descriptor carries a single `key` column.
+     *
+     * @var string[]
+     */
+    private static $cursorKeyDataTypes = ['tinyint', 'smallint', 'mediumint', 'int', 'bigint', 'varchar', 'char'];
+
+    /**
      * MySQL column data types that can carry scannable text/blob content.
      * Numeric, datetime, binary-key, and enum/set columns are excluded —
      * malware signatures have nothing to match against in those types and
@@ -226,6 +241,7 @@ class DbTablesDiscoverer
         }
 
         $descriptors = [];
+        $skippedKeys = [];
         foreach ($columnsByTable as $tableName => $columns) {
             if (isset($excludedSet[$tableName])) {
                 continue;
@@ -236,12 +252,12 @@ class DbTablesDiscoverer
                 ? self::$sensitiveColumnsBySuffix[$suffix]
                 : [];
 
-            $primaryKey = null;
+            $primaryKeys = [];
             $scannableColumns = [];
 
             foreach ($columns as $column) {
-                if ($primaryKey === null && $column['COLUMN_KEY'] === 'PRI') {
-                    $primaryKey = $column['COLUMN_NAME'];
+                if ($column['COLUMN_KEY'] === 'PRI') {
+                    $primaryKeys[] = $column;
                 }
 
                 if (!in_array($column['DATA_TYPE'], self::$scannableDataTypes, true)) {
@@ -259,16 +275,22 @@ class DbTablesDiscoverer
                 $scannableColumns[] = $column['COLUMN_NAME'];
             }
 
-            if ($primaryKey === null || empty($scannableColumns)) {
-                // No PK → no cursor for cursor-paginated prescan. No text
-                // columns → nothing to scan. Either way, skip.
+            if (empty($scannableColumns)) {
+                // No text columns → nothing to scan.
+                continue;
+            }
+
+            if (count($primaryKeys) !== 1 || !in_array($primaryKeys[0]['DATA_TYPE'], self::$cursorKeyDataTypes, true)) {
+                // No PK, composite PK or a binary/other-typed PK → no usable keyset cursor.
+                $skippedKeys[] = $tableName;
+
                 continue;
             }
 
             $descriptor = [
                 'schema' => $database,
                 'name' => $tableName,
-                'key' => $primaryKey,
+                'key' => $primaryKeys[0]['COLUMN_NAME'],
                 'columns' => $scannableColumns,
             ];
 
@@ -283,6 +305,12 @@ class DbTablesDiscoverer
             }
 
             $descriptors[] = $descriptor;
+        }
+
+        if (!empty($skippedKeys)) {
+            Log::debug('DbTablesDiscoverer: Skipped tables without a single integer or string primary key', [
+                'tables' => $skippedKeys,
+            ]);
         }
 
         return $descriptors;

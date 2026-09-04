@@ -143,10 +143,12 @@ class SetupAdminEnvironment
     {
         try {
             ServerSetup::loginAs();
-            // Simulate wp-admin environment
-            $this->simulateAdminEnvironment();
         } catch (\Throwable $e) {
             Log::warning('SetupAdminEnvironment: Early login failed', ['error' => $e->getMessage()]);
         }
+        // Always simulate wp-admin: skipping it after a failed login leaves
+        // WordPress loading with WP_ADMIN=true but front-end $_SERVER/pagenow,
+        // an inconsistent state that can break plugins mid-load.
+        $this->simulateAdminEnvironment();
     }
 }

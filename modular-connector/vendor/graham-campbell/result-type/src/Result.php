@@ -12,8 +12,8 @@ declare (strict_types=1);
 namespace Modular\ConnectorDependencies\GrahamCampbell\ResultType;
 
 /**
- * @template T
- * @template E
+ * @template-covariant T
+ * @template-covariant E
  */
 abstract class Result
 {
@@ -41,7 +41,7 @@ abstract class Result
      *
      * @param callable(T):\GrahamCampbell\ResultType\Result<S,F> $f
      *
-     * @return \GrahamCampbell\ResultType\Result<S,F>
+     * @return \GrahamCampbell\ResultType\Result<S,E|F>
      */
     abstract public function flatMap(callable $f);
     /**

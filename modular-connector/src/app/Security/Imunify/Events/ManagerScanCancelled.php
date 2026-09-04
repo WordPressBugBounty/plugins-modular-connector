@@ -16,8 +16,10 @@ use Modular\Connector\Events\AbstractEvent;
  *   - ScanCleanupListener wipes the per-flow cache bucket so straggler jobs cannot
  *     act on stale secrets or coordination state.
  *
- * Payload shape: `{site_scan, type, error}`. The Imunify job id is intentionally
- * omitted — API already knows it from the `site_scan`.
+ * Payload shape: `{site_scan, type, error, details?}`. `details` only travels when
+ * the cancel has structured context (the quota block on `quota_exceeded`, the
+ * provider status on an Imunify-side failure). The Imunify job id is
+ * intentionally omitted — API already knows it from the `site_scan`.
  */
 class ManagerScanCancelled extends AbstractEvent
 {
@@ -38,38 +40,47 @@ class ManagerScanCancelled extends AbstractEvent
      * @param int $siteScan
      * @param string $type
      * @param string $error
+     * @param array $details
      */
-    public function __construct($mrid, $siteScan, $type, $error)
+    public function __construct($mrid, $siteScan, $type, $error, array $details = [])
     {
         $this->siteScan = (int) $siteScan;
         $this->type = $type;
 
-        parent::__construct($mrid, [
+        $payload = [
             'site_scan' => $this->siteScan,
             'type' => $type,
             'error' => (string) $error,
-        ]);
+        ];
+
+        if (!empty($details)) {
+            $payload['details'] = $details;
+        }
+
+        parent::__construct($mrid, $payload);
     }
 
     /**
      * @param string $mrid
      * @param int $siteScan
-     * @param string $error Short tag (e.g. `no_manifest_data`, `poll_failed`) or message.
+     * @param string $error Short tag (e.g. `no_manifest_data`, `poll_failed`, `quota_exceeded`) or message.
+     * @param array $details
      * @return self
      */
-    public static function forFiles($mrid, $siteScan, $error): self
+    public static function forFiles($mrid, $siteScan, $error, array $details = []): self
     {
-        return new self($mrid, $siteScan, ManagerScanPartUpdated::TYPE_FILES, $error);
+        return new self($mrid, $siteScan, ManagerScanPartUpdated::TYPE_FILES, $error, $details);
     }
 
     /**
      * @param string $mrid
      * @param int $siteScan
      * @param string $error
+     * @param array $details
      * @return self
      */
-    public static function forDatabase($mrid, $siteScan, $error): self
+    public static function forDatabase($mrid, $siteScan, $error, array $details = []): self
     {
-        return new self($mrid, $siteScan, ManagerScanPartUpdated::TYPE_DATABASE, $error);
+        return new self($mrid, $siteScan, ManagerScanPartUpdated::TYPE_DATABASE, $error, $details);
     }
 }

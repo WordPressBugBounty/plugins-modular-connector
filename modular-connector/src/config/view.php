@@ -32,7 +32,11 @@ return [
     |
     */
 
-    'compiled' => realpath(\Modular\ConnectorDependencies\storage_path('views')),
+    // Tokenised for consistency with the other storage folders, not because compiled
+    // Blade is worth reading. The folder is created before the config is loaded
+    // (Bootloader boots the storage callback ahead of the bootstrappers), so realpath
+    // resolves.
+    'compiled' => realpath(\Modular\Connector\Helper\PrivateStorage::folderPath('views')),
 
     /*
     |--------------------------------------------------------------------------

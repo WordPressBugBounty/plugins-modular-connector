@@ -4,30 +4,30 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396
+class ComposerStaticInit50f2b4a2b3ff0e11dd7d81cc5976ace2
 {
     public static $files = array (
-        '9aa72f889da345033272766773e87f95' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
-        '441ac96340fbc057cddf5adda67ec033' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-        'e92fec9e9836f09ce51640d1d97d2de4' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
-        '7b449d522e53c410b678fc2247ff7579' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
-        '016b78a2f1480dfb1fbb08babc47ddb1' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        '892d9e3a93656cc70fa432beb18ca9f4' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
-        '347027d46c99b9f8cf7578c5672b0050' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
-        'bb884638c5f251a05c1f6b861aa58406' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
-        '002f23efa014251141c607e72dd25db1' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
-        'b578f8bda4da327dbc2596b42854be9f' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        '4269ad5023dea413031a1af53b612bf8' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        '16880f6a22257bcf2e08fbbd1411cf83' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        'a907a9988a03da0bfa5e41c4ddeea548' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
-        '90a4d1a002d5eef6c9ee12c634ab42c2' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-        '42f084d1f71af239f031726c45767f31' => __DIR__ . '/..' . '/illuminate/events/functions.php',
-        'f059f0c7ea0794ce726e5181335bc4cc' => __DIR__ . '/..' . '/opis/closure/functions.php',
-        'ed571f3e4602b93c50863976e3014dc7' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        'bb313446ba824bfd4ad741b2aa7e1b7e' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        'fa403519b53292e8a23bc294858f52b3' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
-        'afa68fc3f015938c9061f8f3385014ba' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
-        '11be75182eab8ac2ffcaaaef8343c8c3' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        '5398c53ffa960b0e763160c1a8ef0e53' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        'e826d2ac506f850baf080a21973fd75b' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+        '9181716d1ea255cb3a8ece56148be2d3' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        'acff21910f61b2fe4f603ac6549c3e56' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
+        '648eac812c637a7bc0bbe14a1e57618c' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
+        '852a703c061296730a3313c5fdf55198' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        '0b15e6543e8d729bafd1f233136589fc' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
+        'b2f06576d2c6ec01f99b08f245a57274' => __DIR__ . '/..' . '/symfony/polyfill-php73/bootstrap.php',
+        '41c5594ef08a69a6581db99e3031368e' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
+        '95ba15929b6888d22f389e22407b3df2' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        '7ef776d353dedf9240476df6823cbc26' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
+        'f4f4d6d64ed896ffd7f9e19633db5b0b' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
+        'e5480e4af4f3768b17ca375217d28388' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        'c6b99185c6d38665e24716650b3ae554' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
+        'a02b896ec13716a81a7d6eef89e38692' => __DIR__ . '/..' . '/illuminate/events/functions.php',
+        '46a45edfa4018aff6ab6c9333a66d030' => __DIR__ . '/..' . '/opis/closure/functions.php',
+        '2697d4adb31b0a5ed55288d7bc1ec583' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        'd30b06d51f5b6c28c5d761955db14341' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        '7c2c58a1253aedf48d9b0eb7447ab05e' => __DIR__ . '/..' . '/ares/framework/src/helpers.php',
+        '2141e6d800cf99f75898a9e2bbb9aad9' => __DIR__ . '/..' . '/ares/framework/illuminate/Foundation/helpers.php',
+        '33d2e9baf4408ac58af13dbb592047c8' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -434,6 +434,7 @@ class ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\MetaFields' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Concerns/MetaFields.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\OrderScopes' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Concerns/OrderScopes.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Concerns\\ResolvesCustomTable' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Concerns/ResolvesCustomTable.php',
+        'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\ConnectionRefusedException' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/ConnectionRefusedException.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DatabaseServiceProvider' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/DatabaseServiceProvider.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\DetectsLostConnections' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/DetectsLostConnections.php',
         'Modular\\ConnectorDependencies\\Ares\\Framework\\Foundation\\Database\\Models\\Meta\\Meta' => __DIR__ . '/..' . '/ares/framework/src/Foundation/Database/Models/Meta/Meta.php',
@@ -2711,6 +2712,7 @@ class ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396
         'Modular\\Connector\\Health\\Tests\\LoopbackRequestsTest' => __DIR__ . '/../..' . '/src/app/Health/Tests/LoopbackRequestsTest.php',
         'Modular\\Connector\\Health\\Tests\\RestAvailabilityTest' => __DIR__ . '/../..' . '/src/app/Health/Tests/RestAvailabilityTest.php',
         'Modular\\Connector\\Helper\\OauthClient' => __DIR__ . '/../..' . '/src/app/Helper/OauthClient.php',
+        'Modular\\Connector\\Helper\\PrivateStorage' => __DIR__ . '/../..' . '/src/app/Helper/PrivateStorage.php',
         'Modular\\Connector\\Http\\Controllers\\AuthController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/AuthController.php',
         'Modular\\Connector\\Http\\Controllers\\BackupController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/BackupController.php',
         'Modular\\Connector\\Http\\Controllers\\BrokenLinkController' => __DIR__ . '/../..' . '/src/app/Http/Controllers/BrokenLinkController.php',
@@ -2746,8 +2748,11 @@ class ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396
         'Modular\\Connector\\Jobs\\Users\\UserUpdateJob' => __DIR__ . '/../..' . '/src/app/Jobs/Users/UserUpdateJob.php',
         'Modular\\Connector\\Listeners\\HookEventListener' => __DIR__ . '/../..' . '/src/app/Listeners/HookEventListener.php',
         'Modular\\Connector\\Listeners\\PostUpgradeEventListener' => __DIR__ . '/../..' . '/src/app/Listeners/PostUpgradeEventListener.php',
+        'Modular\\Connector\\Manifest\\AbstractManifest' => __DIR__ . '/../..' . '/src/app/Manifest/AbstractManifest.php',
+        'Modular\\Connector\\Manifest\\AbstractManifestPart' => __DIR__ . '/../..' . '/src/app/Manifest/AbstractManifestPart.php',
         'Modular\\Connector\\Manifest\\Contracts\\ManifestContract' => __DIR__ . '/../..' . '/src/app/Manifest/Contracts/ManifestContract.php',
         'Modular\\Connector\\Manifest\\Contracts\\ManifestablePartContract' => __DIR__ . '/../..' . '/src/app/Manifest/Contracts/ManifestablePartContract.php',
+        'Modular\\Connector\\Manifest\\ExcludedPaths' => __DIR__ . '/../..' . '/src/app/Manifest/ExcludedPaths.php',
         'Modular\\Connector\\Models\\Attachment' => __DIR__ . '/../..' . '/src/app/Models/Attachment.php',
         'Modular\\Connector\\Models\\Comment' => __DIR__ . '/../..' . '/src/app/Models/Comment.php',
         'Modular\\Connector\\Models\\CommentMeta' => __DIR__ . '/../..' . '/src/app/Models/CommentMeta.php',
@@ -2802,8 +2807,9 @@ class ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396
         'Modular\\Connector\\Security\\Imunify\\Events\\ManagerScanPartUpdated' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Events/ManagerScanPartUpdated.php',
         'Modular\\Connector\\Security\\Imunify\\Events\\ManagerScanPartsCalculated' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Events/ManagerScanPartsCalculated.php',
         'Modular\\Connector\\Security\\Imunify\\Events\\ManagerScanProgressUpdated' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Events/ManagerScanProgressUpdated.php',
+        'Modular\\Connector\\Security\\Imunify\\Exceptions\\ImunifyQuotaExceededException' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Exceptions/ImunifyQuotaExceededException.php',
+        'Modular\\Connector\\Security\\Imunify\\Exceptions\\ImunifyUnavailableException' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Exceptions/ImunifyUnavailableException.php',
         'Modular\\Connector\\Security\\Imunify\\Helpers\\ConsolidatedManifest' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Helpers/ConsolidatedManifest.php',
-        'Modular\\Connector\\Security\\Imunify\\Helpers\\ScanFile' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Helpers/ScanFile.php',
         'Modular\\Connector\\Security\\Imunify\\ImunifyClient' => __DIR__ . '/../..' . '/src/app/Security/Imunify/ImunifyClient.php',
         'Modular\\Connector\\Security\\Imunify\\ImunifyDriver' => __DIR__ . '/../..' . '/src/app/Security/Imunify/ImunifyDriver.php',
         'Modular\\Connector\\Security\\Imunify\\Jobs\\MergeScanManifestsJob' => __DIR__ . '/../..' . '/src/app/Security/Imunify/Jobs/MergeScanManifestsJob.php',
@@ -2876,9 +2882,9 @@ class ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit22b5cfeabcd30b3974851aec2ca06396::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit50f2b4a2b3ff0e11dd7d81cc5976ace2::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit50f2b4a2b3ff0e11dd7d81cc5976ace2::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit50f2b4a2b3ff0e11dd7d81cc5976ace2::$classMap;
 
         }, null, ClassLoader::class);
     }

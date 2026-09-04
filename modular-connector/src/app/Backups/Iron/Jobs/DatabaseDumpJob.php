@@ -77,9 +77,20 @@ class DatabaseDumpJob implements ShouldQueue
             }
 
             if ($part->dumpPhase === BackupPart::DUMP_PHASE_SMALL) {
-                (new SmallTablesDumper())->dump($part);
+                if ($shouldStop()) {
+                    $this->continueLater($part);
+
+                    return;
+                }
+
+                if (!(new SmallTablesDumper())->dump($part, $shouldStop)) {
+                    $this->continueLater($part);
+
+                    return;
+                }
 
                 $part->offset = 1;
+                $part->dumpCursor = [];
                 $part->dumpPhase = empty($part->dumpTables)
                     ? BackupPart::DUMP_PHASE_MERGE
                     : BackupPart::DUMP_PHASE_LARGE;

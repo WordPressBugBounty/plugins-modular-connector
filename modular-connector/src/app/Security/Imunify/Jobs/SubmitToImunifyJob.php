@@ -3,8 +3,11 @@
 namespace Modular\Connector\Security\Imunify\Jobs;
 
 use Modular\Connector\Security\Facades\Scan;
+use Modular\Connector\Security\ScanManager;
 use Modular\Connector\Security\Imunify\Events\ManagerScanPartUpdated;
 use Modular\Connector\Security\Imunify\Events\ManagerScanProgressUpdated;
+use Modular\Connector\Security\Imunify\Exceptions\ImunifyQuotaExceededException;
+use Modular\Connector\Security\Imunify\Exceptions\ImunifyUnavailableException;
 use Modular\Connector\Security\Imunify\Helpers\ConsolidatedManifest;
 use Modular\Connector\Security\Imunify\ImunifyClient;
 use Modular\ConnectorDependencies\Carbon\Carbon;
@@ -26,9 +29,19 @@ use function Modular\ConnectorDependencies\event;
  *   - Dispatches `PollImunifyJob` carrying the timestamp of the start emission so
  *     the first poll inherits the throttle window (no duplicate progress emit).
  *
- * On permanent failure (retries exhausted): `failed()` cancels the files flow
- * via `Scan::cancelFiles` so API gets a terminal `manager.scan.cancelled`
- * instead of waiting for events that will never arrive.
+ * On a 429/503 from Imunify (load shedding, maintenance) the job re-dispatches
+ * itself in slices of ScanManager::HEARTBEAT_INTERVAL_SECONDS until the
+ * server-stated Retry-After has passed — no job was created, so nothing is lost.
+ * Every slice emits a `manager.scan.progress.updated` heartbeat (all files
+ * pending, no `imunify_job_id` yet) so API's stall heuristic stays quiet. The
+ * same deadline that bounds polling bounds these retries.
+ *
+ * On a quota 403 the files flow is cancelled right away with the `quota_exceeded`
+ * tag and the quota counters, so API can show when it resets.
+ *
+ * On any other permanent failure (retries exhausted): `failed()` cancels the
+ * files flow via `Scan::cancelFiles` so API gets a terminal
+ * `manager.scan.cancelled` instead of waiting for events that will never arrive.
  *
  * The local merge is reported by its own dedicated event
  * (`ManagerScanFilesMergeUpdated`) emitted by `MergeScanManifestsJob`.
@@ -46,6 +59,19 @@ class SubmitToImunifyJob implements ShouldQueue
      * @var int
      */
     public $tries = 3;
+
+    /**
+     * @var int Seconds between attempts after an uncaught exception, so a
+     *          transport blip is not retried three times within one second.
+     */
+    public $backoff = 60;
+
+    /**
+     * @var int `/scan/start` carries the whole inventory in one POST, so it gets
+     *          the reference plugin's longer timeout instead of the 30 s used
+     *          for polling.
+     */
+    private const START_TIMEOUT_SECONDS = 60;
 
     /**
      * @var string
@@ -73,19 +99,51 @@ class SubmitToImunifyJob implements ShouldQueue
     protected $totalItems;
 
     /**
+     * @var int Unix timestamp bounding both the busy retries of this job and
+     *          the poll chain it starts. 0 until the first attempt computes it
+     *          from `max_poll_hours`, then carried across re-dispatches.
+     */
+    protected $deadlineAt;
+
+    /**
+     * @var int Unix timestamp of an Imunify Retry-After still in force; 0 when none.
+     */
+    protected $busyUntil;
+
+    /**
+     * @var int Unix timestamp of the last heartbeat emitted while waiting.
+     */
+    protected $lastHeartbeatAt;
+
+    /**
      * @param string $mrid
      * @param string $name
      * @param int $siteScan
      * @param string $manifestPath
      * @param int $totalItems
+     * @param int $deadlineAt
+     * @param int $busyUntil
+     * @param int $lastHeartbeatAt
      */
-    public function __construct($mrid, $name, $siteScan, $manifestPath, $totalItems)
+    public function __construct(
+        $mrid,
+        $name,
+        $siteScan,
+        $manifestPath,
+        $totalItems,
+        $deadlineAt = 0,
+        $busyUntil = 0,
+        $lastHeartbeatAt = 0
+    )
     {
         $this->mrid = $mrid;
         $this->name = $name;
         $this->siteScan = $siteScan;
         $this->manifestPath = $manifestPath;
         $this->totalItems = $totalItems;
+        $this->deadlineAt = (int)$deadlineAt;
+        $this->busyUntil = (int)$busyUntil;
+        $this->lastHeartbeatAt = (int)$lastHeartbeatAt;
         $this->queue = 'backups';
     }
 
@@ -114,8 +172,42 @@ class SubmitToImunifyJob implements ShouldQueue
             return;
         }
 
+        // Compute the absolute deadline once so every busy retry here and
+        // every tick of the poll chain share the same horizon. API drives it
+        // via the `max_poll_hours` site request field; 24 h fallback when
+        // missing/invalid so old payloads keep working unchanged.
+        if ($this->deadlineAt === 0) {
+            $this->deadlineAt = Scan::pollDeadlineAt($this->siteScan);
+        }
+
+        if (Carbon::now()->timestamp > $this->deadlineAt) {
+            Log::warning('SubmitToImunifyJob: deadline exceeded before Imunify accepted the scan', [
+                'mrid' => $this->mrid,
+                'deadline_at' => $this->deadlineAt,
+            ]);
+
+            Scan::cancelFiles($this->mrid, $this->name, $this->siteScan, 'poll_timeout');
+
+            return;
+        }
+
+        // Still inside an Imunify Retry-After: heartbeat and come back later
+        // without calling the provider.
+        if ($this->busyUntil > 0) {
+            $now = Carbon::now()->timestamp;
+
+            if ($now < $this->busyUntil) {
+                $this->heartbeat($now);
+                $this->redispatch($this->busyUntil, $this->busyUntil - $now);
+
+                return;
+            }
+
+            $this->busyUntil = 0;
+        }
+
         try {
-            $client = ImunifyClient::make();
+            $client = ImunifyClient::make(self::START_TIMEOUT_SECONDS);
 
             $jobId = $this->ensureScanStarted($client);
 
@@ -134,16 +226,6 @@ class SubmitToImunifyJob implements ShouldQueue
                 $this->totalItems
             ));
 
-            // Compute the absolute poll deadline once here so every tick in
-            // the re-dispatch chain shares the same horizon. API drives this
-            // via the `max_poll_hours` site request field; 24 h fallback when
-            // missing/invalid so old payloads keep working unchanged.
-            $options = Scan::scanOptions($this->siteScan);
-            $maxPollHours = isset($options['max_poll_hours']) && (int)$options['max_poll_hours'] > 0
-                ? (int)$options['max_poll_hours']
-                : 24;
-            $pollDeadlineAt = $now + ($maxPollHours * 3600);
-
             // Kick off polling. The poll job calls /jobs/{id}/results, submits
             // pending hashes/uploads, and re-dispatches itself until Imunify
             // reports is_complete. Mirrors the reference plugin's process_scan
@@ -151,7 +233,7 @@ class SubmitToImunifyJob implements ShouldQueue
             //
             // `lastWebhookAt = $now` so the first poll inherits the throttle from
             // the "start" emission just above — it won't re-emit progress for
-            // 10 minutes unless is_complete fires earlier.
+            // PROGRESS_WEBHOOK_THROTTLE_SECONDS unless is_complete fires earlier.
             dispatch(new PollImunifyJob(
                 $this->mrid,
                 $this->name,
@@ -160,8 +242,33 @@ class SubmitToImunifyJob implements ShouldQueue
                 $this->manifestPath,
                 $this->totalItems,
                 $now,
-                $pollDeadlineAt
+                $this->deadlineAt
             ));
+        } catch (ImunifyUnavailableException $e) {
+            $now = Carbon::now()->timestamp;
+            $busyUntil = $now + $e->delaySeconds();
+
+            Log::warning('SubmitToImunifyJob: Imunify busy, retrying later', array_merge([
+                'mrid' => $this->mrid,
+                'busy_until' => $busyUntil,
+            ], $e->context()));
+
+            $this->heartbeat($now);
+            $this->redispatch($busyUntil, $e->delaySeconds());
+        } catch (ImunifyQuotaExceededException $e) {
+            Log::error('SubmitToImunifyJob: Imunify quota exceeded', [
+                'mrid' => $this->mrid,
+                'code' => $e->getQuotaCode(),
+                'quota' => $e->getQuota(),
+            ]);
+
+            Scan::cancelFiles(
+                $this->mrid,
+                $this->name,
+                $this->siteScan,
+                ImunifyQuotaExceededException::CODE_QUOTA_EXCEEDED,
+                ['quota' => $e->getQuota(), 'message' => $e->getMessage()]
+            );
         } catch (\Throwable $e) {
             Log::error('SubmitToImunifyJob: Failed', [
                 'mrid' => $this->mrid,
@@ -170,6 +277,56 @@ class SubmitToImunifyJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * Re-queue this submit after at most one heartbeat interval, remembering
+     * until when Imunify asked us to wait.
+     *
+     * @param int $busyUntil
+     * @param int $remaining Seconds left on the Retry-After.
+     * @return void
+     */
+    private function redispatch($busyUntil, $remaining)
+    {
+        dispatch(new self(
+            $this->mrid,
+            $this->name,
+            $this->siteScan,
+            $this->manifestPath,
+            $this->totalItems,
+            $this->deadlineAt,
+            $busyUntil,
+            $this->lastHeartbeatAt
+        ))->delay(max(1, min($remaining, ScanManager::HEARTBEAT_INTERVAL_SECONDS)));
+    }
+
+    /**
+     * "Still alive" envelope while waiting out a Retry-After, throttled to one
+     * per heartbeat interval. Reuses `manager.scan.progress.updated` with the
+     * trivial pre-start stats (every file pending, no verdicts) and no
+     * `imunify_job_id`, since `/scan/start` has not been accepted yet.
+     *
+     * @param int $now Unix timestamp.
+     * @return void
+     */
+    private function heartbeat($now)
+    {
+        if ($this->lastHeartbeatAt > 0 && ($now - $this->lastHeartbeatAt) < ScanManager::HEARTBEAT_INTERVAL_SECONDS) {
+            return;
+        }
+
+        event(ManagerScanProgressUpdated::inProgress(
+            $this->mrid,
+            $this->siteScan,
+            ManagerScanPartUpdated::TYPE_FILES,
+            $this->totalItems,
+            $this->totalItems,
+            0,
+            0
+        ));
+
+        $this->lastHeartbeatAt = $now;
     }
 
     /**
@@ -223,6 +380,7 @@ class SubmitToImunifyJob implements ShouldQueue
         Log::debug('SubmitToImunifyJob: Imunify scan started', [
             'mrid' => $this->mrid,
             'imunify_job_id' => $jobId,
+            'files' => count($files),
         ]);
 
         return $jobId;
@@ -237,11 +395,18 @@ class SubmitToImunifyJob implements ShouldQueue
      * traversal and disk-root containment at the FS boundary before the path
      * goes on the wire to Imunify.
      *
+     * Paths are deduplicated: the backend bulk-upserts on `(site_id, path)`
+     * and rejects a manifest that carries the same path twice, which can
+     * happen when custom disks overlap. The first index wins; a dropped
+     * duplicate simply never shows up in `/results`.
+     *
      * @return array
      */
     private function buildFileList()
     {
         $files = [];
+        $seen = [];
+        $duplicates = 0;
         $path = Storage::disk('scans')->path($this->manifestPath);
         $handle = fopen($path, 'r');
 
@@ -268,6 +433,14 @@ class SubmitToImunifyJob implements ShouldQueue
                     continue;
                 }
 
+                if (isset($seen[$absolute])) {
+                    $duplicates++;
+
+                    continue;
+                }
+
+                $seen[$absolute] = true;
+
                 $files[] = [
                     'path' => $absolute,
                     'file_index' => (int)$row['file_index'],
@@ -279,7 +452,13 @@ class SubmitToImunifyJob implements ShouldQueue
             fclose($handle);
         }
 
+        if ($duplicates > 0) {
+            Log::warning('SubmitToImunifyJob: Dropped duplicate paths from the manifest', [
+                'mrid' => $this->mrid,
+                'duplicates' => $duplicates,
+            ]);
+        }
+
         return $files;
     }
-
 }

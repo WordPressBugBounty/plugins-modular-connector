@@ -154,30 +154,62 @@ class ServerSetup
         }
     }
     /**
-     * @return array|false|mixed
+     * @return \Illuminate\Support\Collection
      */
     public static function getAllAdminUsers(?int $limit = null)
     {
         static::ensureUserFunctionsLoaded();
+        // Hosts without pdo_mysql cannot run Eloquent queries at all — skip
+        // straight to the wpdb-backed lookup so early login keeps working.
+        if (extension_loaded('pdo') && extension_loaded('pdo_mysql')) {
+            try {
+                $users = static::queryAdminUsers($limit);
+                if ($users->isNotEmpty()) {
+                    return $users;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('ServerSetup: Eloquent admin lookup failed, falling back to WordPress', ['error' => $e->getMessage()]);
+            }
+        }
+        return static::getWordPressAdminUsers($limit);
+    }
+    /**
+     * @return \Illuminate\Support\Collection
+     */
+    private static function queryAdminUsers(?int $limit)
+    {
         if (is_multisite()) {
             $query = User::whereIn('user_login', get_super_admins());
-            if ($limit) {
-                $query->limit($limit);
-            }
-            return $query->get();
+        } else {
+            $query = User::whereHas('meta', function ($q) {
+                $q->where('meta_key', 'LIKE', '%capabilities%');
+                $q->where('meta_value', 'LIKE', '%administrator%');
+            });
         }
-        $query = User::whereHas('meta', function ($q) {
-            $q->where('meta_key', 'LIKE', '%capabilities%');
-            $q->where('meta_value', 'LIKE', '%administrator%');
-        });
         if ($limit) {
             $query->limit($limit);
         }
-        $users = $query->get();
-        if ($users->isNotEmpty()) {
-            return $users;
+        return $query->get();
+    }
+    /**
+     * WordPress-native admin lookup (wpdb/mysqli), mapped to the same User
+     * model shape the Eloquent path returns.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    private static function getWordPressAdminUsers(?int $limit)
+    {
+        if (is_multisite()) {
+            $superAdmins = get_super_admins();
+            if (empty($superAdmins)) {
+                return Collection::make();
+            }
+            // blog_id 0: search network-wide, super admins may not be members
+            // of the current blog.
+            $args = ['blog_id' => 0, 'login__in' => $superAdmins];
+        } else {
+            $args = ['role' => 'administrator'];
         }
-        $args = ['role' => 'administrator'];
         if ($limit) {
             $args['number'] = $limit;
         }

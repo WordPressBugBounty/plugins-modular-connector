@@ -3,6 +3,7 @@
 namespace Modular\Connector\Backups\Console;
 
 use Modular\Connector\Backups\Facades\Backup;
+use Modular\Connector\Helper\PrivateStorage;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Command;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\Illuminate\Support\Collection;
@@ -104,6 +105,47 @@ class AutoCleanUpCommand extends Command
 
             $dirs->slice(0, $maxFilesToClean)
                 ->each(fn($dir) => FileFacade::deleteDirectory($dir));
+        } catch (\Throwable $e) {
+            Log::error($e);
+        }
+
+        // Sweep logs written under a name this install no longer uses: the old
+        // predictable one, and any left behind by a salt rotation. Monolog only
+        // rotates the current token, so nothing else would ever remove them and
+        // they stay readable over HTTP on servers that ignore our .htaccess.
+        try {
+            $current = basename(PrivateStorage::logPath(), '.log');
+
+            $files = Collection::make(FileFacade::glob(PrivateStorage::logGlob()))
+                ->filter(fn($file) => FileFacade::isFile($file) && PrivateStorage::isForeign($file, $current))
+                ->slice(0, $this->option('max-files'))
+                ->toArray();
+
+            if (!empty($files)) {
+                FileFacade::delete($files);
+            }
+        } catch (\Throwable $e) {
+            Log::error($e);
+        }
+
+        // Same for the folders this install no longer writes to: the pre-token ones
+        // (including wp-content/modular_backups, which sat outside the storage root)
+        // and whatever a salt rotation orphaned. The bootstrap only ever creates the
+        // current folder, so this is the single mechanism that retires the rest.
+        //
+        // A day of grace rather than none: a folder still being written to keeps its
+        // mtime fresh, so a token that somehow resolved differently in another context
+        // cannot take live data with it. Backup parts are transient anyway — they are
+        // uploaded and then swept on --max-age, so there is nothing here to preserve.
+        try {
+            $cutoff = Carbon::now()->subDay()->timestamp;
+
+            foreach (['views', 'cache', 'upgrades', 'scans', 'backups'] as $name) {
+                Collection::make(PrivateStorage::staleFolders($name))
+                    ->filter(fn($dir) => FileFacade::lastModified($dir) < $cutoff)
+                    ->slice(0, $this->option('max-files'))
+                    ->each(fn($dir) => FileFacade::deleteDirectory($dir));
+            }
         } catch (\Throwable $e) {
             Log::error($e);
         }

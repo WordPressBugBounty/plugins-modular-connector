@@ -4,7 +4,6 @@ declare (strict_types=1);
 namespace Modular\ConnectorDependencies\Dotenv\Parser;
 
 use Modular\ConnectorDependencies\Dotenv\Util\Regex;
-use Modular\ConnectorDependencies\Dotenv\Util\Str;
 final class Lines
 {
     /**
@@ -75,9 +74,15 @@ final class Lines
      */
     private static function looksLikeMultilineStart(string $line)
     {
-        return Str::pos($line, '="')->map(static function () use ($line) {
-            return self::looksLikeMultilineStop($line, \true) === \false;
-        })->getOrElse(\false);
+        $pos = \strpos($line, '="');
+        if ($pos === \false) {
+            return \false;
+        }
+        $hash = \strpos($line, '#');
+        if ($hash !== \false && $hash < $pos) {
+            return \false;
+        }
+        return self::looksLikeMultilineStop($line, \true) === \false;
     }
     /**
      * Determine if the given line can be the start of a multiline variable.

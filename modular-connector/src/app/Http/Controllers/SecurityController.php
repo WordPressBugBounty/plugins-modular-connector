@@ -70,6 +70,9 @@ class SecurityController extends Controller
      * manifest existence, site_key in cache); if state is gone the job exits
      * early or cancels the flow via `Scan::cancelFiles`.
      *
+     * The revived chain gets a fresh poll deadline (`max_poll_hours` from the
+     * stored options, 24 h fallback) so a kick can never start an unbounded loop.
+     *
      * @param SiteRequest $modularRequest
      * @return \Modular\ConnectorDependencies\Illuminate\Http\JsonResponse
      */
@@ -89,7 +92,9 @@ class SecurityController extends Controller
             $siteScan,
             $imunifyJobId,
             ConsolidatedManifest::pathFor($name),
-            $totalFiles
+            $totalFiles,
+            0,
+            Scan::pollDeadlineAt($siteScan)
         ));
 
         return Response::json(['success' => 'OK']);

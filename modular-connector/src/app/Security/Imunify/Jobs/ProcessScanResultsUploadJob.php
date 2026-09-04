@@ -37,6 +37,12 @@ class ProcessScanResultsUploadJob implements ShouldQueue
     public $tries = 3;
 
     /**
+     * @var int Seconds between attempts after an uncaught exception (the
+     *          presigned URL request or the PUT itself).
+     */
+    public $backoff = 60;
+
+    /**
      * @var string
      */
     protected $mrid;

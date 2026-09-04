@@ -3,6 +3,7 @@
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Scheduling;
 
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Console\Command;
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\ConnectionRefusedException;
 use Modular\ConnectorDependencies\Illuminate\Console\Events\ScheduledTaskFailed;
 use Modular\ConnectorDependencies\Illuminate\Console\Events\ScheduledTaskFinished;
 use Modular\ConnectorDependencies\Illuminate\Console\Events\ScheduledTaskSkipped;
@@ -104,12 +105,31 @@ class ScheduleRunCommand extends Command
             $this->dispatcher->dispatch(new ScheduledTaskFinished($event, round(microtime(\true) - $start, 2)));
             $this->log->debug(sprintf('Finished running command #%s in %ss', $this->uuid, round(microtime(\true) - $start, 2)));
             $this->eventsRan = \true;
+        } catch (ConnectionRefusedException $e) {
+            if (class_exists(ScheduledTaskFailed::class)) {
+                $this->dispatcher->dispatch(new ScheduledTaskFailed($event, $e));
+            }
+            // Handled by the caller: the whole run must stop, not just this event.
+            throw $e;
         } catch (\Throwable $e) {
             if (class_exists(ScheduledTaskFailed::class)) {
                 $this->dispatcher->dispatch(new ScheduledTaskFailed($event, $e));
             }
             $this->handler->report($e);
         }
+    }
+    /**
+     * Give up the current tick because MySQL is refusing new connections.
+     *
+     * Nothing this process does frees a connection slot, so the only useful action is to
+     * stop immediately and let the next cron cycle retry against a healthier server.
+     *
+     * @param ConnectionRefusedException $e
+     * @return void
+     */
+    protected function abort(ConnectionRefusedException $e)
+    {
+        $this->log->warning(sprintf('Aborting schedule run #%s: database refused new connections.', $this->uuid), ['error' => $e->getMessage(), 'elapsed' => round(microtime(\true) - $this->startedAt->getTimestamp(), 2)]);
     }
     /**
      * Execute the console command.
@@ -131,14 +151,31 @@ class ScheduleRunCommand extends Command
          */
         $events = $this->schedule->dueEvents($this->laravel);
         foreach ($events as $event) {
-            if (!$event->filtersPass($this->laravel)) {
+            try {
+                $filtersPass = $event->filtersPass($this->laravel);
+            } catch (ConnectionRefusedException $e) {
+                $this->abort($e);
+                return;
+            } catch (\Throwable $e) {
+                // A filter that throws must not take the remaining events down with it.
+                $this->log->error(sprintf('Filter failed for scheduled command #%s, skipping it.', $this->uuid), ['command' => $event->getSummaryForDisplay(), 'error' => $e->getMessage()]);
+                $this->handler->report($e);
                 $this->dispatcher->dispatch(new ScheduledTaskSkipped($event));
                 continue;
             }
-            if ($event->onOneServer) {
-                $this->runSingleServerEvent($event);
-            } else {
-                $this->runEvent($event);
+            if (!$filtersPass) {
+                $this->dispatcher->dispatch(new ScheduledTaskSkipped($event));
+                continue;
+            }
+            try {
+                if ($event->onOneServer) {
+                    $this->runSingleServerEvent($event);
+                } else {
+                    $this->runEvent($event);
+                }
+            } catch (ConnectionRefusedException $e) {
+                $this->abort($e);
+                return;
             }
             $this->eventsRan = \true;
         }

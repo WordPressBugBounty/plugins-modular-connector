@@ -78,6 +78,9 @@ class File
                 array_merge(
                     [
                         'modular_storage',
+                        // Pre-3.2.2 backups folder. Current ones live inside
+                        // modular_storage and are already covered by the line above;
+                        // this only skips what an install left behind.
                         'modular_backups',
                         'upgrade-temp-backup',
                         'cache',

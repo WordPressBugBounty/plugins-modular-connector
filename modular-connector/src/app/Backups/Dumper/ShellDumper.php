@@ -86,11 +86,11 @@ class ShellDumper
     }
 
     /**
-     * Memoized `--version` probe of the mysqldump client, one per PHP process.
+     * Memoized `--version` banners, keyed by binary, one probe per PHP process.
      *
-     * @var bool|null
+     * @var array
      */
-    protected static ?bool $columnStatistics = null;
+    protected static array $banners = [];
 
     /**
      * Hosts for which the client talks over a UNIX socket instead of TCP.
@@ -142,42 +142,77 @@ class ShellDumper
     }
 
     /**
-     * Whether the local mysqldump client understands `--column-statistics`.
+     * `--version` banner of a dump binary, memoized per process. Empty when it cannot run.
      *
-     * Only Oracle's mysqldump 8.0.2+ does — MariaDB's client and MySQL 5.x clients reject
-     * it no matter what server they talk to, so the server engine says nothing here. Old
-     * clients print their real release in `Distrib` (`Ver 10.13 Distrib 5.7.44`); from 8.0
-     * the release is the `Ver` itself (`Ver 8.0.36`).
+     * The binary's own family is what decides which flags are safe — hosts routinely ship a
+     * MariaDB client under the `mysqldump` name, and the server engine says nothing about it.
      *
-     * @return bool
+     * @param string $binary
+     * @return string
      */
-    protected static function clientSupportsColumnStatistics(): bool
+    protected static function clientBanner(string $binary): string
     {
-        if (static::$columnStatistics !== null) {
-            return static::$columnStatistics;
+        if (isset(static::$banners[$binary])) {
+            return static::$banners[$binary];
         }
 
-        $supported = false;
+        $banner = '';
 
         try {
-            $process = new Process([self::BINARY_MYSQL, '--version']);
+            $process = new Process([$binary, '--version']);
             $process->setTimeout(self::DETECT_TIMEOUT);
             $process->run();
 
-            $output = $process->getOutput();
-
-            if ($process->isSuccessful() && stripos($output, 'mariadb') === false) {
-                if (preg_match('/Distrib\s+(\d+)\./i', $output, $matches) === 1) {
-                    $supported = (int)$matches[1] >= 8;
-                } elseif (preg_match('/Ver\s+(\d+)\./i', $output, $matches) === 1) {
-                    $supported = (int)$matches[1] >= 8;
-                }
+            if ($process->isSuccessful()) {
+                $banner = $process->getOutput();
             }
         } catch (\Throwable $e) {
-            // Unprobeable client: leave the flag out, plain mysqldump works everywhere.
+            // Unprobeable client: callers fall back to the safest flag set.
         }
 
-        return static::$columnStatistics = $supported;
+        return static::$banners[$binary] = $banner;
+    }
+
+    /**
+     * Whether the dump client belongs to the MariaDB family.
+     *
+     * @param string $binary
+     * @return bool
+     */
+    protected static function clientIsMariaDb(string $binary): bool
+    {
+        return $binary === self::BINARY_MARIADB
+            || stripos(static::clientBanner($binary), 'mariadb') !== false;
+    }
+
+    /**
+     * Whether the dump client understands `--column-statistics`.
+     *
+     * Only Oracle's mysqldump 8.0.2+ does — MariaDB's client and MySQL 5.x clients reject
+     * it no matter what server they talk to. Old clients print their real release in
+     * `Distrib` (`Ver 10.13 Distrib 5.7.44`); from 8.0 the release is the `Ver` itself
+     * (`Ver 8.0.36`).
+     *
+     * @param string $binary
+     * @return bool
+     */
+    protected static function clientSupportsColumnStatistics(string $binary): bool
+    {
+        if (static::clientIsMariaDb($binary)) {
+            return false;
+        }
+
+        $banner = static::clientBanner($binary);
+
+        if (preg_match('/Distrib\s+(\d+)\./i', $banner, $matches) === 1) {
+            return (int)$matches[1] >= 8;
+        }
+
+        if (preg_match('/Ver\s+(\d+)\./i', $banner, $matches) === 1) {
+            return (int)$matches[1] >= 8;
+        }
+
+        return false;
     }
 
     /**
@@ -308,8 +343,17 @@ class ShellDumper
         // `--column-statistics=0` only exists in Oracle's mysqldump 8.0.2+. Whether to send
         // it depends on the CLIENT binary, not the server engine: hosts routinely pair a
         // MySQL 8 server with a MariaDB (or 5.x) mysqldump, which rejects the flag outright.
-        if ($binary === self::BINARY_MYSQL && static::clientSupportsColumnStatistics()) {
+        if (static::clientSupportsColumnStatistics($binary)) {
             $dumper = $dumper->doNotUseColumnStatistics();
+        }
+
+        // MariaDB clients verify the server certificate from 11.4 on, and hosts serving TLS
+        // with a self-signed certificate then fail with `2026: TLS/SSL error`. PHP's own
+        // driver does not verify it either, so the dump only has to match the connection
+        // WordPress already trusts. Encryption itself stays on; only the check is dropped,
+        // and the flag is inert when the server speaks no TLS.
+        if (static::clientIsMariaDb($binary)) {
+            $dumper = $dumper->addExtraOption('--ssl-verify-server-cert=0');
         }
 
         $dumper->dumpToFile($path);

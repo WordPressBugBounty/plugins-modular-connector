@@ -33,7 +33,14 @@ class MysqlConnection extends IlluminateMysqlConnection
      */
     protected function tryAgainIfCausedByLostConnection(QueryException $e, $query, $bindings, \Closure $callback)
     {
-        if (!$this->causedByLostConnection($e->getPrevious())) {
+        // A refused connection is not a lost one: the pool is full and reconnecting in a loop
+        // only keeps this process queueing for a slot. Abort so the caller can release the turn.
+        if ($this->causedByConnectionRefused($e)) {
+            Log::warning('MySQL refused a new connection, aborting without retry.', ['error' => $e->getMessage()]);
+            throw ConnectionRefusedException::from($e);
+        }
+        $cause = $e->getPrevious();
+        if (is_null($cause) || !$this->causedByLostConnection($cause)) {
             throw $e;
         }
         Log::debug('Reconnecting to MySQL database after causedByLostConnection...');
@@ -41,12 +48,18 @@ class MysqlConnection extends IlluminateMysqlConnection
          * @see wpdb::check_connection()
          */
         for ($i = 1; $i <= $this->reconnectRetries; $i++) {
-            $this->reconnect();
             try {
+                // reconnect() itself opens a socket, so a saturated pool surfaces here first.
+                $this->reconnect();
                 return $this->runQueryCallback($query, $bindings, $callback);
-            } catch (QueryException $e) {
+            } catch (\Throwable $e) {
+                if ($this->causedByConnectionRefused($e)) {
+                    Log::warning('MySQL refused a new connection while reconnecting, aborting.', ['attempt' => $i]);
+                    throw ConnectionRefusedException::from($e);
+                }
+                $previous = $e instanceof QueryException ? $e->getPrevious() : $e;
                 // If the error is not caused by "gone away" or we have exhausted the retries, rethrow the exception
-                if ($i === $this->reconnectRetries || !$this->causedByLostConnection($e->getPrevious())) {
+                if ($i === $this->reconnectRetries || is_null($previous) || !$this->causedByLostConnection($previous)) {
                     throw $e;
                 }
                 sleep($this->reconnectSleep);

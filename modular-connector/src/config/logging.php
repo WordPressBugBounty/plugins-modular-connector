@@ -4,6 +4,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Derived from the wp-config secrets, so the name is unguessable on servers that
+// ignore our .htaccess without costing a single option read.
+$path = \Modular\Connector\Helper\PrivateStorage::logPath();
+
 return [
 
     /*
@@ -37,13 +41,13 @@ return [
     'channels' => [
         'single' => [
             'driver' => 'single',
-            'path' => \Modular\ConnectorDependencies\storage_path('logs/modular-connector.log'),
+            'path' => $path,
             'level' => defined('MODULAR_CONNECTOR_LOG_LEVEL') ? MODULAR_CONNECTOR_LOG_LEVEL : 'error',
         ],
 
         'daily' => [
             'driver' => 'daily',
-            'path' => \Modular\ConnectorDependencies\storage_path('logs/modular-connector.log'),
+            'path' => $path,
             'level' => defined('MODULAR_CONNECTOR_LOG_LEVEL') ? MODULAR_CONNECTOR_LOG_LEVEL : 'error',
             'days' => 3,
         ],

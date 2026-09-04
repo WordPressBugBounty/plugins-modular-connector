@@ -84,11 +84,33 @@ class Bootloader
         if (function_exists('ignore_user_abort')) {
             @ignore_user_abort(\true);
         }
-        $maxMemoryLimit = HttpUtils::maxMemoryLimit();
+        $this->configMemoryLimit();
         if (function_exists('ini_set')) {
-            @ini_set('memory_limit', $maxMemoryLimit);
             @ini_set('display_errors', \false);
         }
+    }
+    /**
+     * Raise the memory limit and verify it stuck: on hosts where memory_limit is
+     * PHP_INI_SYSTEM the ini_set fails silently and every downstream budget
+     * (buffer sizes, chunking, worker memory) would be sized against a limit we
+     * never got.
+     *
+     * @return void
+     */
+    protected function configMemoryLimit()
+    {
+        $originalLimit = (string) ini_get('memory_limit');
+        HttpUtils::rememberMemoryLimitServer($originalLimit);
+        $targetLimit = HttpUtils::maxMemoryLimit();
+        if (function_exists('ini_set')) {
+            @ini_set('memory_limit', (string) $targetLimit);
+        }
+        $newLimit = (string) ini_get('memory_limit');
+        // A -1 reading means we failed to impose the ceiling on an unlimited host: we
+        // always target a finite value. Memory is not short, so the raise counts as
+        // satisfied, but the safety cap is not in place.
+        $newBytes = intval($newLimit) === -1 ? \PHP_INT_MAX : wp_convert_hr_to_bytes($newLimit);
+        Log::debug('Bootloader: Memory limit', ['original' => $originalLimit, 'target' => $targetLimit, 'new' => $newLimit, 'worked' => $newBytes >= $targetLimit]);
     }
     /**
      * Handle the request through Laravel HTTP kernel.

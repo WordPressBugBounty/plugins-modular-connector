@@ -22,6 +22,20 @@ use function Modular\ConnectorDependencies\event;
 class ScanManager extends Manager
 {
     /**
+     * Fallback for `max_poll_hours` when the API does not send it.
+     */
+    private const DEFAULT_MAX_POLL_HOURS = 24;
+
+    /**
+     * Minimum seconds between two consecutive progress webhooks of a flow, and
+     * the cadence of the "still alive" envelopes emitted while a job waits out
+     * an Imunify Retry-After. API's stall heuristic fires after 10 minutes
+     * without an envelope, so every wait is sliced in ticks of at most this
+     * length and each tick refreshes the step.
+     */
+    public const HEARTBEAT_INTERVAL_SECONDS = 120;
+
+    /**
      * @return string
      */
     public function getDefaultDriver()
@@ -206,6 +220,37 @@ class ScanManager extends Manager
     }
 
     /**
+     * Absolute Unix timestamp after which a flow stops waiting on Imunify and
+     * cancels with `poll_timeout`. Computed once per flow from the stored
+     * `max_poll_hours` option (24 h fallback) and carried by the jobs across
+     * every re-dispatch — busy retries included.
+     *
+     * @param int $siteScan
+     * @return int
+     */
+    public function pollDeadlineAt($siteScan)
+    {
+        $options = $this->scanOptions($siteScan);
+        $hours = isset($options['max_poll_hours']) && (int)$options['max_poll_hours'] > 0
+            ? (int)$options['max_poll_hours']
+            : self::DEFAULT_MAX_POLL_HOURS;
+
+        return Carbon::now()->timestamp + ($hours * 3600);
+    }
+
+    /**
+     * Cache key of the per-file upload failure counters kept by PollImunifyJob
+     * (file_id => attempts). Lives here so the cleanup can forget it.
+     *
+     * @param int $siteScan
+     * @return string
+     */
+    public function uploadFailuresKey($siteScan)
+    {
+        return '_scan_upload_failures_' . (int)$siteScan;
+    }
+
+    /**
      * User-initiated full cancel: mark the scan name on `_cancelled_scan` so
      * in-flight jobs of **both** flows exit early, and (when `$siteScan` is
      * known) wipe every per-scan cache key. No event is emitted — the UI that
@@ -249,13 +294,15 @@ class ScanManager extends Manager
      * @param string $name
      * @param int $siteScan
      * @param string $error Short tag or message included in the event payload.
+     * @param array $details Optional structured context (e.g. the quota block on
+     *                       `quota_exceeded`) forwarded under `details`.
      * @return void
      */
-    public function cancelFiles($mrid, $name, $siteScan, $error)
+    public function cancelFiles($mrid, $name, $siteScan, $error, array $details = [])
     {
         $this->markFlowCancelled('_cancelled_scan_files', $name);
 
-        event(ManagerScanCancelled::forFiles($mrid, (int)$siteScan, $error));
+        event(ManagerScanCancelled::forFiles($mrid, (int)$siteScan, $error, $details));
     }
 
     /**
@@ -265,13 +312,14 @@ class ScanManager extends Manager
      * @param string $name
      * @param int $siteScan
      * @param string $error
+     * @param array $details
      * @return void
      */
-    public function cancelDatabase($mrid, $name, $siteScan, $error)
+    public function cancelDatabase($mrid, $name, $siteScan, $error, array $details = [])
     {
         $this->markFlowCancelled('_cancelled_scan_database', $name);
 
-        event(ManagerScanCancelled::forDatabase($mrid, (int)$siteScan, $error));
+        event(ManagerScanCancelled::forDatabase($mrid, (int)$siteScan, $error, $details));
     }
 
     /**
@@ -312,6 +360,7 @@ class ScanManager extends Manager
         Cache::forget(sprintf('_scan_parts_status_%s', (int)$siteScan));
         Cache::forget(sprintf('_scan_parts_expected_%s', (int)$siteScan));
         Cache::forget('_scan_files_active_' . (int)$siteScan);
+        Cache::forget($this->uploadFailuresKey($siteScan));
 
         // `_scan_options_` is shared with the DB flow (SubmitToImunifyJob reads
         // it; ScanDbJob::ensureScanStarted reads it too). Only wipe when the

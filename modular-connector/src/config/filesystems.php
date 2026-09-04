@@ -38,9 +38,12 @@ return [
             'root' => untrailingslashit(ABSPATH),
             'visibility' => 'public',
         ],
+        // Moved under modular_storage and tokenised like the rest. Nothing external
+        // reaches for these over HTTP: ProcessUploadJob PUTs each part to a presigned
+        // URL the API hands out, so the API never pulls from the site.
         'backups' => [
             'driver' => 'local',
-            'root' => MODULAR_CONNECTOR_BACKUPS_PATH,
+            'root' => \Modular\Connector\Helper\PrivateStorage::folderPath('backups'),
             'visibility' => 'public',
         ],
         'plugins' => [
@@ -68,14 +71,18 @@ return [
             'root' => untrailingslashit(get_theme_root()),
             'visibility' => 'public',
         ],
+        // Staged plugin/theme archives and scan manifests. Both folder names carry a
+        // token derived from the wp-config secrets, so their contents stay unreachable
+        // on servers that ignore the .htaccess we drop inside. The disk names do not
+        // change, so every Storage::disk() call site is unaffected.
         'safe_upgrades' => [
             'driver' => 'local',
-            'root' => MODULAR_CONNECTOR_STORAGE_PATH . DIRECTORY_SEPARATOR . 'upgrades',
+            'root' => \Modular\Connector\Helper\PrivateStorage::folderPath('upgrades'),
             'visibility' => 'public',
         ],
         'scans' => [
             'driver' => 'local',
-            'root' => MODULAR_CONNECTOR_STORAGE_PATH . DIRECTORY_SEPARATOR . 'scans',
+            'root' => \Modular\Connector\Helper\PrivateStorage::folderPath('scans'),
             'visibility' => 'public',
         ],
     ],

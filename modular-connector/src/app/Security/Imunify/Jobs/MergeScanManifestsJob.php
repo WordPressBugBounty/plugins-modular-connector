@@ -204,6 +204,25 @@ class MergeScanManifestsJob implements ShouldQueue
     }
 
     /**
+     * Queue-worker callback once the job is marked failed (no `$tries`, so the
+     * first uncaught exception is final). `handle()` already emitted
+     * `merge failed`; this adds the terminal `cancelled` so API stops waiting
+     * and ScanCleanupListener wipes the files-flow cache.
+     *
+     * @param \Throwable|null $e
+     * @return void
+     */
+    public function failed(\Throwable $e = null)
+    {
+        Scan::cancelFiles(
+            $this->mrid,
+            $this->name,
+            $this->siteScan,
+            $e ? 'merge_failed: ' . $e->getMessage() : 'merge_failed'
+        );
+    }
+
+    /**
      * @return void
      */
     private function cleanupCoordinationCache()

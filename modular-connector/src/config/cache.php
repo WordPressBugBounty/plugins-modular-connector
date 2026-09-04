@@ -43,9 +43,14 @@ return [
             'serialize' => false,
         ],
 
+        // FileStore names each entry after a bare sha1 of the key (it applies no
+        // prefix), and our keys are literals in the source, so the path of any entry
+        // is computable offline. Some of them hold secrets — `_scan_options_{id}`
+        // carries the scan webhook_secret — hence the token on the folder.
+        // See ../../.docs/security.md#storage-artifacts-not-readable-over-http
         'file' => [
             'driver' => 'file',
-            'path' => \Modular\ConnectorDependencies\storage_path('cache'),
+            'path' => \Modular\Connector\Helper\PrivateStorage::folderPath('cache'),
         ],
 
         'wordpress' => [

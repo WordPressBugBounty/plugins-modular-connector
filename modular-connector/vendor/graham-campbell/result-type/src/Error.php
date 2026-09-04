@@ -14,10 +14,9 @@ namespace Modular\ConnectorDependencies\GrahamCampbell\ResultType;
 use Modular\ConnectorDependencies\PhpOption\None;
 use Modular\ConnectorDependencies\PhpOption\Some;
 /**
- * @template T
- * @template E
+ * @template-covariant E
  *
- * @extends \GrahamCampbell\ResultType\Result<T,E>
+ * @extends \GrahamCampbell\ResultType\Result<never,E>
  */
 final class Error extends Result
 {
@@ -43,7 +42,7 @@ final class Error extends Result
      *
      * @param F $value
      *
-     * @return \GrahamCampbell\ResultType\Result<T,F>
+     * @return \GrahamCampbell\ResultType\Error<F>
      */
     public static function create($value)
     {
@@ -52,7 +51,7 @@ final class Error extends Result
     /**
      * Get the success option value.
      *
-     * @return \PhpOption\Option<T>
+     * @return \PhpOption\Option<never>
      */
     public function success()
     {
@@ -63,9 +62,9 @@ final class Error extends Result
      *
      * @template S
      *
-     * @param callable(T):S $f
+     * @param callable(never):S $f
      *
-     * @return \GrahamCampbell\ResultType\Result<S,E>
+     * @return \GrahamCampbell\ResultType\Error<E>
      */
     public function map(callable $f)
     {
@@ -77,13 +76,12 @@ final class Error extends Result
      * @template S
      * @template F
      *
-     * @param callable(T):\GrahamCampbell\ResultType\Result<S,F> $f
+     * @param callable(never):\GrahamCampbell\ResultType\Result<S,F> $f
      *
-     * @return \GrahamCampbell\ResultType\Result<S,F>
+     * @return \GrahamCampbell\ResultType\Error<E>
      */
     public function flatMap(callable $f)
     {
-        /** @var \GrahamCampbell\ResultType\Result<S,F> */
         return self::create($this->value);
     }
     /**
@@ -102,7 +100,7 @@ final class Error extends Result
      *
      * @param callable(E):F $f
      *
-     * @return \GrahamCampbell\ResultType\Result<T,F>
+     * @return \GrahamCampbell\ResultType\Error<F>
      */
     public function mapError(callable $f)
     {

@@ -9,55 +9,24 @@ use Modular\Connector\Backups\Iron\Jobs\ProcessFilesJob;
 use Modular\Connector\Backups\Iron\Jobs\ProcessUploadJob;
 use Modular\Connector\Backups\Iron\Manifest\Manifest;
 use Modular\Connector\Facades\Manager;
-use Modular\Connector\Manifest\Contracts\ManifestablePartContract;
+use Modular\Connector\Manifest\AbstractManifestPart;
 use Modular\Connector\Manifest\Contracts\ManifestContract;
+use Modular\Connector\Manifest\ExcludedPaths;
 use Modular\ConnectorDependencies\Carbon\Carbon;
-use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
-use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\dispatch;
 use function Modular\ConnectorDependencies\event;
 
-class BackupPart implements ManifestablePartContract
+class BackupPart extends AbstractManifestPart
 {
-    /**
-     * @var string
-     */
-    public string $mrid;
-
-    /**
-     * @var string
-     */
-    public string $name;
-
     /**
      * @var int
      */
     public int $siteBackup;
-
-    /**
-     * @var int
-     */
-    public int $totalItems = 0;
-
-    /**
-     * @var string
-     */
-    public string $type;
-
-    /**
-     * @var int
-     */
-    public int $offset = 0;
-
-    /**
-     * @var string
-     */
-    public string $status = ManagerBackupPartUpdated::STATUS_PENDING;
 
     /**
      * @var int
@@ -70,49 +39,9 @@ class BackupPart implements ManifestablePartContract
     public int $batchSize = 0;
 
     /**
-     * @var string
-     */
-    public string $manifestPath;
-
-    /**
-     * @var string
-     */
-    public string $filesystem = self::FILESYSTEM_DEFAULT;
-
-    /**
-     * @var array|string[]
-     */
-    public array $included = [];
-
-    /**
-     * @var array|string[]
-     */
-    public array $excludedFiles = [];
-
-    /**
-     * @var array|string[]
-     */
-    public array $excludedTables = [];
-
-    /**
-     * @var array|string[]
-     */
-    public array $excludedExtensions = [];
-
-    /**
-     * @var int
-     */
-    public int $excludedSize = 0;
-
-    /**
      * @var bool
      */
     public bool $onlyWithTheSamePrefix = false;
-
-    /**
-     * @var int
-     */
-    public int $limit = 5000;
 
     /**
      * @var int
@@ -192,33 +121,35 @@ class BackupPart implements ManifestablePartContract
      */
     public int $dumpLargeTableSize = 100 * 1024 * 1024; // 100 MB
 
+    /**
+     * True once the one-shot dump of the small tables lost the connection. It survives
+     * redispatch so a resumed tick goes straight to the chunked path instead of retrying
+     * a one-shot that already proved it cannot finish here.
+     *
+     * @var bool
+     */
+    public bool $dumpSmallChunked = false;
+
+    /**
+     * Small tables to dump one by one, resolved lazily the first time the fallback runs so
+     * the happy-path job payload never carries them. Each entry: ['name' => …, 'avgRow' => …]
+     *
+     * @var array
+     */
+    public array $dumpSmallTables = [];
+
+    /**
+     * Index into $dumpSmallTables of the table currently being dumped.
+     *
+     * @var int
+     */
+    public int $dumpSmallTableIndex = 0;
+
     public const DUMP_PHASE_PLAN = 'plan';
     public const DUMP_PHASE_SMALL = 'small';
     public const DUMP_PHASE_LARGE = 'large';
     public const DUMP_PHASE_MERGE = 'merge';
     public const DUMP_PHASE_COMPRESS = 'compress';
-
-    public const INCLUDE_DATABASE = 'database';
-    public const INCLUDE_CORE = 'core';
-    public const INCLUDE_PLUGINS = 'plugins';
-    public const INCLUDE_THEMES = 'themes';
-    public const INCLUDE_MU_PLUGINS = 'mu_plugins';
-    public const INCLUDE_CONTENT = 'content';
-    public const INCLUDE_UPLOADS = 'uploads';
-
-    public const FILESYSTEM_DEFAULT = 'default';
-    public const FILESYSTEM_CUSTOM = 'custom';
-
-    /**
-     * Class constructor.
-     *
-     * @param string $mrid
-     * @param \stdClass $payload
-     */
-    public function __construct(string $mrid)
-    {
-        $this->mrid = $mrid;
-    }
 
     /**
      * Resolve database connection from Config.
@@ -271,33 +202,14 @@ class BackupPart implements ManifestablePartContract
      */
     public function setPayload(\stdClass $payload): BackupPart
     {
-        $this->name = trim($payload->name, '"');
         $this->siteBackup = (int)$payload->site_backup;
 
-        $this->filesystem = $filesystem = $payload->filesystem ?? self::FILESYSTEM_DEFAULT;
-        $included = $payload->included ?? [];
-
-        // When the filesystem is default and the core is included, we need to include all other directories
-        if ($filesystem === self::FILESYSTEM_DEFAULT && in_array(self::INCLUDE_CORE, $included)) {
-            $included = array_merge($included, [
-                self::INCLUDE_PLUGINS,
-                self::INCLUDE_THEMES,
-                self::INCLUDE_MU_PLUGINS,
-                self::INCLUDE_CONTENT,
-                self::INCLUDE_UPLOADS,
-            ]);
-        }
-
-        $this->included = $included;
+        // Read before the shared parsing: resolveExcludedTables() depends on it.
         $this->onlyWithTheSamePrefix = data_get($payload, 'batch.database_same_prefix', false);
 
-        if ($this->type !== self::INCLUDE_DATABASE) {
-            $this->excludedFiles = $this->getExcludedFiles($this->type, data_get($payload, 'excluded', []));
-            $this->excludedExtensions = data_get($payload, 'excluded.extensions') ?: [];
-            $this->excludedSize = data_get($payload, 'excluded.max_file_size') ?: 0;
-        } else {
-            $this->excludedTables = $this->getExcludedTables(data_get($payload, 'excluded.database', []));
-        }
+        // name, filesystem, included (core expanded to every disk), batch.max_files
+        // and the excluded.* lists — shared with the scan driver.
+        $this->applyCommonPayload($payload);
 
         if (isset($payload->batch->size)) {
             $size = $payload->batch->size;
@@ -313,10 +225,6 @@ class BackupPart implements ManifestablePartContract
 
         if (isset($payload->batch->timeout)) {
             $this->batchMaxTimeout = $payload->batch->timeout;
-        }
-
-        if (isset($payload->batch->max_files)) {
-            $this->limit = $payload->batch->max_files;
         }
 
         $largeTableSize = (int)data_get($payload, 'batch.database_large_table_size', 0);
@@ -377,70 +285,21 @@ class BackupPart implements ManifestablePartContract
     }
 
     /**
-     * Gets the excluded files.
-     *
      * @param string $type
      * @param mixed $excluded
      * @return array
      */
-    private function getExcludedFiles(string $type, $excluded): array
+    protected function resolveExcludedFiles(string $type, $excluded): array
     {
-        $filesystem = $this->filesystem;
-
-        if ($filesystem === self::FILESYSTEM_DEFAULT) {
-            $files = data_get($excluded, 'files', []);
-
-            $relativePath = File::getRelativeDiskToDisk($type, 'core');
-
-            $files = Collection::make($files)
-                // If the type is core, we need to exclude all files but if the type is another directory,
-                // we need to exclude only the files from that directory OR parent directories
-                ->filter(function ($file) use ($type, $relativePath) {
-                    if ($type === 'core') {
-                        return true;
-                    }
-
-                    // Keep if exclusion is within this type's directory
-                    // Example: "wp-content/themes/twentytwenty" for type="themes"
-                    if (Str::startsWith($file, $relativePath)) {
-                        return true;
-                    }
-
-                    // Keep if this type's directory is within the exclusion (parent exclusion)
-                    // Example: "wp-content" excludes type="themes" (wp-content/themes)
-                    if (Str::startsWith($relativePath, $file)) {
-                        return true;
-                    }
-
-                    return false;
-                })
-                ->map(function ($file) use ($relativePath) {
-                    // If relativePath starts with the exclusion, this is a parent exclusion
-                    // Return empty string to mark entire type as excluded
-                    if (Str::startsWith($relativePath, $file)) {
-                        return '';
-                    }
-
-                    // Remove the relative path prefix
-                    $result = Str::after($file, $relativePath);
-
-                    // Remove only leading directory separators (/, \)
-                    // Using preg_replace instead of ltrim for explicit behavior:
-                    // ltrim('/\\') removes ANY combination of / and \ from the start
-                    // preg_replace removes only consecutive separators from the start
-                    return preg_replace('#^[/\\\\]+#', '', $result);
-                })
-                ->toArray();
-        } else {
-            // When we use a custom filesystem, we can get the excluded files directly
-            $files = data_get($excluded, $type, []);
+        // Default filesystem: `excluded.files` holds root-relative paths that apply
+        // to every disk. Custom filesystem: `excluded.{type}` holds this disk's own
+        // list. Same mapper as the scan driver — whole-segment matching, separators
+        // normalised, `''` when the whole disk is excluded.
+        if ($this->filesystem === self::FILESYSTEM_DEFAULT) {
+            return ExcludedPaths::forDisk($type, (array)(data_get($excluded, 'files') ?: []));
         }
 
-        $defaultFileExclusions = File::getDefaultFileExclusions($type);
-        $defaultDirectoryExclusions = File::getDefaultDirectoriesExclusions($type);
-        $excluded = array_merge($defaultFileExclusions, $defaultDirectoryExclusions, $files);
-
-        return array_values(array_unique($excluded));
+        return ExcludedPaths::forDisk($type, [], (array)(data_get($excluded, $type) ?: []));
     }
 
     /**
@@ -449,7 +308,7 @@ class BackupPart implements ManifestablePartContract
      * @param array $excludedTables
      * @return array
      */
-    private function getExcludedTables(array $excludedTables = []): array
+    protected function resolveExcludedTables(array $excludedTables): array
     {
         $excludedTables = array_merge($excludedTables, Manager::driver('database')->views());
 
@@ -465,46 +324,53 @@ class BackupPart implements ManifestablePartContract
     }
 
     /**
-     * @param string $type
-     * @return $this
+     * @return string
      */
-    public function setType(string $type): BackupPart
+    public function getManifestPendingStatus(): string
     {
-        $this->type = $type;
-
-        return $this;
+        return ManagerBackupPartUpdated::STATUS_PENDING;
     }
 
     /**
-     * @return $this
+     * @return string
      */
-    public function setManifestPath(): BackupPart
+    public function getManifestInProgressStatus(): string
     {
-        $this->manifestPath = Manifest::path($this);
-
-        return $this;
+        return ManagerBackupPartUpdated::STATUS_MANIFEST_IN_PROGRESS;
     }
 
     /**
-     * @return $this
+     * A finished backup manifest goes straight to the upload queue.
+     *
+     * @return string
      */
-    public function calculateExclusion(): BackupPart
+    public function getManifestDoneStatus(): string
     {
-        $status = ManagerBackupPartUpdated::STATUS_PENDING;
+        return ManagerBackupPartUpdated::STATUS_MANIFEST_UPLOAD_PENDING;
+    }
 
-        $isIncluded = array_search($this->type, $this->included);
+    /**
+     * @return string
+     */
+    public function getManifestExcludedStatus(): string
+    {
+        return ManagerBackupPartUpdated::STATUS_EXCLUDED;
+    }
 
-        if ($isIncluded === false) {
-            $status = ManagerBackupPartUpdated::STATUS_EXCLUDED;
-        } else {
-            $isExcluded = in_array('', $this->excludedFiles);
+    /**
+     * @return string
+     */
+    public function getManifestDisk(): string
+    {
+        return 'backups';
+    }
 
-            if ($isExcluded) {
-                $status = ManagerBackupPartUpdated::STATUS_EXCLUDED;
-            }
-        }
-
-        return $this->markAs($status, false);
+    /**
+     * @return string
+     */
+    protected function manifestPathInfix(): string
+    {
+        return 'manifest';
     }
 
     /**
@@ -527,6 +393,14 @@ class BackupPart implements ManifestablePartContract
                     Storage::disk('backups')->delete($segment);
                 }
             }
+
+            for ($index = 0; $index < count($this->dumpSmallTables); $index++) {
+                $scratch = $this->getSmallScratchFileName($index);
+
+                if (Storage::disk('backups')->exists($scratch)) {
+                    Storage::disk('backups')->delete($scratch);
+                }
+            }
         }
 
         Storage::disk('backups')->delete($this->getFileNameWithExtension('zip'));
@@ -543,6 +417,19 @@ class BackupPart implements ManifestablePartContract
     public function getSegmentFileName(int $index): string
     {
         return sprintf('%s-%s-segment-%03d.sql', $this->name, $this->type, $index);
+    }
+
+    /**
+     * Scratch file holding one small table while the segment-0 fallback dumps it in chunks.
+     * Its content is appended into segment 0 and the file deleted right after, so at most
+     * one of these exists at a time.
+     *
+     * @param int $index
+     * @return string
+     */
+    public function getSmallScratchFileName(int $index): string
+    {
+        return sprintf('%s-%s-small-%03d.sql', $this->name, $this->type, $index);
     }
 
     /**
@@ -670,28 +557,6 @@ class BackupPart implements ManifestablePartContract
         }
 
         return $this;
-    }
-
-    /**
-     * @param string $status
-     * @param \Throwable|null $e
-     */
-    public function markAsFailed($status, ?\Throwable $e = null)
-    {
-        $this->cleanFiles(true);
-
-        $extra = [];
-        if ($e !== null) {
-            $extra = [
-                'error' => [
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ],
-            ];
-        }
-
-        $this->markAs($status, true, $extra);
     }
 
     /**

@@ -10,39 +10,106 @@ class HttpUtils
 {
     private const ALLOWED_DIRECT_REQUEST_TYPES = ['lb', 'request', 'oauth'];
     /**
-     * Get memory limit in MB.
+     * Memory we aim for. WordPress caps WP_MAX_MEMORY_LIMIT at 256M, which is not
+     * enough for backups on sites with large tables or many files.
+     */
+    private const TARGET_MEMORY_LIMIT = '512M';
+    /**
+     * What an unlimited memory_limit resolves to. A host with no ceiling still gets
+     * one: a runaway job must never be free to exhaust the whole machine.
+     */
+    private const UNLIMITED_MEMORY_LIMIT = '3200M';
+    /**
+     * Fraction of the limit a worker may use before exiting gracefully. The remainder
+     * has to absorb a whole job's peak: the budget is only checked between jobs, never
+     * while one is running.
+     */
+    private const MEMORY_BUDGET_RATIO = 0.8;
+    /**
+     * The memory_limit the host was configured with, captured before we raise it.
+     *
+     * @var string|null
+     */
+    protected static $memoryLimitServer = null;
+    /**
+     * Get the memory limit currently in effect, in bytes. Returns -1 when unlimited.
      *
      * @return int
      */
     public static function currentMemoryLimit(): int
     {
-        if (function_exists('ini_get')) {
-            $memoryLimit = ini_get('memory_limit');
-        } else {
-            $memoryLimit = '256M';
-        }
+        $memoryLimit = function_exists('ini_get') ? ini_get('memory_limit') : \false;
         if (!$memoryLimit) {
             $memoryLimit = '256M';
         }
-        return $memoryLimit !== -1 ? wp_convert_hr_to_bytes($memoryLimit) : $memoryLimit;
+        // ini_get() returns a string, so '-1' never matches a strict int comparison.
+        return intval($memoryLimit) === -1 ? -1 : wp_convert_hr_to_bytes($memoryLimit);
     }
     /**
+     * Get the memory limit we want the process to run with, in bytes. Never returns -1:
+     * "unlimited" resolves to UNLIMITED_MEMORY_LIMIT so there is always a ceiling. An
+     * explicit finite limit is honoured as configured and never lowered.
+     *
      * @param bool $inMegabytes
      * @return int
      */
     public static function maxMemoryLimit(bool $inMegabytes = \false): int
     {
-        $currentMemoryLimit = HttpUtils::currentMemoryLimit();
-        $maxMemoryLimit = defined('WP_MAX_MEMORY_LIMIT') ? \WP_MAX_MEMORY_LIMIT : '512M';
-        if (!$maxMemoryLimit || intval($maxMemoryLimit) === -1) {
-            // Unlimited, set to 3GB.
-            $maxMemoryLimit = '3200M';
+        $unlimited = wp_convert_hr_to_bytes(self::UNLIMITED_MEMORY_LIMIT);
+        $currentMemoryLimit = static::currentMemoryLimit();
+        if ($currentMemoryLimit === -1) {
+            $currentMemoryLimit = $unlimited;
         }
-        $maxMemoryLimit = wp_convert_hr_to_bytes($maxMemoryLimit);
-        if ($maxMemoryLimit > $currentMemoryLimit) {
-            $currentMemoryLimit = $maxMemoryLimit;
+        $override = defined('Modular\ConnectorDependencies\MODULAR_MAX_MEMORY_LIMIT') ? MODULAR_MAX_MEMORY_LIMIT : null;
+        if ($override) {
+            $maxMemoryLimit = intval($override) === -1 ? $unlimited : wp_convert_hr_to_bytes($override);
+        } else {
+            $wpMaxMemoryLimit = defined('WP_MAX_MEMORY_LIMIT') ? \WP_MAX_MEMORY_LIMIT : null;
+            if (!$wpMaxMemoryLimit) {
+                $wpMaxMemoryLimit = 0;
+            } elseif (intval($wpMaxMemoryLimit) === -1) {
+                $wpMaxMemoryLimit = $unlimited;
+            } else {
+                $wpMaxMemoryLimit = wp_convert_hr_to_bytes($wpMaxMemoryLimit);
+            }
+            $maxMemoryLimit = max($wpMaxMemoryLimit, wp_convert_hr_to_bytes(self::TARGET_MEMORY_LIMIT));
         }
-        return $inMegabytes ? $currentMemoryLimit / 1024 / 1024 : $currentMemoryLimit;
+        $memoryLimit = max($currentMemoryLimit, $maxMemoryLimit);
+        return $inMegabytes ? intdiv($memoryLimit, 1024 * 1024) : $memoryLimit;
+    }
+    /**
+     * Memory budget for a queue worker, in megabytes.
+     *
+     * Deliberately below the real limit: the worker only stops once usage reaches this
+     * value, so handing it the full limit means PHP fatals before it can exit, requeue
+     * and relaunch the schedule.
+     *
+     * @return int
+     */
+    public static function memoryBudget(): int
+    {
+        return max(64, (int) (static::maxMemoryLimit(\true) * self::MEMORY_BUDGET_RATIO));
+    }
+    /**
+     * Remember the host's memory_limit before it gets raised, so it can be reported as-is.
+     *
+     * @param string $memoryLimit
+     * @return void
+     */
+    public static function rememberMemoryLimitServer(string $memoryLimit)
+    {
+        if (static::$memoryLimitServer === null) {
+            static::$memoryLimitServer = $memoryLimit;
+        }
+    }
+    /**
+     * The host's memory_limit, before we raised it.
+     *
+     * @return string
+     */
+    public static function memoryLimitServer(): string
+    {
+        return static::$memoryLimitServer ?? (string) ini_get('memory_limit');
     }
     /**
      * @return bool

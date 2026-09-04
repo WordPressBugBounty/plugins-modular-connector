@@ -17,6 +17,7 @@ if (!defined('ABSPATH')) {
 */
 
 use Modular\Connector\Exceptions\Handler as ExceptionHandler;
+use Modular\Connector\Helper\PrivateStorage;
 use Modular\Connector\Http\Kernel as HttpKernel;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Application;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Bootloader;
@@ -51,7 +52,19 @@ function modular_connector_register_storage(Application $app)
             }
         }
 
-        $subFolders = ['views', 'logs', 'cache', 'upgrades', 'scans'];
+        // Only `logs` keeps a bare name: there it is the file that carries the token,
+        // since Monolog has to append the rotation date after it.
+        $subFolders = ['logs'];
+
+        // The rest carry the token in the folder name — see PrivateStorage. They are
+        // only ever created, never moved: mkdir is what this bootstrap has always done
+        // on every host, whereas a rename brings failure modes of its own (separate
+        // mounts, write-restricted hostings) and would strand the old folder for good
+        // once the new one exists. Whatever the previous name was, including the
+        // pre-3.2.2 wp-content/modular_backups, AutoCleanUpCommand removes it.
+        foreach (['views', 'cache', 'upgrades', 'scans', 'backups'] as $name) {
+            $subFolders[] = PrivateStorage::folderName($name);
+        }
 
         foreach ($subFolders as $subFolder) {
             $subPath = $storagePath . DIRECTORY_SEPARATOR . $subFolder;
@@ -70,7 +83,9 @@ function modular_connector_register_storage(Application $app)
             }
 
             // Protect each subfolder against directory listing and direct access
-            // (Apache/Nginx via .htaccess + index files, IIS via web.config).
+            // (Apache via .htaccess, IIS via web.config, any server via the index files).
+            // Nginx reads none of these, so anything sensitive written here must also
+            // carry an unguessable name — see PrivateStorage.
             $protectors = [
                 'index.php' => '<?php // Silence is golden.',
                 'index.html' => '',

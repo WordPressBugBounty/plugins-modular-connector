@@ -2,6 +2,7 @@
 
 namespace Modular\ConnectorDependencies\Ares\Framework\Foundation\Queue;
 
+use Modular\ConnectorDependencies\Ares\Framework\Foundation\Database\ConnectionRefusedException;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Illuminate\Queue\Worker as IlluminateWorker;
 use Modular\ConnectorDependencies\Illuminate\Queue\WorkerOptions;
@@ -16,6 +17,25 @@ class Worker extends IlluminateWorker
     protected function supportsAsyncSignals()
     {
         return ServerSetup::supportsAsyncSignals();
+    }
+    /**
+     * Stop the worker if we have lost connection to a database.
+     *
+     * Extended to also quit when the server refuses new connections: the pool is saturated
+     * and sleeping a second between pops only keeps this process queueing for a slot.
+     *
+     * @param \Throwable $e
+     * @return void
+     */
+    protected function stopWorkerIfLostConnection($e)
+    {
+        parent::stopWorkerIfLostConnection($e);
+        if (ConnectionRefusedException::matches($e)) {
+            if (class_exists(Log::class)) {
+                Log::warning('Worker stopping: database refused new connections.');
+            }
+            $this->shouldQuit = \true;
+        }
     }
     /**
      * Determine the exit code to stop the process if necessary.

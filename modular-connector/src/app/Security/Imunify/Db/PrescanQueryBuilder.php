@@ -91,8 +91,11 @@ class PrescanQueryBuilder
      * @param string $column
      * @param string $key
      * @param bool $isBase64
-     * @param string|int $lastKey Cursor: yield rows with key strictly greater than this.
-     *                            Pass '' or 0 to start from the beginning.
+     * @param string|int|null $lastKey Cursor: yield rows with key strictly greater
+     *                                 than this, compared with the key column's own
+     *                                 type (numeric for integer keys, collation
+     *                                 order for varchar keys). `null` starts from
+     *                                 the beginning without a cursor clause.
      * @param array $rowFilter Optional `{column, exclude_patterns}` from the
      *                         table descriptor — when set, rows whose
      *                         `column` value matches any of `exclude_patterns`
@@ -101,8 +104,14 @@ class PrescanQueryBuilder
      *                         /db-content endpoint.
      * @return \Generator yields array of rows
      */
-    public function executePrescan($table, $column, $key, $isBase64, $lastKey = 0, array $rowFilter = [])
+    public function executePrescan($table, $column, $key, $isBase64, $lastKey = null, array $rowFilter = [])
     {
+        // Legacy cursor from a job queued before the typed cursor: `0` was the
+        // "start" marker and only ever worked for integer keys.
+        if ($lastKey === 0) {
+            $lastKey = null;
+        }
+
         if (empty($this->prescanPatterns)) {
             return;
         }
@@ -147,24 +156,22 @@ class PrescanQueryBuilder
             }
         }
 
-        $sql = sprintf(
-            'SELECT %s AS row_key, HEX(%s) AS hex_content '
-            . 'FROM %s '
-            . 'WHERE %s > ? AND LENGTH(%s) <= %d AND %s '
-            . 'ORDER BY %s LIMIT %d',
-            $quotedKey,
-            $quotedColumn,
-            $quotedTable,
-            $quotedKey,
-            $quotedColumn,
-            $this->sizeLimit,
-            $whereSql,
-            $quotedKey,
-            $this->batchSize
-        );
+        // Two shapes of the same query: the first page has no cursor clause, so
+        // the key's own type drives the comparison on every later page (an
+        // integer cursor against an integer key, a string cursor against a
+        // varchar key). Hard-coding `key > 0` would coerce a varchar key to a
+        // number and skip every row that does not start with a digit.
+        $select = sprintf('SELECT %s AS row_key, HEX(%s) AS hex_content FROM %s', $quotedKey, $quotedColumn, $quotedTable);
+        $filter = sprintf('LENGTH(%s) <= %d AND %s', $quotedColumn, $this->sizeLimit, $whereSql);
+        $order = sprintf('ORDER BY %s LIMIT %d', $quotedKey, $this->batchSize);
+
+        $firstPageSql = sprintf('%s WHERE %s %s', $select, $filter, $order);
+        $nextPageSql = sprintf('%s WHERE %s > ? AND %s %s', $select, $quotedKey, $filter, $order);
 
         while (true) {
-            $rows = DB::select($sql, array_merge([$lastKey], $bindings));
+            $rows = $lastKey === null
+                ? DB::select($firstPageSql, $bindings)
+                : DB::select($nextPageSql, array_merge([$lastKey], $bindings));
 
             if (empty($rows)) {
                 return;

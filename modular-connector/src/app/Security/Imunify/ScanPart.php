@@ -2,138 +2,62 @@
 
 namespace Modular\Connector\Security\Imunify;
 
-use Modular\Connector\Backups\Iron\BackupPart;
-use Modular\Connector\Backups\Iron\Helpers\File;
-use Modular\Connector\Manifest\Contracts\ManifestablePartContract;
+use Modular\Connector\Manifest\AbstractManifestPart;
 use Modular\Connector\Manifest\Contracts\ManifestContract;
+use Modular\Connector\Manifest\ExcludedPaths;
 use Modular\Connector\Security\Facades\Scan;
 use Modular\Connector\Security\Imunify\Events\ManagerScanPartUpdated;
 use Modular\Connector\Security\Imunify\Manifest\ScanManifest;
 use Modular\ConnectorDependencies\Carbon\Carbon;
-use Modular\ConnectorDependencies\Illuminate\Support\Collection;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Storage;
-use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\data_get;
 use function Modular\ConnectorDependencies\event;
 
-class ScanPart implements ManifestablePartContract
+/**
+ * One disk of a malware scan. The shared part of the lifecycle (payload
+ * parsing, exclusion mapping, manifest path, exclusion status) comes from
+ * `AbstractManifestPart`; what is specific here is the allowlist of scannable
+ * extensions, the scan status vocabulary, the per-disk webhook and the fan-in
+ * coordination cache the merge listener reads.
+ */
+class ScanPart extends AbstractManifestPart
 {
     /**
-     * @var string
+     * Directories no scan looks into, on every disk: VCS metadata and build
+     * trees the runtime never loads. Applied through the same per-file
+     * exclusion check as the user's own entries.
      */
-    public $mrid;
+    private const DEFAULT_DIRECTORY_EXCLUSIONS = ['.git', 'node_modules', '.opcache'];
 
     /**
-     * @var string
+     * @var int Default cap for files entering the scan manifest (5 MB); the
+     *          API can override it with `max_file_size`.
      */
-    public $name;
-
-    /**
-     * @var int
-     */
-    public $siteScan;
-
-    /**
-     * @var string
-     */
-    public $type;
-
-    /**
-     * @var string
-     */
-    public $status = ManagerScanPartUpdated::STATUS_PENDING;
+    private const DEFAULT_MAX_FILE_SIZE = 5242880;
 
     /**
      * @var int
      */
-    public $offset = 0;
+    public int $siteScan = 0;
 
     /**
-     * @var int
+     * @var array Default allowlist, aligned with Imunify's own plugin: every
+     *            suffix a hosting stack may execute as PHP (php3/4/5/7, phps,
+     *            runtime-included .inc) plus web-served types that can carry a
+     *            script payload (.svg). Media and binary types stay out. The
+     *            API can override it with `extensions`.
      */
-    public $totalItems = 0;
+    public array $allowedExtensions = [
+        'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps', 'inc',
+        'js', 'html', 'htm', 'htaccess', 'svg',
+    ];
 
     /**
-     * @var int
+     * @var string Imunify matches verdicts by full SHA256; not negotiable.
      */
-    public $limit = 5000;
-
-    /**
-     * @var string
-     */
-    public $manifestPath;
-
-    /**
-     * @var int
-     */
-    public $maxFileSize = 5242880; // 5MB
-
-    /**
-     * @var array
-     */
-    public $allowedExtensions = ['php', 'phtml', 'js', 'html', 'htm', 'htaccess'];
-
-    /**
-     * @var string
-     */
-    public $hashAlgorithm = 'sha256';
-
-    /**
-     * @var array
-     */
-    public $excludedFiles = [];
-
-    /**
-     * @var array
-     */
-    public $excludedExtensions = [];
-
-    /**
-     * @var array
-     */
-    public $excludedTables = [];
-
-    /**
-     * @var array
-     */
-    public $included = [];
-
-    /**
-     * @var string 'default' (single-site) | 'custom' (e.g., per-disk explicit list)
-     */
-    public $filesystem = self::FILESYSTEM_DEFAULT;
-
-    public const INCLUDE_DATABASE = BackupPart::INCLUDE_DATABASE;
-    public const INCLUDE_CORE = BackupPart::INCLUDE_CORE;
-    public const INCLUDE_PLUGINS = BackupPart::INCLUDE_PLUGINS;
-    public const INCLUDE_THEMES = BackupPart::INCLUDE_THEMES;
-    public const INCLUDE_MU_PLUGINS = BackupPart::INCLUDE_MU_PLUGINS;
-    public const INCLUDE_CONTENT = BackupPart::INCLUDE_CONTENT;
-    public const INCLUDE_UPLOADS = BackupPart::INCLUDE_UPLOADS;
-
-    public const FILESYSTEM_DEFAULT = BackupPart::FILESYSTEM_DEFAULT;
-    public const FILESYSTEM_CUSTOM = BackupPart::FILESYSTEM_CUSTOM;
-
-    /**
-     * @param string $mrid
-     */
-    public function __construct($mrid)
-    {
-        $this->mrid = $mrid;
-    }
-
-    /**
-     * @param string $type
-     * @return $this
-     */
-    public function setType($type)
-    {
-        $this->type = $type;
-
-        return $this;
-    }
+    public string $hashAlgorithm = 'sha256';
 
     /**
      * @param \stdClass $payload
@@ -149,142 +73,100 @@ class ScanPart implements ManifestablePartContract
             }
         }
 
-        $this->name = preg_replace('/[^a-zA-Z0-9._-]/', '', trim($payload->name, '"'));
         $this->siteScan = (int)$payload->site_scan;
-
-        $this->filesystem = (string)$payload->filesystem;
-        $included = $payload->included ?: [];
-
-        // Contract: with filesystem=default the API only sends `core` and/or `database`.
-        // We expand `core` to every WordPress file disk so the plugin owns the list.
-        // For filesystem=custom the API sends specific file disks and we honor them as-is.
-        if ($this->filesystem === self::FILESYSTEM_DEFAULT && in_array(self::INCLUDE_CORE, $included, true)) {
-            $included = array_values(array_unique(array_merge($included, [
-                self::INCLUDE_PLUGINS,
-                self::INCLUDE_THEMES,
-                self::INCLUDE_MU_PLUGINS,
-                self::INCLUDE_CONTENT,
-                self::INCLUDE_UPLOADS,
-            ])));
-        }
-
-        $this->included = $included;
-
-        if (isset($payload->max_file_size)) {
-            $this->maxFileSize = (int)$payload->max_file_size;
-        }
 
         if (isset($payload->extensions) && is_array($payload->extensions)) {
             $this->allowedExtensions = $payload->extensions;
         }
 
-        if (isset($payload->batch->max_files)) {
-            $this->limit = (int)$payload->batch->max_files;
-        }
+        // name, filesystem, included (core expanded to every disk), batch.max_files
+        // and the excluded.* lists — shared with the backup driver.
+        $this->applyCommonPayload($payload);
 
-        // File-disk parts use excluded.core (paths). Database parts use excluded.database (tables).
-        if ($this->type === self::INCLUDE_DATABASE) {
-            $this->excludedTables = data_get($payload, 'excluded.database') ?: [];
-        } else {
-            $this->excludedFiles = $this->getExcludedFiles($this->type, data_get($payload, 'excluded', []));
-        }
-
-        $this->excludedExtensions = data_get($payload, 'excluded.extensions') ?: [];
+        // The scan name ends up in file names on the `scans` disk and in cache
+        // keys, so it is reduced to a safe character set.
+        $this->name = preg_replace('/[^a-zA-Z0-9._-]/', '', $this->name);
 
         return $this;
     }
 
     /**
-     * Build the file-exclusion list for the current part type.
+     * Scan payloads carry the size cap at the top level, not under `excluded`.
      *
-     * Both 'default' and 'custom' filesystems use the same key: `excluded.core` with
-     * paths relative to the WordPress root (e.g. "wp-content/plugins/hello-dolly/.*").
-     * We map them to disk-relative paths and return:
-     *   - `''` (empty string) when an exclusion is a PARENT of the disk's relative
-     *      path → signals that the entire part is excluded (calculateExclusion picks
-     *      this up to mark STATUS_EXCLUDED).
-     *   - the disk-relative path otherwise.
+     * @param \stdClass $payload
+     * @return int
+     */
+    protected function resolveExcludedSize(\stdClass $payload): int
+    {
+        return isset($payload->max_file_size) ? (int)$payload->max_file_size : self::DEFAULT_MAX_FILE_SIZE;
+    }
+
+    /**
+     * Two sources are merged, so both payload shapes the API produces work:
+     *
+     *   - Root-relative paths under `excluded.core`, e.g.
+     *     "wp-content/plugins/hello-dolly". They apply to every disk; an
+     *     exclusion that is a PARENT of the disk's own path yields `''`, which
+     *     `calculateExclusion()` reads as "the whole part is excluded".
+     *   - Per-area paths under `excluded.{type}` (`plugins`, `themes`,
+     *     `mu_plugins`, `content`, `uploads`), which the API only sends with
+     *     `filesystem=custom` (the backup convention). Accepted either
+     *     disk-relative ("hello-dolly") or root-relative
+     *     ("wp-content/plugins/hello-dolly") until the API fixes the format.
+     *     Their presence in `default` mode is an API bug worth surfacing, so
+     *     it is logged.
      *
      * @param string $type
      * @param mixed $excluded
      * @return array
      */
-    private function getExcludedFiles($type, $excluded)
+    protected function resolveExcludedFiles(string $type, $excluded): array
     {
-        $rawFiles = data_get($excluded, 'core', []);
-        $relativePath = File::getRelativeDiskToDisk($type, 'core');
+        $rootRelative = (array)(data_get($excluded, 'core') ?: []);
 
-        $files = Collection::make($rawFiles)
-            ->filter(function ($file) use ($type, $relativePath) {
-                if ($type === self::INCLUDE_CORE) {
-                    return true;
-                }
+        $areaEntries = $type !== self::INCLUDE_CORE ? (array)(data_get($excluded, $type) ?: []) : [];
 
-                // Keep if the exclusion lives inside this disk
-                if (Str::startsWith($file, $relativePath)) {
-                    return true;
-                }
-
-                // Keep if the exclusion is a PARENT of this disk (e.g. "wp-content"
-                // excluding the "themes" disk at "wp-content/themes")
-                if (Str::startsWith($relativePath, $file)) {
-                    return true;
-                }
-
-                return false;
-            })
-            ->map(function ($file) use ($relativePath) {
-                if (Str::startsWith($relativePath, $file)) {
-                    // Parent exclusion → mark the whole disk as excluded
-                    return '';
-                }
-
-                $result = Str::after($file, $relativePath);
-
-                return preg_replace('#^[/\\\\]+#', '', $result);
-            })
-            ->toArray();
-
-        $defaultFileExclusions = File::getDefaultFileExclusions($type);
-        $defaultDirectoryExclusions = File::getDefaultDirectoriesExclusions($type);
-        $merged = array_merge($defaultFileExclusions, $defaultDirectoryExclusions, $files);
-
-        return array_values(array_unique($merged));
-    }
-
-    /**
-     * @return $this
-     */
-    public function setManifestPath()
-    {
-        $this->manifestPath = sprintf('%s-%s-%s', $this->name, 'scan-manifest', $this->type);
-
-        return $this;
-    }
-
-    /**
-     * @return $this
-     */
-    public function calculateExclusion()
-    {
-        $status = ManagerScanPartUpdated::STATUS_PENDING;
-
-        if (!in_array($this->type, $this->included)) {
-            $status = ManagerScanPartUpdated::STATUS_EXCLUDED;
-        } elseif (in_array('', $this->excludedFiles, true)) {
-            // A parent path in `excluded.core` covers this whole disk.
-            $status = ManagerScanPartUpdated::STATUS_EXCLUDED;
+        if (!empty($areaEntries) && $this->filesystem === self::FILESYSTEM_DEFAULT) {
+            Log::warning('ScanPart: per-area exclusions received with filesystem=default (API contract sends them only for custom)', [
+                'site_scan' => $this->siteScan,
+                'type' => $type,
+                'count' => count($areaEntries),
+            ]);
         }
 
-        return $this->markAs($status, false);
+        return ExcludedPaths::forDisk($type, $rootRelative, array_merge(self::DEFAULT_DIRECTORY_EXCLUSIONS, $areaEntries));
     }
 
     /**
-     * @return ManifestContract
+     * @return string
      */
-    public function createManifest()
+    public function getManifestPendingStatus(): string
     {
-        return ScanManifest::create($this);
+        return ManagerScanPartUpdated::STATUS_PENDING;
+    }
+
+    /**
+     * @return string
+     */
+    public function getManifestInProgressStatus(): string
+    {
+        return ManagerScanPartUpdated::STATUS_IN_PROGRESS;
+    }
+
+    /**
+     * @return string
+     */
+    public function getManifestDoneStatus(): string
+    {
+        return ManagerScanPartUpdated::STATUS_DONE;
+    }
+
+    /**
+     * @return string
+     */
+    public function getManifestExcludedStatus(): string
+    {
+        return ManagerScanPartUpdated::STATUS_EXCLUDED;
     }
 
     /**
@@ -293,6 +175,30 @@ class ScanPart implements ManifestablePartContract
     public function getManifestFailedStatus()
     {
         return ManagerScanPartUpdated::STATUS_FAILED;
+    }
+
+    /**
+     * @return string
+     */
+    public function getManifestDisk(): string
+    {
+        return 'scans';
+    }
+
+    /**
+     * @return string
+     */
+    protected function manifestPathInfix(): string
+    {
+        return 'scan-manifest';
+    }
+
+    /**
+     * @return ManifestContract
+     */
+    public function createManifest()
+    {
+        return ScanManifest::create($this);
     }
 
     /**
@@ -309,7 +215,7 @@ class ScanPart implements ManifestablePartContract
      * @param array $extra
      * @return $this
      */
-    public function markAs($status, $emitEvent = true, array $extra = [])
+    public function markAs($status, bool $emitEvent = true, array $extra = [])
     {
         if ($this->status === $status) {
             return $this;
@@ -332,7 +238,7 @@ class ScanPart implements ManifestablePartContract
         }
 
         if ($status === ManagerScanPartUpdated::STATUS_EXCLUDED) {
-            $this->cleanFiles();
+            $this->cleanFiles(true);
         }
 
         return $this;
@@ -363,29 +269,6 @@ class ScanPart implements ManifestablePartContract
     }
 
     /**
-     * @param string $status
-     * @param \Throwable|null $e
-     * @return void
-     */
-    public function markAsFailed($status, \Throwable $e = null)
-    {
-        $this->cleanFiles();
-
-        $extra = [];
-        if ($e !== null) {
-            $extra = [
-                'error' => [
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ],
-            ];
-        }
-
-        $this->markAs($status, true, $extra);
-    }
-
-    /**
      * @return bool
      */
     public function isCancelled()
@@ -398,11 +281,15 @@ class ScanPart implements ManifestablePartContract
     }
 
     /**
+     * The per-disk manifest is the only artifact a scan part owns; `$manifest`
+     * exists for signature parity with the backup part.
+     *
+     * @param bool $manifest
      * @return void
      */
-    public function cleanFiles()
+    public function cleanFiles(bool $manifest = false): void
     {
-        if (Storage::disk('scans')->exists($this->manifestPath)) {
+        if ($this->manifestPath !== '' && Storage::disk('scans')->exists($this->manifestPath)) {
             Storage::disk('scans')->delete($this->manifestPath);
         }
     }

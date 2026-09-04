@@ -56,4 +56,23 @@ class StartScanJob implements ShouldQueue
         // ImunifyDriver::scan() so it can emit ManagerScanPartsCalculated cleanly.
         Scan::options($this->requestId, $this->payload)->scan();
     }
+
+    /**
+     * Nothing has been emitted yet when this job dies (a malformed payload,
+     * a storage error building the parts), so API would wait forever. Close
+     * both flows with the reason — whichever the payload included, a terminal
+     * `cancelled` is what it needs.
+     *
+     * @param \Throwable|null $e
+     * @return void
+     */
+    public function failed(\Throwable $e = null)
+    {
+        $name = isset($this->payload->name) ? trim((string)$this->payload->name, '"') : '';
+        $siteScan = isset($this->payload->site_scan) ? (int)$this->payload->site_scan : 0;
+        $error = $e ? 'start_failed: ' . $e->getMessage() : 'start_failed';
+
+        Scan::cancelFiles($this->requestId, $name, $siteScan, $error);
+        Scan::cancelDatabase($this->requestId, $name, $siteScan, $error);
+    }
 }

@@ -4,11 +4,14 @@ namespace Modular\Connector\Security\Imunify\Jobs;
 
 use Modular\Connector\Backups\Iron\Helpers\HasMaxTime;
 use Modular\Connector\Security\Facades\Scan;
+use Modular\Connector\Security\ScanManager;
 use Modular\Connector\Security\Imunify\Db\DbTablesDiscoverer;
 use Modular\Connector\Security\Imunify\Db\PrescanQueryBuilder;
 use Modular\Connector\Security\Imunify\Events\ManagerScanCompleted;
 use Modular\Connector\Security\Imunify\Events\ManagerScanPartUpdated;
 use Modular\Connector\Security\Imunify\Events\ManagerScanProgressUpdated;
+use Modular\Connector\Security\Imunify\Exceptions\ImunifyQuotaExceededException;
+use Modular\Connector\Security\Imunify\Exceptions\ImunifyUnavailableException;
 use Modular\Connector\Security\Imunify\ImunifyClient;
 use Modular\Connector\Security\Imunify\ScanPart;
 use Modular\ConnectorDependencies\Carbon\Carbon;
@@ -42,14 +45,24 @@ use function Modular\ConnectorDependencies\event;
  *        status=completed; carries the threats list inline.
  *
  * Failures (mutually exclusive with step 4):
- *   - Local errors (DB unreachable, prefix misconfigured, /scan/database/start
- *     or /db-content network errors).
- *   - Server-side failure during the wait phase (/db-status returns failed).
+ *   - Local errors (DB unreachable, prefix misconfigured, network errors).
+ *   - Imunify quota exhausted (403 quota_exceeded).
+ *   - Server-side failure or cancellation during the wait phase (/db-status
+ *     returns failed | cancelled).
+ *   - The flow deadline (max_poll_hours) elapsing.
  *
- *   Both routes converge on Scan::cancelDatabase, which fires the single terminal
+ *   All routes converge on Scan::cancelDatabase, which fires the single terminal
  *   ManagerScanCancelled::forDatabase event. step=manifest/scan failure events
  *   are not emitted — `cancelled` is the only failure terminal for the DB flow,
  *   mirroring how the file flow surfaces failures.
+ *
+ * Not a failure: a 429/503 from Imunify (load shedding, maintenance). Each
+ * /db-content batch is scanned inline and a shed batch was not committed, so the
+ * job re-dispatches itself with the cursor it had before the batch and resends it
+ * whole once Retry-After has passed. The wait is sliced in heartbeat intervals;
+ * every slice re-emits the last envelope of the current phase (step=manifest
+ * in_progress while prescanning, the startedDatabase progress while waiting on
+ * /db-status) so API's stall heuristic stays quiet.
  *
  * Note: there is no `step=scan` event at all in this flow.
  *   - "scan in flight" is signalled by step #2 (progress.updated startedDatabase).
@@ -61,6 +74,7 @@ use function Modular\ConnectorDependencies\event;
  *   - Prescan phase paginates per (tableIndex, columnIndex, lastKey).
  *   - Wait phase reuses the same constructor with $submitDone=true so discovery and
  *     prescan are skipped — only the db-status loop runs.
+ *   - $deadlineAt travels with every re-dispatch so the whole flow is bounded.
  */
 class ScanDbJob implements ShouldQueue
 {
@@ -89,7 +103,10 @@ class ScanDbJob implements ShouldQueue
     protected $columnIndex;
 
     /**
-     * @var int
+     * @var int|string|null Keyset cursor for the current (table, column): the
+     *                      last primary-key value already submitted, kept with
+     *                      the type the database returned so integer and
+     *                      varchar keys both compare correctly. Null = start.
      */
     protected $offset;
 
@@ -104,6 +121,22 @@ class ScanDbJob implements ShouldQueue
      *           short in-tick wait did not catch the verdict in time.
      */
     protected $submitDone;
+
+    /**
+     * @var int Unix timestamp after which the flow gives up with `poll_timeout`.
+     *          0 until the first run computes it via `Scan::pollDeadlineAt()`.
+     */
+    protected $deadlineAt;
+
+    /**
+     * @var int Unix timestamp of an Imunify Retry-After still in force; 0 when none.
+     */
+    protected $busyUntil;
+
+    /**
+     * @var int Unix timestamp of the last heartbeat emitted while waiting.
+     */
+    protected $lastHeartbeatAt;
 
     /**
      * @var int Aligned with Backup's manifest budget. Re-dispatches with
@@ -133,25 +166,35 @@ class ScanDbJob implements ShouldQueue
      *                       and excludedTables.
      * @param int $tableIndex
      * @param int $columnIndex
-     * @param int $offset
+     * @param int|string|null $offset
      * @param int $totalSubmitted
      * @param bool $submitDone
+     * @param int $deadlineAt
+     * @param int $busyUntil
+     * @param int $lastHeartbeatAt
      */
     public function __construct(
         ScanPart $part,
                  $tableIndex = 0,
                  $columnIndex = 0,
-                 $offset = 0,
+                 $offset = null,
                  $totalSubmitted = 0,
-                 $submitDone = false
+                 $submitDone = false,
+                 $deadlineAt = 0,
+                 $busyUntil = 0,
+                 $lastHeartbeatAt = 0
     )
     {
         $this->part = $part;
         $this->tableIndex = (int)$tableIndex;
         $this->columnIndex = (int)$columnIndex;
-        $this->offset = (int)$offset;
+        // `0` is the pre-typed-cursor "start" marker of jobs already queued.
+        $this->offset = $offset === 0 ? null : $offset;
         $this->totalSubmitted = (int)$totalSubmitted;
         $this->submitDone = (bool)$submitDone;
+        $this->deadlineAt = (int)$deadlineAt;
+        $this->busyUntil = (int)$busyUntil;
+        $this->lastHeartbeatAt = (int)$lastHeartbeatAt;
         $this->queue = 'backups';
     }
 
@@ -162,6 +205,36 @@ class ScanDbJob implements ShouldQueue
     {
         if ($this->part->isCancelled()) {
             return;
+        }
+
+        if ($this->deadlineAt === 0) {
+            $this->deadlineAt = Scan::pollDeadlineAt($this->part->siteScan);
+        }
+
+        if (Carbon::now()->timestamp > $this->deadlineAt) {
+            Log::warning('ScanDbJob: deadline exceeded, cancelling database flow', [
+                'mrid' => $this->part->mrid,
+                'deadline_at' => $this->deadlineAt,
+            ]);
+
+            Scan::cancelDatabase($this->part->mrid, $this->part->name, $this->part->siteScan, 'poll_timeout');
+
+            return;
+        }
+
+        // Still inside an Imunify Retry-After: heartbeat and come back later
+        // without calling the provider.
+        if ($this->busyUntil > 0) {
+            $now = Carbon::now()->timestamp;
+
+            if ($now < $this->busyUntil) {
+                $this->heartbeat($now);
+                $this->redispatchBusy($this->busyUntil, $this->busyUntil - $now);
+
+                return;
+            }
+
+            $this->busyUntil = 0;
         }
 
         try {
@@ -207,6 +280,7 @@ class ScanDbJob implements ShouldQueue
                 ]);
 
                 $this->submitContentSafe($client, $jobId, [], true);
+                $this->submitDone = true;
                 $this->emitManifestDone(count($tables), $this->totalSubmitted);
                 $this->waitForResults($client, $jobId, $startTime);
 
@@ -216,9 +290,26 @@ class ScanDbJob implements ShouldQueue
             [$done, $submitted] = $this->runPrescan($client, $jobId, $tables, $builder, $startTime);
 
             if ($done) {
+                $this->submitDone = true;
                 $this->emitManifestDone(count($tables), $submitted);
                 $this->waitForResults($client, $jobId, $startTime);
             }
+        } catch (ImunifyUnavailableException $e) {
+            $this->redispatchLater($e);
+        } catch (ImunifyQuotaExceededException $e) {
+            Log::error('ScanDbJob: Imunify quota exceeded', [
+                'mrid' => $this->part->mrid,
+                'code' => $e->getQuotaCode(),
+                'quota' => $e->getQuota(),
+            ]);
+
+            Scan::cancelDatabase(
+                $this->part->mrid,
+                $this->part->name,
+                $this->part->siteScan,
+                ImunifyQuotaExceededException::CODE_QUOTA_EXCEEDED,
+                ['quota' => $e->getQuota(), 'message' => $e->getMessage()]
+            );
         } catch (\Throwable $e) {
             Log::error('ScanDbJob: Failed', [
                 'mrid' => $this->part->mrid,
@@ -235,6 +326,85 @@ class ScanDbJob implements ShouldQueue
     }
 
     /**
+     * Imunify asked us to back off. The instance fields hold the cursor of the
+     * batch that was NOT accepted (`runPrescan` refreshes them before every
+     * submit), so re-dispatching with them resends exactly that batch.
+     *
+     * @param ImunifyUnavailableException $e
+     * @return void
+     */
+    private function redispatchLater(ImunifyUnavailableException $e)
+    {
+        $now = Carbon::now()->timestamp;
+        $busyUntil = $now + $e->delaySeconds();
+
+        Log::warning('ScanDbJob: Imunify busy, retrying later', array_merge([
+            'mrid' => $this->part->mrid,
+            'table_index' => $this->tableIndex,
+            'column_index' => $this->columnIndex,
+            'offset' => $this->offset,
+            'submit_done' => $this->submitDone,
+            'busy_until' => $busyUntil,
+        ], $e->context()));
+
+        $this->heartbeat($now);
+        $this->redispatchBusy($busyUntil, $e->delaySeconds());
+    }
+
+    /**
+     * Re-queue with the current cursor after at most one heartbeat interval.
+     *
+     * @param int $busyUntil
+     * @param int $remaining Seconds left on the Retry-After.
+     * @return void
+     */
+    private function redispatchBusy($busyUntil, $remaining)
+    {
+        dispatch(new self(
+            $this->part,
+            $this->submitDone ? 0 : $this->tableIndex,
+            $this->submitDone ? 0 : $this->columnIndex,
+            $this->submitDone ? null : $this->offset,
+            $this->totalSubmitted,
+            $this->submitDone,
+            $this->deadlineAt,
+            $busyUntil,
+            $this->lastHeartbeatAt
+        ))->delay(max(1, min($remaining, ScanManager::HEARTBEAT_INTERVAL_SECONDS)));
+    }
+
+    /**
+     * "Still alive" envelope while waiting out a Retry-After, throttled to one
+     * per heartbeat interval. Re-emits the last envelope of the current phase so
+     * API's handlers see nothing new: `step=manifest in_progress` while the
+     * prescan is still submitting, the `startedDatabase` progress (same
+     * `imunify_job_id`) once the final batch is in and we wait on /db-status.
+     *
+     * @param int $now Unix timestamp.
+     * @return void
+     */
+    private function heartbeat($now)
+    {
+        if ($this->lastHeartbeatAt > 0 && ($now - $this->lastHeartbeatAt) < ScanManager::HEARTBEAT_INTERVAL_SECONDS) {
+            return;
+        }
+
+        $jobId = $this->submitDone ? Cache::get('_scan_db_imunify_job_' . $this->part->siteScan) : null;
+
+        if (!empty($jobId)) {
+            event(ManagerScanProgressUpdated::startedDatabase(
+                $this->part->mrid,
+                $this->part->siteScan,
+                $jobId
+            ));
+        } else {
+            $this->emitManifestInProgress();
+        }
+
+        $this->lastHeartbeatAt = $now;
+    }
+
+    /**
      * First execution = no progress through tables yet. After a re-dispatch the
      * indexes are non-zero and we don't want to re-emit step=manifest, in_progress.
      *
@@ -244,7 +414,7 @@ class ScanDbJob implements ShouldQueue
     {
         return $this->tableIndex === 0
             && $this->columnIndex === 0
-            && $this->offset === 0
+            && $this->offset === null
             && $this->totalSubmitted === 0;
     }
 
@@ -300,17 +470,13 @@ class ScanDbJob implements ShouldQueue
 
         $tablePrefix = Config::get('database.connections.wordpress.prefix', 'wp_');
 
-        // Options live in cache since StartScanJob — see Scan::storeScanOptions.
-        // `force_rescan`, `webhook_url` and `webhook_secret` are all meaningful
-        // for the DB endpoint (the reference plugin forwards them too).
-        $options = Scan::scanOptions($this->part->siteScan);
-
+        // Only what the reference SDK sends: `force_rescan` and the webhook
+        // fields belong to `/scan/start`, the DB endpoint ignores them.
         $response = $client->startDatabaseScan(
             'wordpress',
             $tablePrefix,
             $tables,
-            defined('ABSPATH') ? rtrim(ABSPATH, '/') : null,
-            $options
+            defined('ABSPATH') ? rtrim(ABSPATH, '/') : null
         );
 
         if (empty($response['job_id'])) {
@@ -350,6 +516,10 @@ class ScanDbJob implements ShouldQueue
      * Submit suspicious content in batches; respect the 25s budget by re-dispatching
      * with the latest position when exceeded.
      *
+     * The instance cursor (`tableIndex`, `columnIndex`, `offset`, `totalSubmitted`)
+     * is refreshed right before every submit so a busy answer mid-loop can
+     * re-dispatch from the batch that was not accepted.
+     *
      * @param ImunifyClient $client
      * @param string $jobId
      * @param array $tables
@@ -388,6 +558,8 @@ class ScanDbJob implements ShouldQueue
                 );
 
                 foreach ($generator as $batch) {
+                    $this->rememberCursor($tableIdx, $columnIdx, $lastKey, $submitted);
+
                     if (!$this->submitContentSafe($client, $jobId, $batch, false)) {
                         // Imunify reports the job as already completed (e.g. a previous
                         // run sent the final batch and the queue is retrying with the
@@ -405,13 +577,14 @@ class ScanDbJob implements ShouldQueue
                     }
                 }
 
-                $lastKey = 0;
+                $lastKey = null;
             }
 
             $columnIdx = 0;
-            $lastKey = 0;
+            $lastKey = null;
         }
 
+        $this->rememberCursor(count($tables), 0, null, $submitted);
         $this->submitContentSafe($client, $jobId, [], true);
 
         Log::debug('ScanDbJob: Prescan complete', [
@@ -423,10 +596,28 @@ class ScanDbJob implements ShouldQueue
     }
 
     /**
-     * Poll GET /jobs/{jobId}/db-status until status=completed/failed or the per-tick
-     * budget is exhausted. DB scans usually settle in 1-3s server-side, so we try a
-     * short in-tick wait first; if Imunify is slower than that we re-dispatch with
-     * `submitDone=true` so the next tick keeps waiting without re-submitting.
+     * @param int $tableIdx
+     * @param int $columnIdx
+     * @param int|string|null $lastKey Kept as returned by the database (typed cursor).
+     * @param int $submitted
+     * @return void
+     */
+    private function rememberCursor($tableIdx, $columnIdx, $lastKey, $submitted)
+    {
+        $this->tableIndex = (int)$tableIdx;
+        $this->columnIndex = (int)$columnIdx;
+        $this->offset = $lastKey;
+        $this->totalSubmitted = (int)$submitted;
+    }
+
+    /**
+     * Poll GET /jobs/{jobId}/db-status until a terminal state or the per-tick
+     * budget is exhausted. DB scans usually settle in 1-3s server-side, so we try
+     * a short in-tick wait first; if Imunify is slower than that we re-dispatch
+     * with `submitDone=true` so the next tick keeps waiting without re-submitting.
+     *
+     * Terminal states: `completed` (fetch results), `failed` and `cancelled`
+     * (operator cancel or Imunify's stuck-job watchdog) — both cancel the flow.
      *
      * @param ImunifyClient $client
      * @param string $jobId
@@ -435,6 +626,8 @@ class ScanDbJob implements ShouldQueue
      */
     private function waitForResults(ImunifyClient $client, $jobId, $startTime)
     {
+        $this->submitDone = true;
+
         $deadline = min(
             $startTime + self::RESULTS_WAIT_BUDGET,
             $startTime + ($this->maxTime - 1)
@@ -455,9 +648,12 @@ class ScanDbJob implements ShouldQueue
                 return;
             }
 
-            if ($status === 'failed') {
-                $error = isset($response['error']) ? (string)$response['error'] : 'Imunify reported db_scan failure';
-                $this->failScan($error);
+            if ($status === 'failed' || $status === 'cancelled') {
+                $error = isset($response['error']) && $response['error'] !== ''
+                    ? (string)$response['error']
+                    : ($status === 'cancelled' ? 'imunify_job_cancelled' : 'Imunify reported db_scan failure');
+
+                $this->failScan($status, $error);
 
                 return;
             }
@@ -474,9 +670,10 @@ class ScanDbJob implements ShouldQueue
             $this->part,
             0,
             0,
-            0,
+            null,
             $this->totalSubmitted,
-            true
+            true,
+            $this->deadlineAt
         ));
     }
 
@@ -489,7 +686,7 @@ class ScanDbJob implements ShouldQueue
      * for the DB flow, mirroring how the file flow uses `completed` without a
      * preceding step=scan done. See class docblock for the full event sequence.
      *
-     * @param array $response Body of /db-status with status=completed.
+     * @param array $response Body of /db-results (every page merged).
      * @return void
      */
     private function completeScan(array $response)
@@ -525,13 +722,15 @@ class ScanDbJob implements ShouldQueue
      * the API receives a single `manager.scan.cancelled` (type=database) event —
      * mirroring how PollImunifyJob handles Imunify-side failures for files.
      *
+     * @param string $status `failed` | `cancelled`
      * @param string $error
      * @return void
      */
-    private function failScan($error)
+    private function failScan($status, $error)
     {
-        Log::error('ScanDbJob: db-status reported failure', [
+        Log::error('ScanDbJob: db-status reported a terminal failure', [
             'mrid' => $this->part->mrid,
+            'status' => $status,
             'error' => $error,
         ]);
 
@@ -539,14 +738,16 @@ class ScanDbJob implements ShouldQueue
             $this->part->mrid,
             $this->part->name,
             $this->part->siteScan,
-            $error
+            $error,
+            ['imunify_status' => $status]
         );
     }
 
     /**
      * Wrap submitDatabaseContent so a 409 "Job is not accepting content" with
      * status=completed is treated as success (Imunify already moved the job to the
-     * scanning phase). Other 4xx/5xx propagate as before.
+     * scanning phase). Other 4xx/5xx propagate as before; 429/503 propagate as
+     * ImunifyUnavailableException for the busy re-dispatch.
      *
      * @param ImunifyClient $client
      * @param string $jobId
@@ -594,7 +795,7 @@ class ScanDbJob implements ShouldQueue
     /**
      * @param int $tableIdx
      * @param int $columnIdx
-     * @param int $offset
+     * @param int|string|null $offset Typed keyset cursor.
      * @param int $submitted
      * @return void
      */
@@ -614,7 +815,8 @@ class ScanDbJob implements ShouldQueue
             $columnIdx,
             $offset,
             $submitted,
-            false
+            false,
+            $this->deadlineAt
         ));
     }
 

@@ -24,11 +24,32 @@ class ManagerCore extends AbstractManager
     }
 
     /**
-     * @return string
+     * Read the version from wp-includes/version.php in a local scope: some
+     * hosts (e.g. GridPane) fake global $wp_version on init to hide it.
+     *
+     * @return string|null
      */
     private function version()
     {
         ScreenSimulation::includeUpgrader();
+
+        if (function_exists('wp_get_wp_version')) {
+            return wp_get_wp_version();
+        }
+
+        $versionFile = ABSPATH . WPINC . '/version.php';
+
+        if (is_readable($versionFile)) {
+            $wp_version = null;
+
+            // require (not _once): the file only assigns variables, and it must
+            // run again here so $wp_version lands in this scope.
+            require $versionFile;
+
+            if (!empty($wp_version)) {
+                return $wp_version;
+            }
+        }
 
         return $GLOBALS['wp_version'] ?? null;
     }

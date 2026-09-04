@@ -40,6 +40,13 @@ class ConsolidatedManifest
     private static $diskNames = ['core', 'plugins', 'themes', 'mu_plugins', 'content', 'uploads'];
 
     /**
+     * Per-request cache of the disk roots, string form and realpath form.
+     *
+     * @var array<string, string[]>|null
+     */
+    private static $diskRoots;
+
+    /**
      * Canonical relative path of the consolidated manifest on the `scans` disk.
      * The single source of truth for this filename — every job that needs the
      * consolidated manifest (merge writer, upload, hash submit, cleanup, restore)
@@ -236,12 +243,12 @@ class ConsolidatedManifest
      * defensive guard against a future bug letting arbitrary paths into the
      * manifest reach FS operations.
      *
-     * No `realpath()` is performed: on managed-WP hostings (WP Engine,
-     * Pressable) core files are symlinks into a shared mount point and
-     * realpath resolution would take them outside the disk root, breaking the
-     * containment check legitimately. The string-level check (anchored at the
-     * disk root path emitted by the Storage facade) is sufficient given the
-     * `..`/null-byte rejection above.
+     * The string-level check is anchored at the disk root path emitted by the
+     * Storage facade, without `realpath()`, so a regular file under a disk
+     * root always passes even when the root itself sits behind a symlink. A
+     * symlinked *file* is the exception: its target is resolved and must live
+     * inside a disk root too, mirroring `ScanManifest::shouldSkip()`, so a
+     * planted link cannot read outside the site at upload time.
      *
      * @param string $absolutePath The absolute path stored in the consolidated manifest.
      * @return string The same path, validated.
@@ -266,18 +273,83 @@ class ConsolidatedManifest
             throw new \RuntimeException(sprintf('Null byte in path rejected: %s', $absolutePath));
         }
 
-        foreach (self::$diskNames as $disk) {
-            $diskRoot = rtrim(Str::replace('\\', '/', Storage::disk($disk)->path('')), '/');
+        if (!self::isInsideDiskRoots($normalized, false)) {
+            throw new \RuntimeException(sprintf('Path outside any known disk root: %s', $absolutePath));
+        }
 
-            if ($diskRoot === '') {
-                continue;
-            }
+        if (is_link($absolutePath)) {
+            $target = realpath($absolutePath);
 
-            if ($normalized === $diskRoot || Str::startsWith($normalized, $diskRoot . '/')) {
-                return $absolutePath;
+            if ($target === false || !self::isInsideDiskRoots($target, true)) {
+                throw new \RuntimeException(sprintf('Symlink target outside any known disk root: %s', $absolutePath));
             }
         }
 
-        throw new \RuntimeException(sprintf('Path outside any known disk root: %s', $absolutePath));
+        return $absolutePath;
+    }
+
+    /**
+     * Whether `$path` is one of our disk roots or lives under one.
+     *
+     * @param string $path Absolute path. Pass a `realpath()` result together
+     *                     with `$resolved = true` to compare against the
+     *                     resolved roots (symlink targets); pass the manifest
+     *                     string with `false` to compare against the roots as
+     *                     the Storage facade emits them.
+     * @param bool $resolved
+     * @return bool
+     */
+    public static function isInsideDiskRoots($path, $resolved)
+    {
+        if (!is_string($path) || $path === '') {
+            return false;
+        }
+
+        $normalized = rtrim(Str::replace('\\', '/', $path), '/');
+
+        foreach (self::diskRoots($resolved) as $root) {
+            if ($normalized === $root || Str::startsWith($normalized, $root . '/')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param bool $resolved
+     * @return string[] Normalised roots, without trailing slash, empty ones dropped.
+     */
+    private static function diskRoots($resolved)
+    {
+        $key = $resolved ? 'resolved' : 'raw';
+
+        if (isset(self::$diskRoots[$key])) {
+            return self::$diskRoots[$key];
+        }
+
+        $roots = [];
+
+        foreach (self::$diskNames as $disk) {
+            $root = Storage::disk($disk)->path('');
+
+            if ($resolved) {
+                $root = realpath($root);
+
+                if ($root === false) {
+                    continue;
+                }
+            }
+
+            $root = rtrim(Str::replace('\\', '/', $root), '/');
+
+            if ($root !== '') {
+                $roots[] = $root;
+            }
+        }
+
+        self::$diskRoots[$key] = array_values(array_unique($roots));
+
+        return self::$diskRoots[$key];
     }
 }
