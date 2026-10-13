@@ -7,16 +7,18 @@ use Modular\Connector\Backups\LocalDriver;
 use Modular\Connector\BrokenLinks\BrokenLinkManager;
 use Modular\Connector\Facades\Manager as ManagerFacade;
 use Modular\Connector\Facades\WhiteLabel;
+use Modular\Connector\Helper\Loopback;
 use Modular\Connector\Helper\OauthClient;
 use Modular\Connector\Http\ModularRouteResolver;
+use Modular\Connector\Jobs\ConfigureDriversJob;
 use Modular\Connector\Security\ScanManager;
 use Modular\Connector\Services\Manager;
+use Modular\Connector\Services\Manager\ManagerDatabase;
 use Modular\Connector\Services\Manager\ManagerSafeUpgrade;
 use Modular\Connector\Services\Manager\ManagerWooCommerce;
 use Modular\Connector\Services\ManagerServer;
 use Modular\Connector\Services\ManagerWhiteLabel;
 use Modular\Connector\Services\ServiceDatabase;
-use Modular\ConnectorDependencies\Ares\Framework\Foundation\Auth\JWT;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Contracts\RouteResolver;
 use Modular\ConnectorDependencies\Illuminate\Filesystem\FilesystemAdapter;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
@@ -140,60 +142,24 @@ class ModularConnectorServiceProvider extends ServiceProvider
 
             $debugSchedule = $this->app->make('config')->get('app.debug_schedule', false);
 
-            $hook = $this->app->getScheduleHook();
-            $url = apply_filters(sprintf('%s_query_url', $hook), site_url('wp-load.php'));
+            $lbNonce = Loopback::nonce();
+            $url = Loopback::url($lbNonce);
 
-            // Generate random control parameter for this specific request
-            $lbNonce = bin2hex(random_bytes(16));
-
-            $query = apply_filters(
-                sprintf('%s_query_args', $hook),
-                [
-                    'origin' => 'mo',
-                    'type' => 'lb',
-                    'lbn' => $lbNonce, // Loopback nonce - must match JWT payload
-                ]
-            );
-
-            $url = add_query_arg($query, $url);
-
-            $args = [
-                'timeout' => 10, // In some websites, the default value of 5 seconds is too short.
-                'sslverify' => false,
-                'blocking' => $debugSchedule,
-                'headers' => [
-                    'User-Agent' => 'ModularConnector/' . MODULAR_CONNECTOR_VERSION . ' (Linux)',
-                ],
-            ];
-
-            // Generate JWT with client_secret for x-mo-authentication
             try {
-                $client = OauthClient::getClient();
-                $clientSecret = $client->getClientSecret();
-                $clientId = $client->getClientId();
-
-                if (!empty($clientSecret) && !empty($clientId)) {
-                    $token = $this->generateLoopbackJwt($clientSecret, $clientId, $lbNonce);
-
-                    $args['headers']['x-mo-authentication'] = 'Bearer ' . $token;
-                } else {
-                    Log::warning('Loopback: client_secret or client_id not available, skipping dispatch');
-
-                    return;
-                }
+                $args = Loopback::args($lbNonce, [], $debugSchedule);
             } catch (\Throwable $e) {
                 Log::debug('Loopback: Failed to generate JWT', ['error' => $e->getMessage()]);
+
                 return;
             }
 
-            $authorization = Cache::driver('wordpress')->get('header.authorization');
+            if (is_null($args)) {
+                Log::warning('Loopback: client_secret or client_id not available, skipping dispatch');
 
-            if ($authorization) {
-                $args['headers']['Authorization'] = $authorization;
+                return;
             }
 
-            $args = apply_filters(sprintf('%s_post_args', $hook), $args);
-            $response = wp_remote_get(esc_url_raw($url), $args);
+            $response = wp_remote_get($url, $args);
 
             if ($debugSchedule) {
                 $context = [
@@ -236,49 +202,12 @@ class ModularConnectorServiceProvider extends ServiceProvider
     }
 
     /**
-     * Generate a JWT for loopback requests using client_secret.
-     *
-     * @param string $clientSecret
-     * @param string $clientId
-     * @param string $lbNonce Random nonce that must match the query string parameter
-     * @return string
-     */
-    private function generateLoopbackJwt(string $clientSecret, string $clientId, string $lbNonce): string
-    {
-        $header = [
-            'typ' => 'JWT',
-            'alg' => 'HS256',
-        ];
-
-        $payload = [
-            'iat' => time(),
-            'exp' => time() + 300, // 5 minutes expiration
-            'type' => 'loopback',
-            'client_id' => $clientId, // Site-specific verification
-            'lbn' => $lbNonce, // Must match query string lbn parameter
-        ];
-
-        $base64UrlHeader = JWT::base64UrlEncode(
-            json_encode($header, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
-        );
-        $base64UrlPayload = JWT::base64UrlEncode(
-            json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
-        );
-
-        $signature = hash_hmac('sha256', "{$base64UrlHeader}.{$base64UrlPayload}", $clientSecret, true);
-        $base64UrlSignature = JWT::base64UrlEncode($signature);
-
-        return "{$base64UrlHeader}.{$base64UrlPayload}.{$base64UrlSignature}";
-    }
-
-    /**
      * @return void
      */
     public function boot()
     {
         $this->booted(function () {
             try {
-                // Try to migrate the database in separate process, because in some hosts it executed right but throws an error
                 ManagerFacade::driver('database')->migrate();
             } catch (\Throwable $e) {
                 // Silence is golden
@@ -295,7 +224,7 @@ class ModularConnectorServiceProvider extends ServiceProvider
                 }
 
                 if ($driver !== 'file') {
-                    Cache::driver($driver)->has('test');
+                    $this->probeDriver(fn() => ConfigureDriversJob::probeCache($driver));
                 }
 
                 Config::set('cache.default', $driver);
@@ -313,7 +242,7 @@ class ModularConnectorServiceProvider extends ServiceProvider
                 }
 
                 if ($driver !== 'wordpress') {
-                    Queue::connection($driver)->size('default');
+                    $this->probeDriver(fn() => ConfigureDriversJob::probeQueue($driver));
                 }
 
                 Config::set('queue.default', $driver);
@@ -325,5 +254,30 @@ class ModularConnectorServiceProvider extends ServiceProvider
         $this->booted(function () {
             WhiteLabel::init();
         });
+    }
+
+    /**
+     * Run a driver probe, recreating the plugin tables once when one is missing.
+     *
+     * A table that vanished after its migration was recorded is never recreated by
+     * migrate(), so the probe is where the site gets its schema back. Anything else, or a
+     * repair that does not bring the table back, keeps the probe's failure so the caller
+     * falls through to the file/wordpress driver.
+     *
+     * @param \Closure $probe
+     * @return void
+     * @throws \Throwable
+     */
+    private function probeDriver(\Closure $probe): void
+    {
+        try {
+            $probe();
+        } catch (\Throwable $e) {
+            if (!ManagerDatabase::isMissingTableException($e) || !ManagerFacade::driver('database')->repair()) {
+                throw $e;
+            }
+
+            $probe();
+        }
     }
 }

@@ -52,7 +52,7 @@ trait CarbonTypeConverter
     public function convertToPHPValue($value, AbstractPlatform $platform)
     {
         $class = $this->getCarbonClassName();
-        if ($value === null || is_a($value, $class)) {
+        if ($value === null || is_object($value) && is_a($value, $class)) {
             return $value;
         }
         if ($value instanceof DateTimeInterface) {

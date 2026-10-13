@@ -17,6 +17,11 @@ return new class extends Migration {
      */
     protected $connection = 'modular';
 
+    /**
+     * @var string[]
+     */
+    public array $tables = ['cache', 'cache_locks'];
+
     public function up()
     {
         Schema::connection($this->connection)->dropIfExists('cache');

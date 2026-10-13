@@ -2,6 +2,8 @@
 
 namespace Modular\Connector\Exceptions;
 
+use Modular\Connector\Facades\Manager;
+use Modular\Connector\Services\Manager\ManagerDatabase;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Exceptions\Handler as ExceptionHandler;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\View;
 use Modular\ConnectorDependencies\Illuminate\Support\ViewErrorBag;
@@ -46,6 +48,33 @@ class Handler extends ExceptionHandler
     public function report(\Throwable $exception)
     {
         parent::report($exception);
+
+        $this->repairMissingTables($exception);
+    }
+
+    /**
+     * A plugin table missing under a recorded migration breaks every unique job dispatch
+     * until someone recreates it, so its first report triggers the repair: this request is
+     * lost, the next one finds the table (or the file/wordpress fallback) in place.
+     *
+     * @param \Throwable $exception
+     * @return void
+     */
+    protected function repairMissingTables(\Throwable $exception): void
+    {
+        static $attempted = false;
+
+        if ($attempted || !ManagerDatabase::isMissingTableException($exception)) {
+            return;
+        }
+
+        $attempted = true;
+
+        try {
+            Manager::driver('database')->repair();
+        } catch (\Throwable $e) {
+            // Silence is golden
+        }
     }
 
     /**

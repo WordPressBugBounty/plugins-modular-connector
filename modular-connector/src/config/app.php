@@ -49,10 +49,13 @@ return [
      *
      * This option determines whether the application should allow loopback
      * requests. Loopback requests are used by the application to
-     * simulate HTTP requests to itself.
+     * simulate HTTP requests to itself. When the constant is not defined,
+     * hosts where the loopback cannot write to disk (e.g. WP Engine) turn it off.
      */
 
-    'loopback' => defined('MODULAR_CONNECTOR_LOOPBACK') ? MODULAR_CONNECTOR_LOOPBACK : true,
+    'loopback' => defined('MODULAR_CONNECTOR_LOOPBACK')
+        ? MODULAR_CONNECTOR_LOOPBACK
+        : Modular\Connector\Helper\Hosting::supportsLoopback(),
 
     /*
     |--------------------------------------------------------------------------

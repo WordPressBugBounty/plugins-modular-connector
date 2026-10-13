@@ -18,6 +18,14 @@ class ManagerWhiteLabel
     protected string $key = '_modular_connector_white_label';
 
     /**
+     * Per-request memo: plugin_row_meta asks once per plugin row, and a host whose cache
+     * writes keep failing would otherwise hit the API on every one of them.
+     *
+     * @var array|null
+     */
+    protected ?array $data = null;
+
+    /**
      * @return void
      */
     public function init()
@@ -25,8 +33,8 @@ class ManagerWhiteLabel
         add_filter('all_plugins', [$this, 'setPluginName'], 10, 2);
         add_filter('debug_information', [$this, 'setPluginHealth']);
         add_filter('plugin_row_meta', [$this, 'setPluginMeta'], 10, 2);
+        add_filter('plugins_list', [$this, 'setAdvancedPlugins']);
         add_action('admin_enqueue_scripts', [$this, 'setPluginScripts']);
-        add_filter('show_advanced_plugins', [$this, 'setAdvancedPlugins'], 10, 2);
         add_action('admin_menu', [$this, 'setPluginMenu'], PHP_INT_MAX);
     }
 
@@ -35,6 +43,10 @@ class ManagerWhiteLabel
      */
     protected function getAllWhiteLabeledData(): array
     {
+        if ($this->data !== null) {
+            return $this->data;
+        }
+
         try {
             $client = OauthClient::getClient();
         } catch (\Throwable $e) {
@@ -45,7 +57,11 @@ class ManagerWhiteLabel
             return [];
         }
 
-        if (!Cache::has($this->key)) {
+        $data = Cache::get($this->key);
+
+        // Runs on every admin page: anything but an array (a damaged cache entry reads as
+        // false) must refetch instead of breaking the return type and locking the admin out.
+        if (!is_array($data)) {
             try {
                 $client->validateOrRenewAccessToken();
 
@@ -55,9 +71,11 @@ class ManagerWhiteLabel
             } catch (\Throwable $e) {
                 $this->update(null);
             }
+
+            $data = Cache::get($this->key);
         }
 
-        return Cache::get($this->key, []);
+        return $this->data = is_array($data) ? $data : [];
     }
 
     /**
@@ -85,6 +103,8 @@ class ManagerWhiteLabel
      */
     public function forget()
     {
+        $this->data = null;
+
         Cache::forget($this->key);
     }
 
@@ -94,6 +114,8 @@ class ManagerWhiteLabel
      */
     public function update($payload)
     {
+        $this->data = null;
+
         Cache::forget($this->key);
 
         if (empty($payload)) {
@@ -209,9 +231,48 @@ class ManagerWhiteLabel
         return $info;
     }
 
-    public function setAdvancedPlugins($previousValue, $type)
+    /**
+     * The Must-Use tab comes straight from get_mu_plugins(), so `all_plugins` never sees our
+     * loader. Only our own row is touched here: third-party must-use plugins and drop-ins stay
+     * visible, which is what the tab is for. Requires WP 6.3+ (`plugins_list`).
+     *
+     * @param array $plugins
+     * @return array
+     */
+    public function setAdvancedPlugins($plugins)
     {
-        // TODO Implement must-use plugins
+        $whiteLabel = $this->getWhiteLabeledData();
+
+        if (empty($whiteLabel) || $whiteLabel['status'] !== 'enabled') {
+            return $plugins;
+        }
+
+        // get_mu_plugins() keys rows by bare filename, not by `dir/file.php`.
+        $basename = MODULAR_CONNECTOR_MU_BASENAME;
+
+        if (!isset($plugins['mustuse'][$basename])) {
+            return $plugins;
+        }
+
+        if (!empty($whiteLabel['hide'])) {
+            unset($plugins['mustuse'][$basename]);
+
+            return $plugins;
+        }
+
+        $plugins['mustuse'][$basename]['PluginURI'] = '';
+
+        foreach (['Name', 'Description', 'AuthorURI', 'Author', 'AuthorName'] as $field) {
+            if (!empty($whiteLabel[$field])) {
+                $plugins['mustuse'][$basename][$field] = $whiteLabel[$field];
+            }
+        }
+
+        if (!empty($whiteLabel['Title'])) {
+            $plugins['mustuse'][$basename]['Title'] = $whiteLabel['Name'];
+        }
+
+        return $plugins;
     }
 
     /**

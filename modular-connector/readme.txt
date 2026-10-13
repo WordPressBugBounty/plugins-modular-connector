@@ -3,7 +3,7 @@ Contributors: modulards, uniqoders, davidgomezgam
 Tags: backup, backups, update, monitoring, security
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.0
+Stable tag: 3.4.0
 Requires PHP: 7.4
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl.html
@@ -12,14 +12,14 @@ Manage all your WordPress sites from one place. Automate updates, backups, uptim
 
 == Description ==
 
-[Modular DS](https://modulards.com/) is an all-in-one WordPress site management platform built for freelancers and agencies to easily manage multiple sites, save time, and run a profitable maintenance business.
+[Modular DS](https://modulards.com/) is an all-in-one WordPress management platform built for agencies, freelancers, and hosting providers to easily manage multiple sites, save time, and run a profitable maintenance business.
 
-From a single, intuitive dashboard, you can:
+From a single dashboard, or directly from your favorite AI assistant using the Modular DS MCP server, you can:
 
 * __Bulk manage and update plugins, themes, and WordPress core__ across multiple sites at once.
 * __Monitor uptime and performance__ with real-time alerts.
 * __Schedule automatic backups__ and restore them in one click from Modular DS.
-* __Know how likely a plugin update is to break your site__ before applying it with Update Copilot, our AI-powered update scoring system.
+* __Know how likely a plugin update is to break your site__ before applying it with Update Copilot, our AI-powered risk scoring system.
 * __Run quick or safe updates and automate them with smart rules__ based on version type, risk level, or detected vulnerabilities.
 * __Perform vulnerability and malware scans__.
 * __Detect and fix broken links and images__.
@@ -28,8 +28,7 @@ From a single, intuitive dashboard, you can:
 * __Generate automated reports__, including pre-maintenance reports, to show the value of your work to clients.
 * __Display a custom maintenance mode page__ to hide unfinished changes while you update or work on a site.
 
-Modular DS is the most complete alternative to ManageWP, MainWP, WP Umbrella, InfiniteWP, and WP Remote, bringing smart update automation, monitoring, backups, security, and reporting into a single platform.
-
+Modular DS is the strongest alternative to ManageWP, MainWP, WP Umbrella, InfiniteWP, and WP Remote, bringing smart automation tools, monitoring, backups, security, and reporting into a single platform.
 
 Usability and support are at the heart of everything we do. Our team brings over a decade of hands-on experience in WordPress site management and is always ready to help when you need it.
 
@@ -108,13 +107,27 @@ Add time logs, dates, and screenshots to showcase the full scope of your efforts
 Both report types help you build trust, improve client retention, and turn your WordPress maintenance offering into recurring revenue.
 
 ### Integrations
+Modular DS integrates with Google Analytics, Search Console, WooCommerce, and PageSpeed, giving you an overview of your sites in one place and allowing you to include the data your clients care most about in your reports.
+To further strengthen your sites’ security, two add-ons extend what is included in every plan:
+* Patch & Protect, powered by Patchstack, blocks common attack methods and vulnerabilities through virtual patching and hardening rules, even before an official fix is available.
+* A malware add-on powered by Imunify Connect, which lets you run on-demand scans across your sites to detect malicious content.
+### Modular DS MCP server: Manage your sites with AI
 
-Modular DS integrates with Google Analytics, Search Console, WooCommerce, and PageSpeed, giving you an overview of your websites in one place and allowing you to include the data your clients care most about in your reports.
+Connect Modular DS to Claude, ChatGPT, Cursor, or any other AI assistant, and do almost everything you'd normally do from your Modular DS dashboard, straight from a conversation.
 
-To further strengthen your sites’ security, two add-ons extend what is included in every plan. Patch & Protect, powered by Patchstack, applies virtual patches and hardening rules to block known vulnerabilities and common attack methods as soon as they are detected, even before an official fix is available.
+With our MCP server, you can:
 
-And a malware add-on powered by Imunify Connect, which lets you run weekly and on-demand scans across your sites.
+* Check on your client sites with a single prompt.
+* Run your WordPress maintenance workflow in a natural-language conversation (updates, backups, security scans, and so on).
+* Easily understand what needs attention or spot opportunities for improvement.
 
+[Learn more about how it works](https://modulards.com/mcp/).
+
+### Modular DS public API
+
+Build your own integrations and automations on top of Modular DS with our public API. Perfect for agencies, hosting providers, or developers who want to connect Modular DS to their own tools, dashboards, or workflows.
+
+[Explore our API documentation](https://api.docs.modulards.com/).
 
 ### Support that understands you
 
@@ -137,7 +150,9 @@ Feel free to [reach out](mailto:help@modulards.com) if you have any issues or qu
 
 = What is Modular DS, and what key features does it offer? =
 
-Modular DS is a modern, all-in-one platform for managing multiple WordPress websites from a single dashboard, helping you save time and work more efficiently. Its key features include:
+Modular DS is a modern, all-in-one platform for managing multiple WordPress websites from a single dashboard, helping you save time and work more efficiently.
+
+Key features include:
 
 * One-click login to all your WordPress sites.
 * Bulk updates and management for plugins, themes, and WordPress core.
@@ -150,8 +165,9 @@ Modular DS is a modern, all-in-one platform for managing multiple WordPress webs
 * Broken link checker.
 * Database optimization.
 * Pre-maintenance and white-label client reports.
+* MCP server for AI workflows.
 
-And more. Check out our [features page](https://modulards.com/features/) for details.
+Check out our [features page](https://modulards.com/features/) for details.
 
 = How does Modular DS compare to other WordPress management platforms like ManageWP, MainWP, WP Umbrella, InfiniteWP, or WP Remote? =
 
@@ -196,6 +212,14 @@ We never store your WordPress user passwords, ensuring your login credentials re
 
 The Modular Connector plugin links your WordPress installation with Modular DS, enabling secure communication between both systems. It allows actions like plugin updates, backup scheduling, and other maintenance tasks to be triggered from the Modular DS dashboard.
 
+= Does Modular DS work with AI assistants like Claude or ChatGPT? =
+
+Yes, Modular DS has an MCP server that connects your account to any MCP-compatible AI agent, so you can check on and manage your WordPress sites in natural language, from the same conversation you already work in. Learn more about our MCP [on this page](https://modulards.com/mcp/).
+
+= Is there a public API for Modular DS? =
+
+Yes. Our public API lets you build your own integrations and automations on top of Modular DS.
+
 = Do you offer migration support if I'm switching from ManageWP, MainWP, WP Umbrella, or another tool? =
 
 Yes, we do. If you’re coming from another WordPress management tool, we’ll help you migrate your sites securely at no extra cost.
@@ -233,6 +257,21 @@ Please report security bugs found in the source code of the Modular DS plugin th
 9. Client report overview page
 
 == Changelog ==
+= v3.4.0 =
+Release date: 2026-10-13
+
+* New cache clearing support for SiteGround Optimizer, xSpeed Cache (xCloud), WP-Optimize, Hummingbird, Cache Enabler, Autoptimize and Nginx Helper
+* Improved cache clearing for Varnish, WP Fastest Cache and Breeze
+* Improved hosting compatibility: the managed hosting provider is now detected and reported
+* Improved background task execution on WP Engine
+* Improved malware database scan: large rows are sent in smaller batches, and when Imunify stops a scan the reason is now reported
+* FIXED: Database malware scan failing to start on sites with an empty table prefix
+* FIXED: Background tasks failing forever when the plugin's own database tables went missing (e.g. after a site migration); they are now recreated automatically
+* FIXED: Fatal error that could lock users out of wp-admin right after activating the plugin when a cache file was damaged
+* FIXED: Authorization header health check reporting the header as missing on most sites
+* FIXED: Cache not cleared with NitroPack, and only partially with WP Super Cache
+* FIXED: Must-Use and Drop-ins tabs hidden in the WordPress plugins screen
+
 = v3.3.0 =
 Release date: 2026-09-04
 

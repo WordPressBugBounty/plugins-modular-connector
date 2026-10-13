@@ -203,25 +203,29 @@ class Settings
             wp_die(esc_html__('The selected log file does not exist.', 'modular-connector'));
         }
 
-        // Get the file content
-        $fileContent = File::get($path);
+        $handle = fopen($path, 'rb');
 
-        // Clear output buffer if necessary
-        if (ob_get_length()) {
+        if ($handle === false) {
+            wp_die(esc_html__('The selected log file could not be read.', 'modular-connector'));
+        }
+
+        // Drop every buffer level (gzip, other plugins): a single ob_end_clean()
+        // leaves the rest in front of the file and corrupts the download.
+        while (ob_get_level() > 0) {
             ob_end_clean();
         }
 
-        // Set headers for file download
-        header('Content-Description: File Transfer');
-        header('Content-Type: text/plain');
-        header('Content-Disposition: attachment; filename="' . basename($path) . '"');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate');
-        header('Pragma: public');
-        header('Content-Length: ' . strlen($fileContent));
+        // A debug log can outgrow memory_limit: stream it instead of loading it.
+        @set_time_limit(0);
 
-        // Output the file content
-        echo $fileContent;
+        nocache_headers();
+        header('Content-Description: File Transfer');
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . basename($path) . '"');
+        header('Content-Length: ' . filesize($path));
+
+        fpassthru($handle);
+        fclose($handle);
 
         exit;
     }

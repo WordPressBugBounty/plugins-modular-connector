@@ -13,6 +13,11 @@ return new class extends Migration {
      */
     public string $version = '3.0.0';
 
+    /**
+     * @var string[]
+     */
+    public array $tables = [];
+
     public function up()
     {
         if (!defined('MODULAR_CONNECTOR_STORAGE_PATH')) {

@@ -380,6 +380,7 @@ class ScanManager extends Manager
     public function forgetDatabaseCache($siteScan)
     {
         Cache::forget('_scan_db_imunify_job_' . (int)$siteScan);
+        Cache::forget('_scan_db_imunify_job_started_' . (int)$siteScan);
         Cache::forget('_scan_db_scan_config_' . (int)$siteScan);
         Cache::forget('_scan_db_tables_' . (int)$siteScan);
         Cache::forget('_scan_db_active_' . (int)$siteScan);

@@ -17,6 +17,11 @@ return new class extends Migration {
      */
     protected $connection = 'modular';
 
+    /**
+     * @var string[]
+     */
+    public array $tables = ['redirects'];
+
     public function up()
     {
         Schema::connection($this->connection)->dropIfExists('redirects');

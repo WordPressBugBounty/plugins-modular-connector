@@ -3,6 +3,7 @@
 namespace Modular\Connector\Jobs;
 
 use Modular\ConnectorDependencies\Illuminate\Bus\Queueable;
+use Modular\ConnectorDependencies\Illuminate\Contracts\Cache\LockProvider;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldBeUnique;
 use Modular\ConnectorDependencies\Illuminate\Contracts\Queue\ShouldQueue;
 use Modular\ConnectorDependencies\Illuminate\Foundation\Bus\Dispatchable;
@@ -25,8 +26,7 @@ class ConfigureDriversJob implements ShouldQueue, ShouldBeUnique
         try {
             $tmpDriver = 'database';
 
-            // We need to check if the cache database driver is working
-            Cache::driver($tmpDriver)->has('cache.driver.test');
+            static::probeCache($tmpDriver);
 
             $driver = $tmpDriver;
         } catch (\Throwable $e) {
@@ -47,8 +47,7 @@ class ConfigureDriversJob implements ShouldQueue, ShouldBeUnique
         try {
             $tmpDriver = 'database';
 
-            // We need to check if the queue driver is working
-            Queue::connection($tmpDriver)->size();
+            static::probeQueue($tmpDriver);
 
             $driver = $tmpDriver;
         } catch (\Throwable $e) {
@@ -57,6 +56,48 @@ class ConfigureDriversJob implements ShouldQueue, ShouldBeUnique
         }
 
         Cache::driver('wordpress')->forever('queue.default', $driver);
+    }
+
+    /**
+     * Fail unless the cache driver serves both reads and locks.
+     *
+     * The database store keeps them in two tables and unique jobs only touch the second
+     * one, so a site missing `cache_locks` alone passes a plain read and then fails every
+     * dispatch. Exercising the lock here is what keeps such a site off the database driver.
+     *
+     * @param string $driver
+     * @return void
+     * @throws \Throwable
+     */
+    public static function probeCache(string $driver): void
+    {
+        $repository = Cache::driver($driver);
+
+        $repository->has('cache.driver.test');
+
+        if (!$repository->getStore() instanceof LockProvider) {
+            return;
+        }
+
+        $lock = $repository->lock('cache.driver.test', 1);
+
+        try {
+            $lock->get();
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Fail unless the queue connection can be read.
+     *
+     * @param string $driver
+     * @return void
+     * @throws \Throwable
+     */
+    public static function probeQueue(string $driver): void
+    {
+        Queue::connection($driver)->size();
     }
 
     public function handle(): void

@@ -5,6 +5,12 @@ namespace Modular\SDK;
 use Modular\Connector\Facades\Server;
 use Modular\ConnectorDependencies\Carbon\Carbon;
 use Modular\ConnectorDependencies\GuzzleHttp\Client;
+use Modular\ConnectorDependencies\GuzzleHttp\Exception\ConnectException;
+use Modular\ConnectorDependencies\GuzzleHttp\HandlerStack;
+use Modular\ConnectorDependencies\GuzzleHttp\Middleware;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
+use Modular\ConnectorDependencies\Psr\Http\Message\RequestInterface;
+use Modular\ConnectorDependencies\Psr\Http\Message\ResponseInterface;
 use Modular\SDK\Services\CoreServiceFactory;
 use Modular\SDK\Support\ApiHelper;
 
@@ -31,6 +37,19 @@ class ModularClient implements ModularClientInterface
      * @var string default base URL for Modular's API
      */
     public const STG_API_BASE = 'https://api.staging.modulards.com';
+
+    /**
+     * Extra attempts for a call the API could not take. Kept low: they run
+     * synchronously inside the job or request that made the call.
+     */
+    private const MAX_RETRIES = 2;
+
+    /**
+     * A longer Retry-After is not worth blocking the caller for.
+     */
+    private const MAX_RETRY_AFTER_SECONDS = 10;
+
+    private const TRANSIENT_STATUSES = [408, 425, 429, 500, 502, 503, 504];
 
     /**
      * @var string
@@ -77,9 +96,17 @@ class ModularClient implements ModularClientInterface
         // Only disable for local/staging development
         $isDevEnvironment = in_array($config['env'] ?? 'production', ['local', 'stg', 'dev', 'testing'], true);
 
+        $stack = HandlerStack::create();
+        $stack->push(Middleware::retry($this->retryDecider(), $this->retryDelay()));
+
         $this->client = new Client([
             'verify' => !$isDevEnvironment,
             'base_uri' => $this->apiBaseUrl,
+            'handler' => $stack,
+            // Without a timeout a stuck API holds the request until the edge cuts it
+            // (~100 s), which outlives any queue tick that is waiting on it.
+            'timeout' => $config['timeout'] ?? 30,
+            'connect_timeout' => $config['connect_timeout'] ?? 10,
             'headers' => [
                 'Accept' => 'application/json',
                 'User-Agent' => sprintf('ModularConnectorPluginWP/%s', Server::connectorVersion()),
@@ -94,6 +121,79 @@ class ModularClient implements ModularClientInterface
                 'track_redirects' => false,
             ],
         ]);
+    }
+
+    /**
+     * Retry every call synchronously, in-process: hooks must keep arriving in
+     * order, so a failed call is never deferred to the queue.
+     *
+     * @return callable
+     */
+    private function retryDecider(): callable
+    {
+        return function ($retries, RequestInterface $request, ResponseInterface $response = null, $exception = null) {
+            if ($retries >= self::MAX_RETRIES) {
+                return false;
+            }
+
+            if ($response !== null) {
+                $status = $response->getStatusCode();
+
+                if (!in_array($status, self::TRANSIENT_STATUSES, true)) {
+                    return false;
+                }
+
+                $retryAfter = $this->retryAfterSeconds($response);
+
+                if ($retryAfter !== null && $retryAfter > self::MAX_RETRY_AFTER_SECONDS) {
+                    return false;
+                }
+            } elseif (!$exception instanceof ConnectException) {
+                return false;
+            }
+
+            Log::warning('ModularClient: retrying request', [
+                'attempt' => $retries + 1,
+                'method' => $request->getMethod(),
+                'path' => $request->getUri()->getPath(),
+                'status' => $response !== null ? $response->getStatusCode() : null,
+                'error' => $exception !== null ? $exception->getMessage() : null,
+            ]);
+
+            return true;
+        };
+    }
+
+    /**
+     * @return callable Milliseconds before the next attempt.
+     */
+    private function retryDelay(): callable
+    {
+        return function ($retries, ResponseInterface $response = null) {
+            $retryAfter = $this->retryAfterSeconds($response);
+
+            if ($retryAfter !== null) {
+                return $retryAfter * 1000;
+            }
+
+            // Guzzle counts from 1: 1 s, then 3 s.
+            return $retries === 1 ? 1000 : 3000;
+        };
+    }
+
+    /**
+     * @param ResponseInterface|null $response
+     * @return int|null
+     */
+    private function retryAfterSeconds(ResponseInterface $response = null): ?int
+    {
+        if ($response === null) {
+            return null;
+        }
+
+        $value = trim($response->getHeaderLine('Retry-After'));
+
+        return $value !== '' && ctype_digit($value) ? (int)$value : null;
     }
 
     /**

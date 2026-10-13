@@ -4,6 +4,7 @@ namespace Modular\Connector\Services;
 
 use Imagick;
 use Modular\Connector\Facades\Manager;
+use Modular\Connector\Helper\Hosting;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\Http\HttpUtils;
 use Modular\ConnectorDependencies\Ares\Framework\Foundation\ServerSetup;
 use Modular\ConnectorDependencies\Carbon\Carbon;
@@ -686,6 +687,8 @@ class ManagerServer
                 'mysqli' => extension_loaded('mysqli'),
                 'pdo' => extension_loaded('pdo'),
                 'pdo_mysql' => extension_loaded('pdo_mysql'),
+                'pdo_sqlite' => extension_loaded('pdo_sqlite'),
+                'sqlite3' => extension_loaded('sqlite3'),
                 'curl' => extension_loaded('curl'),
                 'zip' => extension_loaded('zip'),
                 'phar' => extension_loaded('phar'),
@@ -700,6 +703,7 @@ class ManagerServer
                     'md5' => in_array('md5', $available),
                 ];
             }, ['sha256' => false, 'xxh128' => false, 'md5' => false]),
+            'sqlite' => $this->getSqliteData(),
             'shell' => $this->shellIsAvailable(),
             'signal' => ServerSetup::supportsAsyncSignals(),
             'disabled_functions' => $this->disabledFunctions(),
@@ -709,6 +713,29 @@ class ManagerServer
                 'save_handler' => ini_get('session.save_handler'),
                 'use_cookies' => (bool) ini_get('session.use_cookies'),
             ],
+        ];
+    }
+
+    /**
+     * Report whether SQLite is usable through PDO and which library version backs it.
+     *
+     * @return array
+     */
+    private function getSqliteData(): array
+    {
+        $pdoDriver = $this->safe(fn() => class_exists('PDO') && in_array('sqlite', \PDO::getAvailableDrivers(), true), false);
+
+        $version = $this->safe(function () use ($pdoDriver) {
+            if ($pdoDriver) {
+                return (new \PDO('sqlite::memory:'))->getAttribute(\PDO::ATTR_CLIENT_VERSION);
+            }
+
+            return class_exists('SQLite3') ? \SQLite3::version()['versionString'] : null;
+        }, null);
+
+        return [
+            'pdo_driver' => $pdoDriver,
+            'version' => $version,
         ];
     }
 
@@ -767,6 +794,8 @@ class ManagerServer
         return [
             'uname' => function_exists('php_uname') ? php_uname() : null,
             'hostname' => function_exists('php_uname') ? php_uname('n') : null,
+            'hosting' => $this->safe(fn() => Hosting::detect()),
+            'loopback' => (bool) Config::get('app.loopback'),
             'disk_free_space' => $this->getDiskSpace(),
             'is_unix' => $this->isUnix(),
             'web_server' => $this->getWebServer(),

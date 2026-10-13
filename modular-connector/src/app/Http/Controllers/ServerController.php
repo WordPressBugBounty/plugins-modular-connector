@@ -14,6 +14,7 @@ use Modular\Connector\Health\Tests\HttpsStatusTest;
 use Modular\Connector\Health\Tests\LoopbackRequestsTest;
 use Modular\Connector\Health\Tests\RestAvailabilityTest;
 use Modular\Connector\Optimizer\Jobs\ManagerOptimizationInformationUpdateJob;
+use Modular\ConnectorDependencies\Illuminate\Http\Request;
 use Modular\ConnectorDependencies\Illuminate\Routing\Controller;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
@@ -111,8 +112,13 @@ class ServerController extends Controller
     /**
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getLoopback()
+    public function getLoopback(Request $request)
     {
+        // A health probe only wants to know how its request arrived, never a schedule run.
+        if (AuthorizationHeaderTest::isProbe($request)) {
+            return Response::json(AuthorizationHeaderTest::observe());
+        }
+
         // Don't lock up other requests while processing.
         session_write_close();
 

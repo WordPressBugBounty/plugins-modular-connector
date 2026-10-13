@@ -13,7 +13,9 @@ use Modular\ConnectorDependencies\GuzzleHttp\Exception\GuzzleException;
 use Modular\ConnectorDependencies\GuzzleHttp\HandlerStack;
 use Modular\ConnectorDependencies\GuzzleHttp\Middleware;
 use Modular\ConnectorDependencies\GuzzleHttp\Psr7\Utils;
+use Modular\ConnectorDependencies\Illuminate\Support\Arr;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
+use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use Modular\ConnectorDependencies\Psr\Http\Message\RequestInterface;
 use Modular\ConnectorDependencies\Psr\Http\Message\ResponseInterface;
 
@@ -54,6 +56,11 @@ class ImunifyClient
      * it would burn the caller's whole 25s tick on a single request.
      */
     private const MAX_RETRY_AFTER_SECONDS = 10;
+
+    /**
+     * Cap for request/response bodies dumped when MODULAR_CONNECTOR_LOG_LEVEL is debug.
+     */
+    private const DEBUG_BODY_LIMIT = 65536;
 
     /**
      * Endpoints where a 429 may be retried by the transport: the backend sheds
@@ -545,17 +552,28 @@ class ImunifyClient
      */
     public function startDatabaseScan($cmsType, $dbPrefix, array $tables, $wordpressPath = null)
     {
+        // Only the descriptor fields the reference SDK sends: `row_filter` drives
+        // our local prescan and is not part of Imunify's contract.
+        $descriptors = array_map(function (array $table) {
+            return Arr::only($table, ['schema', 'name', 'key', 'columns', 'base64']);
+        }, $tables);
+
         $payload = [
             'cms_type' => $cmsType,
             'db_prefix' => $dbPrefix,
-            'tables' => $tables,
+            'tables' => array_values($descriptors),
         ];
 
         if ($wordpressPath !== null && $wordpressPath !== '') {
             $payload['wordpress_path'] = $wordpressPath;
         }
 
-        return $this->postJson('/api/v1/scan/database/start', $payload);
+        return $this->postJson('/api/v1/scan/database/start', $payload, [
+            'tables' => count($payload['tables']),
+            'columns' => array_sum(array_map(function (array $table) {
+                return isset($table['columns']) ? count($table['columns']) : 0;
+            }, $payload['tables'])),
+        ]);
     }
 
     /**
@@ -848,34 +866,93 @@ class ImunifyClient
      */
     private function execute($method, $uri, array $options, array $requestContext)
     {
-        Log::debug('ImunifyClient: request', array_merge([
-            'method' => $method,
-            'uri' => $uri,
-        ], $requestContext));
+        $debug = self::isDebugLogging();
+
+        Log::debug('ImunifyClient: request', array_merge(
+            ['method' => $method, 'uri' => $uri],
+            $requestContext,
+            $debug && isset($options['json'])
+                ? ['body' => Str::limit((string)json_encode($options['json']), self::DEBUG_BODY_LIMIT)]
+                : []
+        ));
 
         try {
             $response = $this->http->request($method, $uri, $options);
         } catch (BadResponseException $e) {
-            throw $this->mapException($uri, $e);
+            throw $this->mapException($uri, $e, $requestContext);
         }
 
         $parsed = $this->parseResponse($response);
 
-        Log::debug('ImunifyClient: response', [
-            'method' => $method,
-            'uri' => $uri,
-            'status' => $response->getStatusCode(),
-        ]);
+        Log::debug('ImunifyClient: response', array_merge(
+            ['method' => $method, 'uri' => $uri, 'status' => $response->getStatusCode()],
+            $debug ? ['body' => Str::limit((string)$response->getBody(), self::DEBUG_BODY_LIMIT)] : []
+        ));
 
         return $parsed;
     }
 
     /**
+     * Request and response bodies are only dumped when the site opts in with
+     * MODULAR_CONNECTOR_LOG_LEVEL = 'debug': /db-content carries row content.
+     *
+     * @return bool
+     */
+    private static function isDebugLogging()
+    {
+        return defined('MODULAR_CONNECTOR_LOG_LEVEL') && Str::lower((string)MODULAR_CONNECTOR_LOG_LEVEL) === 'debug';
+    }
+
+    /**
+     * What a rejected call needs to be diagnosed: Imunify's answer is often a bare
+     * `{"error":"Invalid request body"}`, so the size and shape of what we sent
+     * matter as much as the response. Headers with secrets (X-Site-Key) never
+     * leave the request; multipart bodies (file uploads) are never dumped.
+     *
      * @param string $uri
      * @param BadResponseException $e
+     * @param array $requestContext
+     * @return array
+     */
+    private function failureContext($uri, BadResponseException $e, array $requestContext)
+    {
+        $request = $e->getRequest();
+        $response = $e->getResponse();
+        $contentType = $request->getHeaderLine('Content-Type');
+
+        $responseHeaders = [];
+        foreach (['Content-Type', 'Date', 'CF-Ray', 'X-Request-Id', 'Retry-After'] as $header) {
+            if ($response->hasHeader($header)) {
+                $responseHeaders[$header] = $response->getHeaderLine($header);
+            }
+        }
+
+        $context = array_merge([
+            'method' => $request->getMethod(),
+            'uri' => $uri,
+            'status' => $response->getStatusCode(),
+            'request_content_type' => $contentType,
+            'request_bytes' => $request->getBody()->getSize(),
+        ], $requestContext, [
+            'response_headers' => $responseHeaders,
+            'response_body' => Str::limit((string)$response->getBody(), 2000),
+        ]);
+
+        if (self::isDebugLogging() && Str::startsWith($contentType, 'application/json')) {
+            $context['request_body'] = Str::limit((string)$request->getBody(), self::DEBUG_BODY_LIMIT);
+            $context['response_body'] = Str::limit((string)$response->getBody(), self::DEBUG_BODY_LIMIT);
+        }
+
+        return $context;
+    }
+
+    /**
+     * @param string $uri
+     * @param BadResponseException $e
+     * @param array $requestContext
      * @return \Throwable
      */
-    private function mapException($uri, BadResponseException $e)
+    private function mapException($uri, BadResponseException $e, array $requestContext = [])
     {
         $response = $e->getResponse();
 
@@ -915,6 +992,10 @@ class ImunifyClient
                 $e
             );
         }
+
+        // Error level: the default log level is `error`, and Guzzle truncates the
+        // body in the exception message.
+        Log::error('ImunifyClient: Imunify rejected the request', $this->failureContext($uri, $e, $requestContext));
 
         return $e;
     }

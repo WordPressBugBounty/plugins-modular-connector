@@ -42,13 +42,23 @@ class Admin
     {
         $settings = new Settings();
 
-        add_management_page(
+        $hook = add_management_page(
             $settings->title(),
             $settings->title(),
             'manage_options',
             $settings->slug,
             [$settings, 'show']
         );
+
+        if ($hook) {
+            // The page callback runs after the admin header is already sent, too
+            // late for download headers: serve the log before any output.
+            add_action('load-' . $hook, function () use ($settings) {
+                if (request()->isMethod('post') && request()->get('tab') === 'logs') {
+                    $settings->downloadLogs();
+                }
+            });
+        }
     }
 
     /**

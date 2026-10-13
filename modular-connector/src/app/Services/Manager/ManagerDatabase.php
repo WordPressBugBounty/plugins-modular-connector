@@ -13,6 +13,7 @@ use Modular\ConnectorDependencies\Illuminate\Support\Facades\Cache;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Config;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\DB;
 use Modular\ConnectorDependencies\Illuminate\Support\Facades\Log;
+use Modular\ConnectorDependencies\Illuminate\Support\Facades\Schema;
 use Modular\ConnectorDependencies\Illuminate\Support\Str;
 use function Modular\ConnectorDependencies\database_path;
 use function Modular\ConnectorDependencies\dispatch;
@@ -25,6 +26,24 @@ class ManagerDatabase
     public const NAME = 'database';
 
     private const MODULAR_DB_VERSION = 'modular_db_version';
+
+    /**
+     * Wordpress cache key holding the timestamp a failed migration may be retried after.
+     */
+    private const MIGRATION_RETRY_AFTER = 'modular_db_migration_retry_after';
+
+    /**
+     * Seconds between migration attempts once one has failed. A host that cannot run the
+     * DDL (no pdo_mysql, CREATE denied) would otherwise pay the failure on every boot.
+     */
+    private const MIGRATION_RETRY_DELAY = 3600;
+
+    /**
+     * Migrations loaded from disk, memoised so repair() and migrate() can share one process.
+     *
+     * @var Collection|null
+     */
+    private ?Collection $migrations = null;
 
     /**
      * Get what is the current database extension used by WP
@@ -567,14 +586,125 @@ class ManagerDatabase
      */
     private function loadMigrations(?string $newVersion = null): Collection
     {
-        $migrations = Collection::make(glob(database_path('migrations/*.php')))
-            ->map(fn($migration) => require_once $migration);
-
-        if (empty($newVersion)) {
-            return $migrations;
+        if (is_null($this->migrations)) {
+            $this->migrations = Collection::make(glob(database_path('migrations/*.php')))
+                ->map(fn($migration) => require $migration);
         }
 
-        return $migrations->filter(fn($migration) => version_compare($migration->version, $this->getModularVersion(), '>'));
+        if (empty($newVersion)) {
+            return $this->migrations;
+        }
+
+        $dbVersion = $this->getModularVersion();
+
+        return $this->migrations->filter(fn($migration) => version_compare($migration->version, $dbVersion, '>'));
+    }
+
+    /**
+     * Tables owned by the migrations that are absent from the database.
+     *
+     * @return string[]
+     */
+    public function missingTables(): array
+    {
+        $schema = Schema::connection('modular');
+
+        return $this->loadMigrations()
+            ->flatMap(fn($migration) => $migration->tables)
+            ->reject(fn($table) => $schema->hasTable($table))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Whether the throwable reports a missing table on the plugin's own connection.
+     *
+     * Walks the previous-exception chain because PDO errors reach us wrapped in a
+     * QueryException.
+     *
+     * @param \Throwable|null $e
+     * @return bool
+     */
+    public static function isMissingTableException(?\Throwable $e): bool
+    {
+        $prefix = (string)Config::get('database.connections.modular.prefix');
+
+        if ($prefix === '') {
+            return false;
+        }
+
+        while (!is_null($e)) {
+            $message = $e->getMessage();
+
+            if (Str::contains($message, 'Base table or view not found') && Str::contains($message, $prefix)) {
+                return true;
+            }
+
+            $e = $e->getPrevious();
+        }
+
+        return false;
+    }
+
+    /**
+     * Recreate the plugin tables that vanished after their migration was recorded: a
+     * database moved without them, a run that died half-way, a manual DROP.
+     *
+     * Only the migrations with a missing table run, because every `up()` starts with a
+     * drop and the tables that survived keep their rows. When a table still cannot be
+     * created the cache and queue are pinned to the file/wordpress drivers so the site
+     * keeps working without it.
+     *
+     * @return bool Whether every table exists afterwards.
+     */
+    public function repair(): bool
+    {
+        try {
+            $missing = $this->missingTables();
+
+            if (empty($missing)) {
+                return true;
+            }
+
+            Log::warning('Database repair: recreating missing tables', ['tables' => $missing]);
+
+            $this->loadMigrations()
+                ->filter(fn($migration) => !empty(array_intersect($migration->tables, $missing)))
+                ->each(fn($migration) => $migration->up());
+
+            $missing = $this->missingTables();
+        } catch (\Throwable $e) {
+            Log::error('Database repair failed', ['error' => $e->getMessage()]);
+
+            $missing = ['cache', 'cache_locks', 'jobs'];
+        }
+
+        if (empty($missing)) {
+            return true;
+        }
+
+        Log::error('Database repair: tables still missing, pinning file/wordpress drivers', ['tables' => $missing]);
+
+        $this->pinFallbackDrivers($missing);
+
+        return false;
+    }
+
+    /**
+     * Override the drivers ConfigureDriversJob chose so nothing touches the missing tables.
+     *
+     * @param string[] $missing
+     * @return void
+     */
+    private function pinFallbackDrivers(array $missing): void
+    {
+        if (!empty(array_intersect(['cache', 'cache_locks'], $missing))) {
+            Cache::driver('wordpress')->forever('cache.default', 'file');
+        }
+
+        if (in_array('jobs', $missing, true)) {
+            Cache::driver('wordpress')->forever('queue.default', 'wordpress');
+        }
     }
 
     /**
@@ -590,18 +720,46 @@ class ManagerDatabase
             return;
         }
 
+        $retryAfter = (int)Cache::driver('wordpress')->get(self::MIGRATION_RETRY_AFTER, 0);
+
+        if ($retryAfter > time()) {
+            return;
+        }
+
         Log::debug('Migrating database from ' . $dbVersion . ' to ' . $newDBVersion);
 
         try {
-            $migrations = $this->loadMigrations($newDBVersion);
-            $migrations->each(fn($migration) => $migration->up());
-        } finally {
-            // To avoid running the migrations again, we set the new version
-            $this->setModularVersion($newDBVersion);
+            $this->loadMigrations($newDBVersion)->each(fn($migration) => $migration->up());
 
+            $missing = $this->missingTables();
+
+            if (empty($missing)) {
+                // Only a verified schema is recorded: a partial run is retried instead of hidden.
+                Cache::driver('wordpress')->forget(self::MIGRATION_RETRY_AFTER);
+                $this->setModularVersion($newDBVersion);
+            } else {
+                $this->deferMigration('Database migration left tables missing', ['tables' => $missing]);
+            }
+        } catch (\Throwable $e) {
+            $this->deferMigration('Database migration failed', ['error' => $e->getMessage()]);
+        } finally {
             // After each migration, we need to check if the cache and queue driver is working
             dispatch(new ConfigureDriversJob());
         }
+    }
+
+    /**
+     * Leave the version unrecorded so the migration runs again, but not before the delay.
+     *
+     * @param string $message
+     * @param array $context
+     * @return void
+     */
+    private function deferMigration(string $message, array $context): void
+    {
+        Log::error($message . ', version not recorded', $context);
+
+        Cache::driver('wordpress')->forever(self::MIGRATION_RETRY_AFTER, time() + self::MIGRATION_RETRY_DELAY);
     }
 
     /**
